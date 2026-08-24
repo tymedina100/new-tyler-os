@@ -81,3 +81,26 @@ export function resolveTriagedStatus(
   if (requested !== undefined) return requested;
   return current === "inbox" ? "active" : current;
 }
+
+/**
+ * Capturing straight into a project is itself an act of triage: the item has
+ * already been given a home, so it should not also demand a trip through the
+ * inbox.
+ */
+export function initialCaptureStatus(projectId: string | null): ItemStatus {
+  return projectId === null ? "inbox" : "active";
+}
+
+/**
+ * Moving an item to an explicit status. Reaching a live status clears the
+ * completion and archive stamps, so a reopened item carries no ghost timestamps.
+ */
+export function applyStatusChange(
+  item: ItemLifecycle,
+  status: ItemStatus,
+  now: Date,
+): ItemStatePatch {
+  if (status === "done") return completeItem(item, now);
+  if (status === "archived") return archiveItem(item, now);
+  return { status, completedAt: null, archivedAt: null };
+}

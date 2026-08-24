@@ -61,10 +61,15 @@ export const tagListSchema = z
     `Use at most ${MAX_TAGS_PER_ITEM} tags.`,
   );
 
-/** The fast path: one box, one line of text. */
+/**
+ * The fast path: one box, one line of text.
+ *
+ * `projectId` is set only when capturing from inside a project, where the item
+ * already has a home and does not need to pass through the inbox.
+ */
 export const captureItemSchema = z.object({
   text: z.string().trim().min(1, "Nothing to capture.").max(MAX_TITLE_LENGTH),
-  kind: z.enum(ITEM_KINDS).optional(),
+  projectId: projectIdSchema,
 });
 export type CaptureItemInput = z.infer<typeof captureItemSchema>;
 
@@ -97,6 +102,11 @@ export const setItemStatusSchema = z.object({
 export const setItemDueDateSchema = z.object({
   id: z.uuid(),
   dueOn: dueOnSchema,
+});
+
+export const setItemProjectSchema = z.object({
+  id: z.uuid(),
+  projectId: projectIdSchema,
 });
 
 /** Filters used by the inbox, task and search views. Sourced from URL params. */

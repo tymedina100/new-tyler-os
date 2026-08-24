@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { DomainError } from "@/domain/shared/errors";
 import type { ItemLifecycle } from "./item-rules";
 import {
+  applyStatusChange,
   archiveItem,
   completeItem,
+  initialCaptureStatus,
   reopenItem,
   resolveTriagedStatus,
   restoreItem,
@@ -117,5 +119,44 @@ describe("resolveTriagedStatus", () => {
 
   it("honours an explicit request", () => {
     expect(resolveTriagedStatus("inbox", "someday")).toBe("someday");
+  });
+});
+
+describe("initialCaptureStatus", () => {
+  it("sends a bare capture to the inbox", () => {
+    expect(initialCaptureStatus(null)).toBe("inbox");
+  });
+
+  it("treats capturing into a project as triage already done", () => {
+    expect(initialCaptureStatus("b1f0d0b6-2c9d-4f9c-9b2a-0f0a1c2d3e4f")).toBe("active");
+  });
+});
+
+describe("applyStatusChange", () => {
+  it("stamps the completion time when moving to done", () => {
+    expect(applyStatusChange(lifecycle({ status: "active" }), "done", now)).toEqual({
+      status: "done",
+      completedAt: now,
+      archivedAt: null,
+    });
+  });
+
+  it("stamps the archive time when moving to archived", () => {
+    expect(applyStatusChange(lifecycle({ status: "active" }), "archived", now).archivedAt).toBe(now);
+  });
+
+  it("clears both stamps when returning to a live status", () => {
+    const patch = applyStatusChange(
+      lifecycle({ status: "done", completedAt: earlier }),
+      "someday",
+      now,
+    );
+
+    expect(patch).toEqual({ status: "someday", completedAt: null, archivedAt: null });
+  });
+
+  it("refuses to complete an archived item", () => {
+    const archived = lifecycle({ status: "archived", archivedAt: earlier });
+    expect(() => applyStatusChange(archived, "done", now)).toThrow(DomainError);
   });
 });
