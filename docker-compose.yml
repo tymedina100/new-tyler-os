@@ -1,0 +1,25 @@
+# Local Postgres for TylerOS development.
+#   docker compose up -d
+#
+# Tests do not need this: they run against an in-process PGlite database.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tyleros-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tyleros
+      POSTGRES_PASSWORD: tyleros
+      POSTGRES_DB: tyleros
+    ports:
+      - "5432:5432"
+    volumes:
+      - tyleros-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tyleros -d tyleros"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tyleros-pgdata:
