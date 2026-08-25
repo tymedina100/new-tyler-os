@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BulkTriageBar } from "@/components/items/bulk-triage-bar";
 import { ItemRow } from "@/components/items/item-row";
 import { Key, ShortcutsToggle, TriageLegend } from "@/components/items/triage-legend";
-import { useItemAction } from "@/components/items/use-item-action";
+import { useAction } from "@/components/ui/use-action";
 import { ITEM_KINDS, type ItemWithRelations } from "@/domain/items/item";
 import type { IsoDate } from "@/domain/shared/date";
 import type { ActionResult } from "@/server/action-result";
@@ -45,7 +45,7 @@ export function InboxTriage({
   const [selection, setSelection] = useState<{ id: string; index: number } | null>(null);
   const [marked, setMarked] = useState<ReadonlySet<string>>(new Set());
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const { run } = useItemAction();
+  const { run } = useAction();
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
 
   const selected =

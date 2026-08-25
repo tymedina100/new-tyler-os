@@ -13,7 +13,7 @@ import {
 import Link from "next/link";
 import { useOptimistic } from "react";
 import { DueBadge, KindBadge, ProjectBadge, TagBadge } from "@/components/items/item-badges";
-import { useItemAction } from "@/components/items/use-item-action";
+import { useAction } from "@/components/ui/use-action";
 import { Badge } from "@/components/ui/badge";
 import {
   Menu,
@@ -58,7 +58,7 @@ interface ItemRowProps {
  * a failed action must never look like a successful one.
  */
 export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: ItemRowProps) {
-  const { isPending, run } = useItemAction();
+  const { isPending, run } = useAction();
   const [optimisticDone, setOptimisticDone] = useOptimistic(item.status === "done");
 
   const isArchived = item.status === "archived";

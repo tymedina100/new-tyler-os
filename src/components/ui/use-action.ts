@@ -5,14 +5,14 @@ import { toast } from "sonner";
 import type { ActionResult } from "@/server/action-result";
 
 /**
- * Running an item action from the UI.
+ * Running a server action from the UI.
  *
- * Two components now mutate items — the row's own controls and keyboard triage
- * in the inbox — and both owe the user the same promise: the change is
- * optimistic where it can be, and a failure is always visible. Keeping that in
- * one place is what stops the two drifting into different failure behaviour.
+ * Item rows, keyboard triage and kitchen inventory all mutate through actions,
+ * and all owe the user the same promise: the change is optimistic where it can
+ * be, and a failure is always visible. Keeping that in one place is what stops
+ * them drifting into different failure behaviour.
  */
-export function useItemAction() {
+export function useAction() {
   const [isPending, startTransition] = useTransition();
 
   function run(action: () => Promise<ActionResult<unknown>>, optimistic?: () => void): void {
