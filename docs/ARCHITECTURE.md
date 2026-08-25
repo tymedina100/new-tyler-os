@@ -92,6 +92,30 @@ thin wrapper, not a refactor.
 live personal data; nothing is prerendered, and `next build` never needs a
 database.
 
+### `src/lib/` — framework glue, not a layer
+
+Two files: `cn.ts` (class merging) and `search-params.ts` (reading a possibly
+repeated URL parameter). Both are React/Next plumbing with no business meaning.
+
+It is not a general utilities folder, and `src/domain/` is forbidden from
+importing it. Anything with a domain meaning goes in `src/domain/` under a name
+that says what it is. If this folder starts accumulating files, that is the
+symptom of a domain concept looking for a home.
+
+### Where the layering is written down
+
+In three places, on purpose, each doing something the others cannot:
+
+| Where                | Form                    | Catches                                   |
+| -------------------- | ----------------------- | ----------------------------------------- |
+| `eslint.config.mjs`  | `no-restricted-imports` | a violation, mechanically, at lint time   |
+| `.claude/rules/*.md` | path-scoped agent rules | a coding agent about to write a violation |
+| this document        | prose                   | a human deciding where something belongs  |
+
+The lint rules are the enforcement; the other two exist to stop the violation
+being written in the first place. Changing the boundaries means changing all
+three, and `pnpm check:context` verifies the rules still point at real files.
+
 ## State management
 
 There is none, and that is the design.
@@ -158,10 +182,13 @@ where the user should end up.
 
 ## Testing
 
-| Kind        | What it covers                                    | Needs            |
-| ----------- | ------------------------------------------------- | ---------------- |
-| Domain      | Transitions, parsing, bucketing, validation edges | Nothing          |
-| Integration | The SQL itself: full-text search, tags, cascades  | Nothing (PGlite) |
+Three tiers, split by what they need to run.
+
+| Kind            | What it covers                                    | Needs            | In `pnpm check` |
+| --------------- | ------------------------------------------------- | ---------------- | --------------- |
+| Domain          | Transitions, parsing, bucketing, validation edges | Nothing          | yes             |
+| Integration     | The SQL itself: full-text search, tags, cascades  | Nothing (PGlite) | yes             |
+| Smoke (browser) | That the app is wired together end to end         | A real database  | no              |
 
 Integration tests run Postgres in-process through PGlite and apply the committed
 migrations from scratch, so every run also proves the migrations still work. They
@@ -169,9 +196,14 @@ have already earned their keep: they caught `ORDER BY` rendering as
 `due_on nulls last asc`, and a unique-violation code arriving one level down the
 error `cause` chain.
 
-There are no component tests. UI behaviour worth asserting on belongs in
-Playwright once the UI has stopped moving; brittle render tests of a UI this young
-would cost more than they catch.
+Browser smoke tests live in `e2e/` and run under Playwright against a real
+database. They are **outside** `pnpm check` deliberately: a gate that needs
+infrastructure is a gate that gets skipped, and the fast tests rot alongside it.
+See `docs/VERIFICATION.md`.
+
+There are still no component tests. Rendering assertions on a UI this young cost
+more than they catch; the smoke suite covers whether the wiring works, and the
+manual checklist covers whether it is pleasant to use.
 
 ## How future AI connects without contaminating the domain
 

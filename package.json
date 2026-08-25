@@ -17,7 +17,10 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.mts",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm lint && pnpm check:context && pnpm test && pnpm build",
+    "check:env": "tsx scripts/check-env.mts",
+    "check:context": "tsx scripts/check-context.mts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -38,8 +41,9 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.7",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22.20.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
@@ -56,7 +60,7 @@
   },
   "packageManager": "pnpm@11.23.0",
   "engines": {
-    "node": ">=20.11"
+    "node": ">=22.11"
   },
   "description": "A private personal-life operating system."
 }

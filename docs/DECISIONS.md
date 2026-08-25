@@ -138,7 +138,7 @@ asserts that the code calls the mock.
 (`pglite-socket`) resets the connection on Drizzle's lateral-join relational
 queries, and PGlite in-process fails to initialise inside the Next.js server
 bundle. Both were removed rather than shipped as a flaky convenience. A real
-Postgres is a requirement to run TylerOS, and `docker-compose.yml` provides one.
+Postgres is a requirement to run TylerOS, and `docker-compose.yml` provides one. See ADR 015 for the two supported ways to have one.
 
 ---
 
@@ -204,3 +204,77 @@ There is no "new item" form. Everything is captured as text, then edited.
 **Why:** one creation path means one place for the rules to live, and it keeps the
 product honest about its own philosophy — if capture is not good enough to be the
 only way in, capture needs fixing.
+
+---
+
+## 014 · Session context is CLAUDE.md plus path-scoped rules
+
+**Accepted** · 0.1 hardening
+
+`CLAUDE.md` holds only what almost every session needs. Layer-specific
+conventions live in `.claude/rules/*.md` with `paths:` frontmatter, so they load
+into context only when a matching file is opened.
+
+**Considered:** one large `CLAUDE.md`; splitting it with `@path` imports; nested
+`CLAUDE.md` files per directory.
+
+**Why:** imports are expanded at launch, so they organise without saving any
+context — the file gets longer for the same cost. Path-scoped rules genuinely
+cost nothing until they are relevant, and they arrive exactly when a mistake is
+about to be made. Nested `CLAUDE.md` files behave similarly but bury conventions
+inside the source tree where they are easy to miss when reading the repo.
+
+**Cost:** a glob that matches nothing silently disables its rule. `pnpm
+check:context` fails the build in that case, along with dangling file references
+and documented commands that no longer exist.
+
+---
+
+## 015 · Two supported development environments; PostgreSQL stays
+
+**Accepted** · 0.1 hardening
+
+TylerOS requires PostgreSQL reached by a standard connection string. Two
+environments are supported and documented: a local server via
+`docker-compose.yml`, or any remote PostgreSQL for a machine without Docker or
+administrator rights. `pnpm check:env` diagnoses either.
+
+**Considered and rejected:**
+
+- **Switching database.** SQLite would run anywhere, and would cost the
+  `tsvector` search this product is built around plus the `pgvector` path in ADR 002. Changing the database to suit one laptop is the wrong trade.
+- **Bundling PostgreSQL as a dependency** (`embedded-postgres` and similar).
+  It would make `pnpm dev` work with no infrastructure, at the price of a
+  heavyweight dependency shipping third-party binaries, and a third "how do I
+  get a database" path to keep working. A remote connection string already
+  solves it with nothing installed.
+- **PGlite for the application.** Tried during 0.1 and it does not work: see
+  ADR 008.
+
+**Why it stays clean:** no hosting provider is named anywhere in the code.
+`sslmode` is a standard PostgreSQL URL parameter handled by the driver, so
+remote databases need no application changes.
+
+---
+
+## 016 · Browser smoke tests, deliberately outside the gate
+
+**Accepted** · 0.1 hardening
+
+Five Playwright specs in `e2e/` cover the flows whose breakage makes TylerOS
+unusable. `pnpm test:e2e` runs them; `pnpm check` does not.
+
+**Considered:** adding them to `pnpm check`; a full end-to-end suite; skipping
+them automatically when no database is configured.
+
+**Why outside the gate:** `pnpm check` must run with no database and no network.
+A gate that needs infrastructure gets skipped, and the fast tests rot with it.
+
+**Why not auto-skip:** a suite that silently passes when it did not run is worse
+than one that fails loudly. `e2e/global-setup.ts` refuses to start and prints the
+command to fix it.
+
+**Why only five:** they exist to prove the wiring, not to re-test domain rules
+that already have fast unit tests. A sixth spec that passes whenever these five
+pass is not earning its place. Whether the app is _pleasant_ is a human
+judgement — hence the manual checklist in `docs/VERIFICATION.md`.

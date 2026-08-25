@@ -83,6 +83,13 @@ const eslintConfig = defineConfig([
     },
   },
 
+  {
+    // CLI tooling and browser tests: printing to the terminal is the point, and
+    // the layering restrictions above do not apply outside src/.
+    files: ["scripts/**/*.mts", "e2e/**/*.ts", "playwright.config.ts", "vitest.config.mts"],
+    rules: { "no-console": "off" },
+  },
+
   prettier,
 
   globalIgnores([".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts", "drizzle/**"]),

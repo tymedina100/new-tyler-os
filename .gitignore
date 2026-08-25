@@ -43,9 +43,15 @@ next-env.d.ts
 # env: keep the template, ignore the real thing
 !.env.example
 
-# local database volumes
-/pgdata
 
+# Agent tooling. Project rules under .claude/ are shared context and ARE
+# committed; only machine-local overrides are ignored.
+/.claude/settings.local.json
+/.claude/*.local.json
+# Machine-local: how a dev server is launched depends on the machine.
+/.claude/launch.json
 
-# editor/agent tooling
-/.claude
+# Playwright
+/test-results
+/playwright-report
+/.playwright

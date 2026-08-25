@@ -22,6 +22,11 @@ Universal capture, manual triage, and retrieval.
 **Not included, on purpose:** AI, auth, an API layer, recurring items,
 notifications, external integrations, file attachments, offline support.
 
+Hardened afterwards, before starting 0.2: session context split into `CLAUDE.md`
+plus path-scoped `.claude/rules/`, a `pnpm check:env` readiness check, a
+documented no-admin development path using a remote PostgreSQL, and a five-spec
+Playwright smoke suite. See ADRs 014, 015 and 016.
+
 ---
 
 ## 0.2 · Make capture stop needing triage
@@ -103,3 +108,5 @@ Recorded so they do not get proposed again as improvements:
 - A generic custom-fields or user-defined-schema system
 - Making AI a dependency of any core flow
 - Dashboards, charts or analytics about personal data nobody acts on
+- Storing personal-life facts in repository instruction files. TylerOS is the
+  system responsible for personal context; the repo describes how to build it
