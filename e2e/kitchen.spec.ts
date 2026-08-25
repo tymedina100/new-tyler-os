@@ -74,6 +74,11 @@ test("inventory is added, filtered by location, edited and used up", async ({ pa
   // --- quantity is edited after using some of it --------------------------
   await page.goto("/kitchen?location=freezer");
   await page.getByRole("link", { name }).click();
+
+  // Waiting for the editor first: the list page has its own Quantity field in
+  // the quick-add row, so a bare getByLabel can resolve against the page being
+  // navigated away from. See the 0.3 note in docs/VERIFICATION.md.
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeVisible();
   await expect(page.getByLabel("Quantity")).toHaveValue("2");
 
   await page.getByLabel("Quantity").fill("1.3");
