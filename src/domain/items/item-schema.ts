@@ -31,14 +31,11 @@ export const titleSchema = z
   .min(1, "Give it a title.")
   .max(MAX_TITLE_LENGTH, `Keep titles under ${MAX_TITLE_LENGTH} characters.`);
 
-export const dueOnSchema = z.preprocess(
-  (value) => {
-    if (typeof value !== "string") return (value ?? null) as unknown;
-    const trimmed = value.trim();
-    return trimmed.length === 0 ? null : trimmed;
-  },
-  z.string().refine(isIsoDate, "Use a valid date.").nullable(),
-);
+export const dueOnSchema = z.preprocess((value) => {
+  if (typeof value !== "string") return (value ?? null) as unknown;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
+}, z.string().refine(isIsoDate, "Use a valid date.").nullable());
 
 export const projectIdSchema = z.preprocess((value) => {
   if (typeof value !== "string") return (value ?? null) as unknown;
@@ -47,19 +44,13 @@ export const projectIdSchema = z.preprocess((value) => {
 }, z.uuid("Unknown project.").nullable());
 
 export const tagListSchema = z
-  .preprocess(
-    (value) => {
-      if (value === null || value === undefined) return [];
-      if (typeof value === "string") return value.split(/[,\s]+/);
-      return value;
-    },
-    z.array(z.string()),
-  )
+  .preprocess((value) => {
+    if (value === null || value === undefined) return [];
+    if (typeof value === "string") return value.split(/[,\s]+/);
+    return value;
+  }, z.array(z.string()))
   .transform(normalizeTagNames)
-  .refine(
-    (names) => names.length <= MAX_TAGS_PER_ITEM,
-    `Use at most ${MAX_TAGS_PER_ITEM} tags.`,
-  );
+  .refine((names) => names.length <= MAX_TAGS_PER_ITEM, `Use at most ${MAX_TAGS_PER_ITEM} tags.`);
 
 /**
  * The fast path: one box, one line of text.
@@ -73,7 +64,7 @@ export const captureItemSchema = z.object({
 });
 export type CaptureItemInput = z.infer<typeof captureItemSchema>;
 
-export const createItemSchema = z.object({
+export const itemFieldsSchema = z.object({
   title: titleSchema,
   body: emptyToNull(MAX_BODY_LENGTH),
   kind: z.enum(ITEM_KINDS),
@@ -82,9 +73,8 @@ export const createItemSchema = z.object({
   projectId: projectIdSchema,
   tags: tagListSchema,
 });
-export type CreateItemInput = z.infer<typeof createItemSchema>;
 
-export const updateItemSchema = createItemSchema.extend({ id: z.uuid() });
+export const updateItemSchema = itemFieldsSchema.extend({ id: z.uuid() });
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;
 
 export const itemIdSchema = z.object({ id: z.uuid() });
@@ -108,17 +98,3 @@ export const setItemProjectSchema = z.object({
   id: z.uuid(),
   projectId: projectIdSchema,
 });
-
-/** Filters used by the inbox, task and search views. Sourced from URL params. */
-export const itemQuerySchema = z.object({
-  q: z.preprocess((value) => {
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim();
-    return trimmed.length === 0 ? undefined : trimmed;
-  }, z.string().max(MAX_TITLE_LENGTH).optional()),
-  kind: z.enum(ITEM_KINDS).optional().catch(undefined),
-  status: z.enum(ITEM_STATUSES).optional().catch(undefined),
-  projectId: z.uuid().optional().catch(undefined),
-  tag: z.string().optional().catch(undefined),
-});
-export type ItemQuery = z.infer<typeof itemQuerySchema>;

@@ -1,5 +1,6 @@
 import { and, desc, eq, ilike, inArray, isNotNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { ItemKind, ItemStatus, ItemWithRelations } from "@/domain/items/item";
+import type { ItemFilters } from "@/domain/items/item-filters";
 import { OPEN_ITEM_STATUSES } from "@/domain/items/item";
 import type { ItemLifecycle } from "@/domain/items/item-rules";
 import type { IsoDate } from "@/domain/shared/date";
@@ -16,11 +17,7 @@ import { itemTags, items, type NewItemRow, tags } from "@/server/db/schema";
  * The search vector column is never selected: it is large and no caller reads it.
  */
 
-export interface ItemListFilters {
-  statuses?: readonly ItemStatus[];
-  kinds?: readonly ItemKind[];
-  projectId?: string;
-  tagName?: string;
+export interface ItemListFilters extends ItemFilters {
   limit?: number;
 }
 

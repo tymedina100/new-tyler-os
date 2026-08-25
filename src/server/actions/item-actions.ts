@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import {
   captureItemSchema,
-  createItemSchema,
   itemIdSchema,
   setItemDueDateSchema,
   setItemKindSchema,
@@ -38,18 +37,6 @@ export async function captureItemAction(
     });
 
     const id = await service.captureItem(getDb(), input);
-    revalidateEverything();
-    return { id };
-  });
-}
-
-export async function createItemAction(
-  _previous: ActionResult<{ id: string }> | null,
-  formData: FormData,
-): Promise<ActionResult<{ id: string }>> {
-  return runAction("createItem", async () => {
-    const input = createItemSchema.parse(readItemForm(formData));
-    const id = await service.createItem(getDb(), input);
     revalidateEverything();
     return { id };
   });

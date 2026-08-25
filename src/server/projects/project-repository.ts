@@ -17,7 +17,9 @@ export async function listProjects(db: Database): Promise<Project[]> {
     .select()
     .from(projects)
     .orderBy(
-      asc(sql`array_position(array['active', 'paused', 'done', 'archived'], ${projects.status}::text)`),
+      asc(
+        sql`array_position(array['active', 'paused', 'done', 'archived'], ${projects.status}::text)`,
+      ),
       asc(sql`lower(${projects.name})`),
     );
 }

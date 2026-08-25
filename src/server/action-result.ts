@@ -14,8 +14,7 @@ import { isDomainError } from "@/domain/shared/errors";
 export type FieldErrors = Record<string, string[]>;
 
 export type ActionResult<T = undefined> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; fieldErrors?: FieldErrors };
+  { ok: true; data: T } | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export function actionOk(): ActionResult<undefined>;
 export function actionOk<T>(data: T): ActionResult<T>;

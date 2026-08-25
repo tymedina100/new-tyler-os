@@ -43,12 +43,8 @@
           "name": "item_tags_item_id_items_id_fk",
           "tableFrom": "item_tags",
           "tableTo": "items",
-          "columnsFrom": [
-            "item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["item_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -56,12 +52,8 @@
           "name": "item_tags_tag_id_tags_id_fk",
           "tableFrom": "item_tags",
           "tableTo": "tags",
-          "columnsFrom": [
-            "tag_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tag_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -69,10 +61,7 @@
       "compositePrimaryKeys": {
         "item_tags_item_id_tag_id_pk": {
           "name": "item_tags_item_id_tag_id_pk",
-          "columns": [
-            "item_id",
-            "tag_id"
-          ]
+          "columns": ["item_id", "tag_id"]
         }
       },
       "uniqueConstraints": {},
@@ -265,12 +254,8 @@
           "name": "items_project_id_projects_id_fk",
           "tableFrom": "items",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -420,34 +405,17 @@
     "public.item_kind": {
       "name": "item_kind",
       "schema": "public",
-      "values": [
-        "task",
-        "note",
-        "idea",
-        "media",
-        "purchase"
-      ]
+      "values": ["task", "note", "idea", "media", "purchase"]
     },
     "public.item_status": {
       "name": "item_status",
       "schema": "public",
-      "values": [
-        "inbox",
-        "active",
-        "someday",
-        "done",
-        "archived"
-      ]
+      "values": ["inbox", "active", "someday", "done", "archived"]
     },
     "public.project_status": {
       "name": "project_status",
       "schema": "public",
-      "values": [
-        "active",
-        "paused",
-        "done",
-        "archived"
-      ]
+      "values": ["active", "paused", "done", "archived"]
     }
   },
   "schemas": {},

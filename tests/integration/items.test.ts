@@ -100,7 +100,10 @@ describe("triage", () => {
 
 describe("completion", () => {
   it("stamps and clears the completion time as it toggles", async () => {
-    const id = await itemService.captureItem(db(), { text: "finish pantry inventory", projectId: null });
+    const id = await itemService.captureItem(db(), {
+      text: "finish pantry inventory",
+      projectId: null,
+    });
 
     await itemService.toggleItemCompletionById(db(), id);
     const done = await itemService.getItem(db(), id);
@@ -117,7 +120,9 @@ describe("completion", () => {
     const id = await itemService.captureItem(db(), { text: "old idea", projectId: null });
     await itemService.setItemStatus(db(), id, "archived");
 
-    await expect(itemService.toggleItemCompletionById(db(), id)).rejects.toBeInstanceOf(DomainError);
+    await expect(itemService.toggleItemCompletionById(db(), id)).rejects.toBeInstanceOf(
+      DomainError,
+    );
   });
 
   it("sends a restored item back to the inbox", async () => {
@@ -131,7 +136,10 @@ describe("completion", () => {
 
 describe("editing", () => {
   it("replaces tags and removes ones nothing points at any more", async () => {
-    const id = await itemService.captureItem(db(), { text: "desk research #office", projectId: null });
+    const id = await itemService.captureItem(db(), {
+      text: "desk research #office",
+      projectId: null,
+    });
 
     await itemService.updateItem(db(), {
       id,
@@ -215,7 +223,9 @@ describe("search", () => {
   });
 
   it("treats punctuation as text rather than as query syntax", async () => {
-    await expect(itemService.searchItems(db(), "100% cotton & wool")).resolves.toBeInstanceOf(Array);
+    await expect(itemService.searchItems(db(), "100% cotton & wool")).resolves.toBeInstanceOf(
+      Array,
+    );
   });
 });
 

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { captureItemSchema, createItemSchema, tagListSchema, updateItemSchema } from "./item-schema";
+import {
+  captureItemSchema,
+  itemFieldsSchema,
+  tagListSchema,
+  updateItemSchema,
+} from "./item-schema";
 
 const baseInput = {
   title: "  finish pantry inventory  ",
@@ -11,9 +16,9 @@ const baseInput = {
   tags: "",
 };
 
-describe("createItemSchema", () => {
+describe("itemFieldsSchema", () => {
   it("trims the title and turns blank form fields into nulls", () => {
-    const result = createItemSchema.parse(baseInput);
+    const result = itemFieldsSchema.parse(baseInput);
 
     expect(result.title).toBe("finish pantry inventory");
     expect(result.body).toBeNull();
@@ -23,24 +28,24 @@ describe("createItemSchema", () => {
   });
 
   it("rejects an empty title", () => {
-    const result = createItemSchema.safeParse({ ...baseInput, title: "   " });
+    const result = itemFieldsSchema.safeParse({ ...baseInput, title: "   " });
 
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe("Give it a title.");
   });
 
   it("rejects a malformed due date instead of silently dropping it", () => {
-    expect(createItemSchema.safeParse({ ...baseInput, dueOn: "next friday" }).success).toBe(false);
-    expect(createItemSchema.safeParse({ ...baseInput, dueOn: "2026-02-30" }).success).toBe(false);
-    expect(createItemSchema.safeParse({ ...baseInput, dueOn: "2026-08-24" }).success).toBe(true);
+    expect(itemFieldsSchema.safeParse({ ...baseInput, dueOn: "next friday" }).success).toBe(false);
+    expect(itemFieldsSchema.safeParse({ ...baseInput, dueOn: "2026-02-30" }).success).toBe(false);
+    expect(itemFieldsSchema.safeParse({ ...baseInput, dueOn: "2026-08-24" }).success).toBe(true);
   });
 
   it("treats the sentinel project value as no project", () => {
-    expect(createItemSchema.parse({ ...baseInput, projectId: "none" }).projectId).toBeNull();
+    expect(itemFieldsSchema.parse({ ...baseInput, projectId: "none" }).projectId).toBeNull();
   });
 
   it("rejects an unknown kind", () => {
-    expect(createItemSchema.safeParse({ ...baseInput, kind: "recipe" }).success).toBe(false);
+    expect(itemFieldsSchema.safeParse({ ...baseInput, kind: "recipe" }).success).toBe(false);
   });
 });
 

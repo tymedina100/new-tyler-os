@@ -76,7 +76,10 @@ describe("buildTodayView", () => {
   });
 
   it("still nags about a someday item that was given a date", () => {
-    const view = buildTodayView([item("dated-someday", { status: "someday", dueOn: TODAY })], TODAY);
+    const view = buildTodayView(
+      [item("dated-someday", { status: "someday", dueOn: TODAY })],
+      TODAY,
+    );
 
     expect(ids(view.dueToday)).toEqual(["dated-someday"]);
   });

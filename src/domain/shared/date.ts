@@ -30,7 +30,15 @@ const MONTH_NAMES = [
   "Dec",
 ] as const;
 
-const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
 
 export function isIsoDate(value: string): boolean {
   if (!ISO_DATE_PATTERN.test(value)) return false;
@@ -96,4 +104,27 @@ export function formatDueDate(dueOn: IsoDate, today: IsoDate): string {
   return date.getFullYear() === fromIsoDate(today).getFullYear()
     ? label
     : `${label}, ${date.getFullYear()}`;
+}
+
+const MONTH_FULL_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+/** "Monday, August 24" - the heading form, used by the Today screen. */
+export function formatLongDate(iso: IsoDate): string {
+  const date = fromIsoDate(iso);
+  const weekday = WEEKDAY_NAMES[date.getDay()] ?? "";
+  const month = MONTH_FULL_NAMES[date.getMonth()] ?? "";
+  return `${weekday}, ${month} ${date.getDate()}`;
 }

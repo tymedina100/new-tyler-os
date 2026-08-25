@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addDays, compareIsoDate, daysBetween, formatDueDate, isIsoDate, toIsoDate } from "./date";
+import {
+  addDays,
+  compareIsoDate,
+  daysBetween,
+  formatDueDate,
+  formatLongDate,
+  isIsoDate,
+  toIsoDate,
+} from "./date";
 
 describe("toIsoDate", () => {
   it("uses local calendar components rather than UTC", () => {
@@ -67,5 +75,12 @@ describe("formatDueDate", () => {
   it("falls back to a calendar date further out", () => {
     expect(formatDueDate("2026-12-01", today)).toBe("Dec 1");
     expect(formatDueDate("2027-01-05", today)).toBe("Jan 5, 2027");
+  });
+});
+
+describe("formatLongDate", () => {
+  it("reads as a heading", () => {
+    expect(formatLongDate("2026-08-24")).toBe("Monday, August 24");
+    expect(formatLongDate("2027-01-01")).toBe("Friday, January 1");
   });
 });

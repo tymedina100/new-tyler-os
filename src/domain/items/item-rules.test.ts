@@ -142,7 +142,9 @@ describe("applyStatusChange", () => {
   });
 
   it("stamps the archive time when moving to archived", () => {
-    expect(applyStatusChange(lifecycle({ status: "active" }), "archived", now).archivedAt).toBe(now);
+    expect(applyStatusChange(lifecycle({ status: "active" }), "archived", now).archivedAt).toBe(
+      now,
+    );
   });
 
   it("clears both stamps when returning to a live status", () => {

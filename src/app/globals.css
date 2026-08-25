@@ -1,1 +1,130 @@
 @import "tailwindcss";
+
+/*
+ * TylerOS visual language.
+ *
+ * Restrained on purpose: near-monochrome with one accent, so the only colour on
+ * a screen means something (a due date slipping, a destructive action). Density
+ * over decoration - this is a command centre, not a dashboard.
+ *
+ * Theme follows the operating system. There is no toggle, because a toggle is
+ * client state that has to be stored, hydrated and kept in sync, and the OS
+ * already knows the answer.
+ */
+
+:root {
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.21 0.012 255);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.965 0.003 250);
+  --muted-foreground: oklch(0.52 0.014 255);
+  --border: oklch(0.915 0.005 255);
+  --input: oklch(0.895 0.006 255);
+  --ring: oklch(0.58 0.16 255);
+  --primary: oklch(0.53 0.17 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.55 0.2 25);
+  --success: oklch(0.55 0.13 150);
+  --overlay: oklch(0.21 0.012 255 / 0.4);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.165 0.008 260);
+    --foreground: oklch(0.95 0.004 250);
+    --card: oklch(0.205 0.009 260);
+    --muted: oklch(0.245 0.01 260);
+    --muted-foreground: oklch(0.68 0.013 255);
+    --border: oklch(0.29 0.011 260);
+    --input: oklch(0.33 0.012 260);
+    --ring: oklch(0.7 0.14 255);
+    --primary: oklch(0.72 0.14 255);
+    --primary-foreground: oklch(0.16 0.01 260);
+    --destructive: oklch(0.68 0.17 25);
+    --success: oklch(0.72 0.14 150);
+    --overlay: oklch(0.1 0.01 260 / 0.6);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Never remove the focus ring; just make it match the design. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 28%, transparent);
+  }
+}
+
+@layer utilities {
+  /* Radix and cmdk animate via data attributes rather than class changes. */
+  @keyframes tyleros-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes tyleros-scale-in {
+    from {
+      opacity: 0;
+      transform: translateY(-0.25rem) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  [data-state="open"].animate-overlay {
+    animation: tyleros-fade-in 120ms ease-out;
+  }
+
+  [data-state="open"].animate-panel {
+    animation: tyleros-scale-in 140ms ease-out;
+  }
+}

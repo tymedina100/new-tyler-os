@@ -32,13 +32,22 @@ describe("getTodayData", () => {
   });
 
   it("buckets real items by how urgent they are", async () => {
-    const overdue = await itemService.captureItem(db(), { text: "pay electric bill", projectId: null });
+    const overdue = await itemService.captureItem(db(), {
+      text: "pay electric bill",
+      projectId: null,
+    });
     await itemService.setItemDueDate(db(), overdue, "2026-08-20");
 
-    const today = await itemService.captureItem(db(), { text: "call the dentist", projectId: null });
+    const today = await itemService.captureItem(db(), {
+      text: "call the dentist",
+      projectId: null,
+    });
     await itemService.setItemDueDate(db(), today, "2026-08-24");
 
-    const soon = await itemService.captureItem(db(), { text: "return the parcel", projectId: null });
+    const soon = await itemService.captureItem(db(), {
+      text: "return the parcel",
+      projectId: null,
+    });
     await itemService.setItemDueDate(db(), soon, "2026-08-27");
 
     const later = await itemService.captureItem(db(), { text: "renew passport", projectId: null });

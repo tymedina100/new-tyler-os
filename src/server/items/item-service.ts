@@ -1,5 +1,6 @@
 import { parseCaptureText } from "@/domain/capture/parse-capture";
 import type { ItemKind, ItemStatus, ItemWithRelations } from "@/domain/items/item";
+import { type ItemFilters, matchesItemFilters } from "@/domain/items/item-filters";
 import type { ItemLifecycle } from "@/domain/items/item-rules";
 import {
   applyStatusChange,
@@ -8,11 +9,7 @@ import {
   restoreItem,
   toggleItemCompletion,
 } from "@/domain/items/item-rules";
-import type {
-  CaptureItemInput,
-  CreateItemInput,
-  UpdateItemInput,
-} from "@/domain/items/item-schema";
+import type { CaptureItemInput, UpdateItemInput } from "@/domain/items/item-schema";
 import { addDays, type IsoDate, todayIsoDate } from "@/domain/shared/date";
 import { NotFoundError } from "@/domain/shared/errors";
 import { buildTodayView, type TodayView, UPCOMING_WINDOW_DAYS } from "@/domain/today/today-view";
@@ -40,24 +37,6 @@ export async function captureItem(db: Database, input: CaptureItemInput): Promis
     });
 
     await attachTags(tx, id, parsed.tags);
-    return id;
-  });
-}
-
-export async function createItem(db: Database, input: CreateItemInput): Promise<string> {
-  return db.transaction(async (tx) => {
-    const id = await repo.insertItem(tx, {
-      title: input.title,
-      body: input.body,
-      kind: input.kind,
-      status: input.status,
-      dueOn: input.dueOn,
-      projectId: input.projectId,
-      completedAt: input.status === "done" ? new Date() : null,
-      archivedAt: input.status === "archived" ? new Date() : null,
-    });
-
-    await attachTags(tx, id, input.tags);
     return id;
   });
 }
@@ -204,4 +183,24 @@ async function attachTags(db: Database, itemId: string, names: readonly string[]
     itemId,
     rows.map((row) => row.id),
   );
+}
+
+/**
+ * The universal retrieval path.
+ *
+ * With a search term, Postgres ranks the matches and any further filters narrow
+ * that ranked list in memory - re-querying would discard the ranking. Without
+ * one, the filters go straight to SQL where they belong.
+ */
+export async function findItems(
+  db: Database,
+  search: string | undefined,
+  filters: ItemFilters,
+): Promise<ItemWithRelations[]> {
+  if (search) {
+    const results = await repo.searchItems(db, search);
+    return results.filter((item) => matchesItemFilters(item, filters));
+  }
+
+  return repo.listItems(db, filters);
 }
