@@ -50,9 +50,16 @@ TylerOS unusable:
 8. typing in the capture bar never triggers a triage shortcut
 9. several inbox items can be marked and triaged in one keystroke
 
+`e2e/kitchen.spec.ts` covers the structured domain:
+
+10. inventory is added, filtered by location, edited and used up
+11. a shopping line is added, bought, and put away into the kitchen
+12. expiring food is surfaced on Today without taking the page over
+13. the kitchen refuses input that would make it untrue
+
 They **write to the database they point at**. Everything they create is prefixed
-`smoke-<run>` and deleted afterwards, but point `DATABASE_URL` at a development
-database.
+`smoke-<run>` or `kt-<run>` and deleted afterwards, but point `DATABASE_URL` at a
+development database.
 
 This suite is deliberately outside `pnpm check`. A gate that needs a database is
 a gate that gets skipped, and then the fast tests rot with it.
@@ -117,6 +124,26 @@ Run `pnpm db:seed` first so there is realistic content to judge.
 - [ ] A partial word finds a full title (`sever` → `watch Severance`).
 - [ ] Filters survive a reload, because they live in the URL.
 
+**Kitchen — would keeping this be easier than keeping it in your head?**
+
+- [ ] Add something with a name and a location only. That is the whole
+      requirement, and the row appears immediately.
+- [ ] Add three pantry things in a row. The location stays put between adds.
+- [ ] Quantities read like a person: `2 lb`, `8`, `0.5 bag`, `Some`, `Out`.
+- [ ] Filter to Fridge. The location badge disappears, because it is now noise.
+- [ ] Move something between locations from the row menu, in two clicks.
+- [ ] An expired item is red; something due within three days is tinted; the rest
+      is plain.
+- [ ] "Used it up" removes it _and_ puts it on the shopping list. "Delete"
+      removes it and does not.
+- [ ] Buy something on the shopping list, then "Put away" into a location — the
+      name carries across without retyping.
+- [ ] Search a partial word. Kitchen results appear under their own heading, not
+      mixed in with items.
+- [ ] A negative quantity and a blank name are both refused inline.
+- [ ] At 375px the add row is two columns, not five, and food is visible without
+      scrolling past the form.
+
 **Keyboard and shape**
 
 - [ ] `Cmd/Ctrl+K` opens the palette; it navigates, captures, and searches.
@@ -178,3 +205,28 @@ Two things worth remembering, both found by running it rather than reading it:
   Enter and went straight to another page created no item, intermittently. The
   box clearing is the signal that the write finished, for a test and for a
   person watching.
+
+### 0.3 — Kitchen inventory · 2026-08-25
+
+All three tiers run against a remote PostgreSQL 18, after applying migration
+`0001_mature_dorian_gray` (a new enum, a new table, three indexes — purely
+additive, and `items`, `projects` and `tags` were untouched). `pnpm check` green
+at 294 tests, 13 smoke specs green including four new Kitchen flows, and a
+realistic session walked in Chromium at 1280px and 375px: seven things added
+across all three locations in four different quantity styles, a best-by date, a
+move between locations, a quantity corrected after use, a global search, a
+delete, and used-it-up → shopping → bought → put away.
+
+Two things found by using it rather than reading it:
+
+- **The mobile add row cost five stacked rows** before any food was visible,
+  which is the wrong trade on the one screen most likely to be used standing at
+  a fridge. It is a two-column grid on small screens now, and three rows tall.
+- **Substring search only matched adjacent words.** "greek yogurt" found the pot
+  and "yogurt greek" found nothing. Every word is now required independently, so
+  extra words narrow the result instead of breaking it.
+
+And one that is worth knowing before writing tests here: the list page has its
+own **Quantity** field in the quick-add row, so a Playwright `getByLabel` that
+runs before a row's editor has mounted types into the list instead. Scope to the
+form, or wait for "Save changes".

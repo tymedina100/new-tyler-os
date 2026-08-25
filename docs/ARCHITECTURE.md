@@ -20,13 +20,19 @@ This is what stops TylerOS becoming a pile of unrelated CRUD pages:
 Items are "things I captured, think about, or need to act on". Structured records
 are not items and must get their own tables:
 
-- pantry and freezer stock
+- kitchen inventory — **built in 0.3**, as `kitchen_inventory`
 - warranties, receipts, appliance manuals
 - recurring routines
 
 "Buy more olive oil" is an item. The jar of olive oil in the pantry is not. If a
 future module starts cramming inventory rows into `items` with mostly-null
 columns, that is the signal the boundary was crossed.
+
+0.3 was the first real test of this, and the boundary held: the kitchen got its
+own table and `items` gained nothing. The shopping list went the other way for
+the same reason — buying something is an intention, so it is an item with
+`kind = 'purchase'` rather than a second to-do list the rest of TylerOS cannot
+see. See ADRs 019 and 021.
 
 ## Layers
 
@@ -55,6 +61,7 @@ the database, which is why its tests run in milliseconds with no setup.
 | `items/item-schema.ts`  | Validation for everything entering the system            |
 | `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate  |
 | `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date |
+| `kitchen/`              | Food in the house: locations, quantities, expiry buckets |
 | `today/`                | Bucketing open items for the Today view                  |
 | `projects/`             | Projects and progress                                    |
 | `tags/`                 | Tag name normalisation                                   |
@@ -142,6 +149,9 @@ is free and removes a category of stale-badge bugs.
 projects ──1:N── items ──N:M── tags
                    |
               kind, status, due_on
+
+kitchen_inventory        stands alone, on purpose
+  name, location, quantity, unit, expires_on
 ```
 
 **items** — the spine. `kind` ∈ task, note, idea, media, purchase. `status` ∈
@@ -160,6 +170,14 @@ every filter list.
 
 Three organising axes (kind, project, tag) is the ceiling. No nested folders, no
 custom fields, no taxonomy engine.
+
+**kitchen_inventory** — the first structured domain, and deliberately unrelated
+to everything above: no foreign keys, no tags, no project. `quantity` is nullable
+because "some rice" is a true answer, and `unit` is free text because no enum
+survives "0.5 bag". `expires_on` is a date for the same reason `due_on` is. There
+is **no unique constraint on `name`**: two chicken packages with different dates
+are two truthful records, and merging them would invent a fact. See ADRs 019
+and 020.
 
 ## Error handling
 

@@ -10,8 +10,15 @@ home. `pnpm check:context` fails if this file grows past 200 lines.
 
 # TylerOS
 
-A private, single-user personal-life operating system: capture anything, organise
-it, find it again. Self-hosted, no accounts, no telemetry.
+A private personal operating system and second brain. It captures what you know,
+tracks the current state of your life, and — eventually — helps you decide and
+act on it. Single-user, self-hosted, no accounts, no telemetry.
+
+Those three are in order, and the order is the plan: capture first, because
+nothing else works without it; then the state of things, which is what structured
+domains like the kitchen record; and only over a system already worth keeping
+true, help deciding. Nothing in that last part is built, and none of it is a
+reason to add abstractions today.
 
 ## Product philosophy
 
@@ -33,9 +40,14 @@ technical grounds but fails one of these, the philosophy wins.
 `kind` and a `status`; `status = 'inbox'` means untriaged. One capture path, one
 search query, one spine that modules extend rather than fork.
 
-Structured records — pantry stock, warranties, receipts — are **not items** and
-get their own tables. Mostly-null columns appearing on `items` is the signal that
-this boundary is being crossed.
+Structured records — kitchen inventory, warranties, receipts — are **not items**
+and get their own tables. Mostly-null columns appearing on `items` is the signal
+that this boundary is being crossed.
+
+0.3 tested this for real and it held: `kitchen_inventory` is its own table and
+`items` gained nothing. The shopping list went the other way for the same reason
+— buying something is an intention, so it is an item with `kind = 'purchase'`.
+"Buy more olive oil" is an item; the jar in the pantry is not.
 
 ## Layers
 
@@ -68,7 +80,7 @@ area before opening any of its files.
 | `src/domain/`     | Types, Zod schemas, pure rules. Tests sit beside the source                                                          |
 | `src/server/`     | `db/`, repositories, services, `actions/`, `env.ts`                                                                  |
 | `src/app/`        | Routes. `page.tsx` is Today; one folder per screen                                                                   |
-| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`                                                                    |
+| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`                                                        |
 | `src/lib/`        | Framework-adjacent helpers only (`cn`, search params). Not a dumping ground — a domain concept goes in `src/domain/` |
 | `tests/`          | Integration tests + the PGlite harness                                                                               |
 | `e2e/`            | Playwright smoke tests. Needs a real database                                                                        |
@@ -165,8 +177,12 @@ describe how to build it.
 
 ## Current milestone
 
-**0.2 — Frictionless capture and keyboard triage. Shipped.** One capture parser
-handles `#tag`, `@project` and a trailing natural-language date, previewed live
-as you type; the inbox is triaged with single keys, singly or in bulk. Built on
-0.1's Capture, Today, Inbox, Tasks, Projects and Search. Still no AI.
-**0.3 is not started**; it adds recurrence and time. See `docs/ROADMAP.md`.
+**0.3 — Kitchen inventory. Shipped.** The first structured domain: what food is
+in the fridge, freezer and pantry, in its own `kitchen_inventory` table, with a
+shopping list that stays on the item spine as `kind = 'purchase'`. This was the
+test of the items-versus-records boundary and it held — `items` gained no
+columns. Built on 0.1's Capture, Today, Inbox, Tasks, Projects and Search, and
+0.2's capture parser and keyboard triage. Still no AI.
+
+**0.4 is not started**; it adds recurrence and time, deferred from 0.3. See
+`docs/ROADMAP.md` and ADRs 019–021.

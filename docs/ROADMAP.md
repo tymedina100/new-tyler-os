@@ -1,8 +1,19 @@
 # Roadmap
 
-Deliberately short. This is enough future direction to keep the architecture
-coherent, and no more — a roadmap of a hundred speculative features is a way of
-deciding nothing.
+## What TylerOS is for
+
+A private personal operating system and second brain: it captures what you know,
+tracks the current state of your life, and — eventually — helps you decide and
+act on it.
+
+Those three are in order, and the order is the plan. Capture came first because
+nothing else works without it. Tracking state is what 0.3 begins: the system now
+holds facts about the world, not only intentions about it. Helping decide comes
+last, and only over a system already worth keeping true.
+
+Deliberately short from here. This is enough future direction to keep the
+architecture coherent, and no more — a roadmap of a hundred speculative features
+is a way of deciding nothing.
 
 One rule: **a milestone ships only when it makes daily use better.** A module that
 exists because it appeared on a vision list is a module nobody opens.
@@ -51,29 +62,40 @@ in the title rather than being dropped.
 
 ---
 
-## 0.3 · Recurrence and time
+## 0.3 · Kitchen inventory — shipped
 
-The first thing a daily-use system needs that 0.1 lacks.
+The first structured module, brought forward ahead of recurrence because
+tracking the state of something real was the more useful next step: TylerOS knew
+what you meant to do and nothing about how things actually stood.
+
+- What food is in the fridge, freezer and pantry, in its own tables
+- Quantities that can be measured, counted, packaged or simply unknown
+- Best-by dates, with expired and expiring-soon called out
+- A shopping list on the item spine, and "used it up" joining the two
+- Kitchen records in search, shown as kitchen rather than folded into items
+
+This milestone mattered more than its contents: it is where the "items versus
+structured records" boundary in `docs/ARCHITECTURE.md` got tested for real. The
+boundary held — `items` did not gain a single column. See ADRs 019, 020 and 021.
+
+**Not included, on purpose:** meal planning, recipes, nutrition, barcode or
+receipt scanning, unit conversion, a consumption ledger, automatic merging of
+similar names, and any inventory outside the kitchen.
+
+---
+
+## 0.4 · Recurrence and time
+
+Deferred from 0.3, not dropped. The bins go out weekly whether or not the fridge
+is catalogued, and this is still the largest gap in daily use.
 
 - Recurring items (weekly bins, monthly bills)
 - Timed reminders, which is when a timestamp column earns its place
 - A calendar-shaped view of the coming weeks
 
----
-
-## 0.4 · The first structured module
-
-One module, chosen by which one is actually wanted, built as its own tables
-rather than as items. Likely candidates: pantry and freezer inventory, or personal
-inventory with warranties.
-
-This milestone matters more than its contents: it is where the "items vs
-structured records" boundary in `docs/ARCHITECTURE.md` gets tested for real. If
-building it wants to widen the `items` table, the boundary was wrong and should be
-fixed before a second module repeats the mistake.
-
-Groceries and meal planning follow naturally from pantry inventory, and should
-wait for it.
+Kitchen makes this slightly more interesting than it was: a best-by date is a
+second kind of thing that happens on a day, and whatever calendar view arrives
+should be able to show both without inventory becoming a task.
 
 ---
 
@@ -94,8 +116,13 @@ code stays in `src/server/ai/*`, and the domain never imports it.
 
 ## Later, and only if wanted
 
-Media tracking, wishlists, notes and memories, household management, routines,
-external integrations, specialised agents.
+Meal planning and recipes, media tracking, wishlists, notes and memories,
+household management, routines, external integrations, specialised agents.
+
+Meal planning is the one 0.3 unlocked, and the one most likely to be asked for
+next. It should still wait: it needs comparable quantities, which ADR 020
+deliberately did not build, and it is only worth anything once the inventory is
+actually being kept true.
 
 These are all reachable from the current model — most are a `kind` on the item
 spine or one new table. None of them should be built before something in the list

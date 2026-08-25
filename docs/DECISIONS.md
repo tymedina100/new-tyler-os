@@ -336,3 +336,91 @@ keystroke, a wrong one is silent.
 **Also deliberate:** stripping the phrase never empties the title. A capture of
 just "tomorrow" stays an item called "tomorrow" with no due date, rather than a
 dated item with no name.
+
+---
+
+## 019 · Kitchen inventory is a table of its own
+
+**Accepted** · 0.3
+
+Food in the house lives in `kitchen_inventory`, not in `items`. Locations are a
+`kitchen_location` enum: fridge, freezer, pantry.
+
+**Considered:** an item `kind = 'food'` with nullable quantity, unit, location
+and expiry columns; a generic `locations` table; a general home-inventory model
+covering the garage and the medicine cabinet.
+
+**Why not items:** this is the boundary ADR 001 predicted, and this is the
+milestone that tested it. "Buy more olive oil" is something to act on; the jar in
+the pantry is a fact about the world. Putting the jar on the item spine would
+mean four columns no other kind uses, an inbox that fills with groceries, and a
+Today view that has to learn to ignore them. The boundary held: nothing in
+`items` changed for this milestone.
+
+**Why an enum, not a table:** three locations, no attributes of their own, and
+`ALTER TYPE ... ADD VALUE` makes a fourth one a one-line, non-destructive
+migration. A locations table would buy a join on every query to serve a garage
+nobody has asked for. It also matches how `item_kind` and `item_status` are
+already done, which matters more than either option's merits.
+
+**Cost:** kitchen records are outside full-text search and have their own
+retrieval path. That is the honest cost of a second domain, and it is paid once
+in `searchInventory` rather than everywhere.
+
+---
+
+## 020 · Quantity is an optional number and a free-text unit
+
+**Accepted** · 0.3
+
+`quantity numeric(10,2)` nullable, `unit text` nullable. Null quantity means
+"some, uncounted"; null unit means a bare count. Nothing is ever converted.
+
+**Considered:** a units enum; separate count and measure columns; a unit table
+with conversion factors; storing quantity as text.
+
+**Why:** a kitchen holds "2 lb", "8", "0.5 bag" and "some rice", and all four are
+true answers. A units enum cannot hold "bottle" and "loaf" without a migration
+per grocery aisle, so it would be worked around within a week. Free text with a
+suggested list keeps the common cases tidy and the unusual ones possible.
+
+**Why no conversions:** converting 2 lb to grams requires knowing that a "bag"
+is not a mass, and the moment the system converts anything it has to be right
+about everything. Displaying what the user typed is always correct.
+
+**Cost:** "lb" and "lbs" are different units, and no total can be computed across
+them. Acceptable for a fridge; the wrong trade for a warehouse. **Revisit when:**
+meal planning needs to subtract a recipe's ingredients from stock — that is the
+first feature that genuinely needs comparable quantities, and it should bring its
+own conversion table rather than retrofitting one here.
+
+---
+
+## 021 · The shopping list is items, not kitchen records
+
+**Accepted** · 0.3
+
+A shopping line is an `Item` with `kind = 'purchase'`. Purchased is the ordinary
+`done` status. There is no shopping table.
+
+**Considered:** a `kitchen_shopping` table alongside the inventory, with its own
+quantity and unit columns and its own purchased flag.
+
+**Why:** `docs/ARCHITECTURE.md` had already decided it in as many words — "buy
+more olive oil" is an item. The `purchase` kind existed and was unused. Putting
+the list on the spine means capture, `#tags`, `@project`, search, Today and the
+completion toggle all work on it with no second implementation, and "buy milk"
+typed into the capture bar is the same object as a line added from the kitchen.
+A parallel table would have been a second to-do list that the rest of TylerOS
+could not see — exactly the disconnected-CRUD failure the architecture is built
+against.
+
+**Where the quantity went:** into the text. "2 gal milk" is how a shopping list
+is written by hand, and it is the only place in this design where a field was
+dropped rather than modelled. A structured desired-quantity would have earned a
+1:1 extension table under ADR 001's rule; it did not earn one for two fields
+nobody reads except at the shop.
+
+**The one seam:** using up the last of something deletes the kitchen record and
+creates a purchase item. That crossing lives in the kitchen service, which is
+allowed to orchestrate both, and nowhere else.
