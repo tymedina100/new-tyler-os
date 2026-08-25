@@ -19,8 +19,12 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? "list" : [["list"], ["html", { open: "never" }]],
 
+  // localhost, not 127.0.0.1. Next blocks cross-origin requests to dev-only
+  // assets, and the dev server is initialised with `localhost` as its origin, so
+  // driving it through 127.0.0.1 silently blocks every client chunk: pages still
+  // render, but nothing hydrates and only progressively-enhanced forms work.
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -29,7 +33,7 @@ export default defineConfig({
 
   webServer: {
     command: "pnpm dev",
-    url: "http://127.0.0.1:3000",
+    url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     stdout: "pipe",
