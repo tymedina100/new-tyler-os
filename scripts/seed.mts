@@ -3,7 +3,7 @@ import {
   addInventoryItemSchema,
   type AddInventoryItemInput,
 } from "@/domain/kitchen/inventory-schema";
-import { addDays, todayIsoDate } from "@/domain/shared/date";
+import { addDays, fromIsoDate, todayIsoDate, toIsoDate } from "@/domain/shared/date";
 import { getDb } from "@/server/db/client";
 import * as items from "@/server/items/item-service";
 import { addInventoryItem, addToShoppingList } from "@/server/kitchen/inventory-service";
@@ -76,7 +76,33 @@ await items.updateItem(db, {
   dueOn: addDays(today, 5),
   projectId: tylerOs,
   tags: ["planning"],
+  recurrence: null,
 });
+
+/**
+ * Repeating responsibilities: one of each shape the model can express, plus one
+ * deliberately left overdue so the missed-occurrence behaviour can be seen
+ * rather than taken on trust.
+ */
+const repeats: [
+  text: string,
+  dueOn: string,
+  frequency: "daily" | "weekly" | "monthly",
+  every: number,
+][] = [
+  ["take the bins out #home", nextWeekday(today, 2), "weekly", 1],
+  ["clean the bathroom #home", nextWeekday(today, 6), "weekly", 1],
+  ["change the sheets #home", addDays(today, 4), "weekly", 2],
+  ["pay rent #finance", firstOfNextMonth(today), "monthly", 1],
+  ["replace the air filter #home", addDays(today, -3), "monthly", 3],
+];
+
+for (const [text, dueOn, frequency, interval] of repeats) {
+  const id = await items.captureItem(db, { text, projectId: null });
+  await items.setItemKind(db, id, "task");
+  await items.setItemDueDate(db, id, dueOn);
+  await items.setItemRecurrence(db, id, { frequency, interval });
+}
 
 /**
  * Kitchen inventory. Fictional food, chosen to cover every shape the model
@@ -129,6 +155,17 @@ const bread = await addToShoppingList(db, "Sourdough bread");
 await items.toggleItemCompletionById(db, bread);
 
 console.warn(
-  `Seeded TylerOS with 2 projects, 12 items and ${inventory.length} things in the kitchen.`,
+  `Seeded TylerOS with 2 projects, ${12 + repeats.length} items ` +
+    `(${repeats.length} of them repeating) and ${inventory.length} things in the kitchen.`,
 );
 process.exit(0);
+
+/** The next Tuesday, Saturday, or whatever, counting today as valid. */
+function nextWeekday(from: string, weekday: number): string {
+  return addDays(from, (weekday - fromIsoDate(from).getDay() + 7) % 7);
+}
+
+function firstOfNextMonth(from: string): string {
+  const date = fromIsoDate(from);
+  return toIsoDate(new Date(date.getFullYear(), date.getMonth() + 1, 1));
+}
