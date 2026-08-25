@@ -1,9 +1,10 @@
 # Verifying TylerOS
 
-Milestone 0.1 passed types, lint, tests and a production build, but was never
-driven in a browser against real data — the machine it was built on had no
-PostgreSQL. This file exists so that gap is deliberate and visible rather than
-silent.
+Milestone 0.1 passed types, lint, tests and a production build long before it
+was ever driven in a browser against real data, because the machine it was built
+on had no PostgreSQL. This file exists so that gap stays deliberate and visible
+rather than silent. It has since been closed — see [Recorded
+results](#recorded-results).
 
 There are three tiers of confidence. Each costs more than the last, and each
 catches things the one before it cannot.
@@ -36,7 +37,7 @@ pnpm test:e2e --ui       # step through interactively
 ```
 
 Playwright starts the dev server itself and reuses one that is already running.
-Five specs in `e2e/smoke.spec.ts` cover the flows whose breakage would make
+The specs in `e2e/smoke.spec.ts` cover the flows whose breakage would make
 TylerOS unusable:
 
 1. the application loads and the shell renders
@@ -44,6 +45,10 @@ TylerOS unusable:
 3. inline `#tags` are parsed out of captured text
 4. completing an item takes it out of the inbox
 5. search finds captured content
+6. a capture is parsed into a date, a project and a tag
+7. the inbox can be triaged from the keyboard
+8. typing in the capture bar never triggers a triage shortcut
+9. several inbox items can be marked and triaged in one keystroke
 
 They **write to the database they point at**. Everything they create is prefixed
 `smoke-<run>` and deleted afterwards, but point `DATABASE_URL` at a development
@@ -65,6 +70,30 @@ Run `pnpm db:seed` first so there is realistic content to judge.
 - [ ] Type and press Enter. The field clears and keeps focus, ready for the next one.
 - [ ] Capture `something #atag`. The tag is stripped from the title and shown as a chip.
 - [ ] Submit an empty capture. It is refused inline, not silently ignored.
+
+**Parsed capture — what the box promises, the item keeps**
+
+- [ ] `pay the electric bill friday` — the preview shows the date before Enter,
+      and the stored title is `pay the electric bill`.
+- [ ] `order samples @kitchen #home` — the project and tag are chips, and the
+      item skips the inbox because it already has a home.
+- [ ] `plant the bulbs @Nonsense` — the preview says no such project, the
+      reference stays in the title, and no project is created.
+- [ ] `monday meeting notes` keeps its whole title. A date is only read from the
+      end.
+- [ ] Open a parsed item afterwards. Title, date, project and tags are all
+      ordinary editable fields; nothing is frozen by how it was captured.
+
+**Keyboard triage — the inbox as a queue**
+
+- [ ] On the Inbox, `j` selects without touching the mouse; `?` lists the keys.
+- [ ] `1`–`5` assign a type and the item leaves, with the selection landing on
+      whatever took its place rather than being lost.
+- [ ] Clicking a row moves the selection there, so mouse and keyboard agree.
+- [ ] `Space` marks a run of items; one action key decides all of them; `Esc`
+      clears the marks.
+- [ ] Typing `a`, `s`, `x` or `t` in the capture bar writes letters and triages
+      nothing.
 
 **Today — the screen that must not become noise**
 
@@ -107,3 +136,45 @@ Run `pnpm db:seed` first so there is realistic content to judge.
 Note in the milestone's final commit or PR which tiers were run. If a tier was
 skipped, say so and why — "not verified" is useful information, and a summary
 that implies otherwise is worse than no summary.
+
+## Recorded results
+
+### 0.1 — Life Inbox · 2026-08-25
+
+All three tiers run against a remote PostgreSQL 18. Gate and smoke green; the
+manual checklist was walked in Chromium.
+
+Two things the first real browser run exposed:
+
+- **The smoke suite drove the app on `127.0.0.1` while the dev server's origin
+  is `localhost`.** Next blocks cross-origin requests to dev-only assets, so
+  every client chunk was refused: pages rendered, nothing hydrated, and only the
+  progressively-enhanced capture form worked. Fixed in `playwright.config.ts`.
+  Worth remembering, because the symptom looks like a broken feature rather than
+  a broken origin.
+- **`notFound()` renders under HTTP 200.** `app/loading.tsx` opens a Suspense
+  boundary at the root, so the shell streams — and the status is committed —
+  before the page decides it has nothing to show. The screen a person sees is
+  right; the status code a machine sees is not. Open, because the fix is to give
+  up the skeleton, which is a product call rather than a bug fix.
+
+### 0.2 — Frictionless capture and keyboard triage · 2026-08-25
+
+All three tiers run against a remote PostgreSQL 18. `pnpm check` green, nine
+smoke specs green on three consecutive runs, and the checklist above walked in
+Chromium: seven captures mixing dates, projects and tags, four items triaged
+from the keyboard alone, Today and Search confirmed, and a parsed item edited
+afterwards to prove nothing is frozen by how it was captured.
+
+Two things worth remembering, both found by running it rather than reading it:
+
+- **A controlled capture input loses text typed before hydration.** The first
+  version of the preview made the field controlled, so React replaced anything
+  typed during load with its own empty initial state. The field is deliberately
+  uncontrolled now and mirrors into state only to draw the preview. If a future
+  change adds `value` to that input, this comes back — and it looks like a flaky
+  test rather than a lost capture.
+- **Navigating immediately after a capture cancels it.** A spec that pressed
+  Enter and went straight to another page created no item, intermittently. The
+  box clearing is the signal that the write finished, for a test and for a
+  person watching.

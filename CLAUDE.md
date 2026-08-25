@@ -165,6 +165,8 @@ describe how to build it.
 
 ## Current milestone
 
-**0.1 — Life Inbox. Shipped.** Capture, triage, Today, Inbox, Tasks, Projects,
-Search. **0.2 is not started**; it removes the need to triage by hand, still
-without AI. See `docs/ROADMAP.md`.
+**0.2 — Frictionless capture and keyboard triage. Shipped.** One capture parser
+handles `#tag`, `@project` and a trailing natural-language date, previewed live
+as you type; the inbox is triaged with single keys, singly or in bulk. Built on
+0.1's Capture, Today, Inbox, Tasks, Projects and Search. Still no AI.
+**0.3 is not started**; it adds recurrence and time. See `docs/ROADMAP.md`.

@@ -48,18 +48,18 @@ src/domain/     Pure TypeScript and Zod. No React, no Next, no database.
 Types, Zod schemas, and pure functions. It imports nothing from the framework or
 the database, which is why its tests run in milliseconds with no setup.
 
-| Module                  | Holds                                                   |
-| ----------------------- | ------------------------------------------------------- |
-| `items/item.ts`         | The Item type, kinds, statuses, labels                  |
-| `items/item-rules.ts`   | Lifecycle transitions, returned as patches              |
-| `items/item-schema.ts`  | Validation for everything entering the system           |
-| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate |
-| `capture/`              | Parsing captured text (`#tag` extraction)               |
-| `today/`                | Bucketing open items for the Today view                 |
-| `projects/`             | Projects and progress                                   |
-| `tags/`                 | Tag name normalisation                                  |
-| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly   |
-| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken       |
+| Module                  | Holds                                                    |
+| ----------------------- | -------------------------------------------------------- |
+| `items/item.ts`         | The Item type, kinds, statuses, labels                   |
+| `items/item-rules.ts`   | Lifecycle transitions, returned as patches               |
+| `items/item-schema.ts`  | Validation for everything entering the system            |
+| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate  |
+| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date |
+| `today/`                | Bucketing open items for the Today view                  |
+| `projects/`             | Projects and progress                                    |
+| `tags/`                 | Tag name normalisation                                   |
+| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly    |
+| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken        |
 
 Rules return a **patch**, not a mutated object. `completeItem(item, now)` returns
 `{ status, completedAt, archivedAt }` and the caller persists it. This keeps
@@ -94,8 +94,9 @@ database.
 
 ### `src/lib/` — framework glue, not a layer
 
-Two files: `cn.ts` (class merging) and `search-params.ts` (reading a possibly
-repeated URL parameter). Both are React/Next plumbing with no business meaning.
+Three files: `cn.ts` (class merging), `search-params.ts` (reading a possibly
+repeated URL parameter) and `keyboard.ts` (is the user typing, and is a modifier
+held). All three are React/Next/DOM plumbing with no business meaning.
 
 It is not a general utilities folder, and `src/domain/` is forbidden from
 importing it. Anything with a domain meaning goes in `src/domain/` under a name

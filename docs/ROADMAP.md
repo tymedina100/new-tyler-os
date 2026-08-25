@@ -29,19 +29,25 @@ Playwright smoke suite. See ADRs 014, 015 and 016.
 
 ---
 
-## 0.2 · Make capture stop needing triage
+## 0.2 · Make capture stop needing triage — shipped
 
-The single biggest friction in 0.1 is that a captured item still has to be filed
-by hand. Close that gap without AI:
+The single biggest friction in 0.1 was that a captured item still had to be filed
+by hand. Closed without AI:
 
 - Natural-language dates in the capture bar — "pay electric bill friday"
 - Inline `@project` in the capture bar, alongside `#tag`
-- Keyboard triage in the inbox: move through items and assign with single keys
-- Bulk triage for a backlog
+- One parser behind all three, with a live preview so nothing changes invisibly
+- Keyboard triage in the inbox: move through items and decide with single keys
+- Bulk triage: mark a run with Space, then decide once
 
 Everything here is parsing and interaction, not intelligence. It is also the
 groundwork AI classification would later slot into: the same "propose, then
-accept" flow, with a different proposer.
+accept" flow, with a different proposer. See ADRs 017 and 018.
+
+**Not included, on purpose:** natural-language editing of existing items,
+automatic project creation, and times of day. A date is read only from the end
+of a capture, and an `@reference` that cannot be resolved with confidence stays
+in the title rather than being dropped.
 
 ---
 

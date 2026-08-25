@@ -261,7 +261,7 @@ remote databases need no application changes.
 
 **Accepted** · 0.1 hardening
 
-Five Playwright specs in `e2e/` cover the flows whose breakage makes TylerOS
+The Playwright specs in `e2e/` cover the flows whose breakage makes TylerOS
 unusable. `pnpm test:e2e` runs them; `pnpm check` does not.
 
 **Considered:** adding them to `pnpm check`; a full end-to-end suite; skipping
@@ -274,7 +274,65 @@ A gate that needs infrastructure gets skipped, and the fast tests rot with it.
 than one that fails loudly. `e2e/global-setup.ts` refuses to start and prints the
 command to fix it.
 
-**Why only five:** they exist to prove the wiring, not to re-test domain rules
-that already have fast unit tests. A sixth spec that passes whenever these five
-pass is not earning its place. Whether the app is _pleasant_ is a human
+**Why so few:** they exist to prove the wiring, not to re-test domain rules that
+already have fast unit tests. A spec that passes whenever the others pass is not
+earning its place. Whether the app is _pleasant_ is a human
 judgement — hence the manual checklist in `docs/VERIFICATION.md`.
+
+---
+
+## 017 · Capture is parsed by one pure function, given today and the projects
+
+**Accepted** · 0.2
+
+`parseCapture(text, { today, projects })` in `src/domain/capture/` turns raw
+captured text into a title, a due date, a project id and tags. It is the only
+place capture is interpreted. Both the server action and the capture bar's live
+preview call it, which is why the preview cannot promise something the server
+will not do.
+
+**Considered:** three independent regexes at the three call sites; resolving
+`@project` in the service and leaving the domain to return a bare string; a
+parser registry that later AI proposers could register into.
+
+**Why one function:** the tokens interact. Removing `#tag` and `@project` before
+looking for a date is what makes `pay bill friday #finance` and
+`pay bill #finance friday` the same capture. Three separate passes at three call
+sites would drift apart the first time one of them was changed.
+
+**Why it takes the projects:** resolving `@kitchen` needs to know what projects
+exist, and an unresolved reference must stay in the title rather than vanish.
+Deciding that inside the parser keeps the "did it resolve" branch in one place —
+and passing the candidates in as an argument keeps the domain pure, exactly as
+`today` is passed rather than read from the clock.
+
+**Why no registry:** there is one parser. An abstraction for hypothetical future
+proposers is the thing this codebase's rules explicitly forbid. If an AI proposer
+ever arrives it will live in the server layer and produce the same
+`ParsedCapture` shape, so the seam will already be right without anyone having
+designed for it.
+
+---
+
+## 018 · A date is only read from the end of a capture
+
+**Accepted** · 0.2
+
+`matchTrailingDatePhrase` looks for a date phrase only at the end of the text
+that remains once tags and the project reference have been removed.
+
+**Considered:** scanning the whole string for anything date-shaped.
+
+**Why:** "monday meeting notes" is a note about a meeting, not something due on
+Monday. Scanning everywhere would rewrite that title to "meeting notes" and
+attach a date the user never asked for. Capture is the one place in TylerOS
+where being wrong is expensive, because nobody re-reads an item that already
+looks correctly filed.
+
+**The cost:** "pay the bill friday morning" gets no date, because "friday" is not
+last. That is the right trade — a missing date is visible and fixable in one
+keystroke, a wrong one is silent.
+
+**Also deliberate:** stripping the phrase never empties the title. A capture of
+just "tomorrow" stays an item called "tomorrow" with no due date, rather than a
+dated item with no name.
