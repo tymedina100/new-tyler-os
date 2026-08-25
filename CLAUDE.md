@@ -49,6 +49,11 @@ that this boundary is being crossed.
 — buying something is an intention, so it is an item with `kind = 'purchase'`.
 "Buy more olive oil" is an item; the jar in the pantry is not.
 
+0.4 tested the other half. A repeating task **is** a captured intention, so it
+stays an item — but the four fields saying how it repeats went into
+`item_recurrence`, a 1:1 extension table. Three or more fields of one concept's
+own is the line. See ADR 022.
+
 ## Layers
 
 ```
@@ -80,7 +85,7 @@ area before opening any of its files.
 | `src/domain/`     | Types, Zod schemas, pure rules. Tests sit beside the source                                                          |
 | `src/server/`     | `db/`, repositories, services, `actions/`, `env.ts`                                                                  |
 | `src/app/`        | Routes. `page.tsx` is Today; one folder per screen                                                                   |
-| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`                                                        |
+| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`, `agenda/`                                              |
 | `src/lib/`        | Framework-adjacent helpers only (`cn`, search params). Not a dumping ground — a domain concept goes in `src/domain/` |
 | `tests/`          | Integration tests + the PGlite harness                                                                               |
 | `e2e/`            | Playwright smoke tests. Needs a real database                                                                        |
@@ -177,12 +182,13 @@ describe how to build it.
 
 ## Current milestone
 
-**0.3 — Kitchen inventory. Shipped.** The first structured domain: what food is
-in the fridge, freezer and pantry, in its own `kitchen_inventory` table, with a
-shopping list that stays on the item spine as `kind = 'purchase'`. This was the
-test of the items-versus-records boundary and it held — `items` gained no
-columns. Built on 0.1's Capture, Today, Inbox, Tasks, Projects and Search, and
-0.2's capture parser and keyboard triage. Still no AI.
+**0.4 — Recurrence and time. Shipped.** Items can repeat; completing one
+completes **the current occurrence** and moves it to the next, anchored to the
+schedule rather than to when it was done. No occurrence rows exist — future
+dates are computed from `item_recurrence`, a 1:1 extension table, so `items`
+still has no new columns. `/upcoming` shows the next fortnight with each dated
+domain keeping its own list. Built on 0.1–0.3. Still no AI, and still no times
+of day.
 
-**0.4 is not started**; it adds recurrence and time, deferred from 0.3. See
-`docs/ROADMAP.md` and ADRs 019–021.
+**0.5 is not started**; it adds AI strictly as a proposer. See
+`docs/ROADMAP.md` and ADRs 022–023.

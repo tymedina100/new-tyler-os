@@ -84,18 +84,33 @@ similar names, and any inventory outside the kitchen.
 
 ---
 
-## 0.4 · Recurrence and time
+## 0.4 · Recurrence and time — shipped
 
-Deferred from 0.3, not dropped. The bins go out weekly whether or not the fridge
-is catalogued, and this is still the largest gap in daily use.
+Deferred from 0.3, and the largest remaining gap in daily use: the bins go out
+weekly whether or not the fridge is catalogued, and nothing in TylerOS could say
+so.
 
-- Recurring items (weekly bins, monthly bills)
-- Timed reminders, which is when a timestamp column earns its place
-- A calendar-shaped view of the coming weeks
+- Repeating items — daily, weekly, monthly, and every _n_ of any of them
+- Completing one completes **the occurrence**, and the item moves to the next
+- Schedules stay anchored: bins done on Thursday are due again on Tuesday
+- Missed occurrences do not pile up, and an overdue repeat stays honestly overdue
+- Upcoming: the next fortnight, a day at a time, showing work, repeats and
+  best-by dates side by side
 
-Kitchen makes this slightly more interesting than it was: a best-by date is a
-second kind of thing that happens on a day, and whatever calendar view arrives
-should be able to show both without inventory becoming a task.
+There are no occurrence rows anywhere — future dates are computed from a rule, so
+a schedule with no end costs nothing to store and nothing to keep topped up. The
+repeat itself lives in `item_recurrence`, a 1:1 extension table, so `items` has
+now gone two milestones without gaining a column. See ADRs 022 and 023.
+
+Kitchen turned out to matter here: a best-by date is a second kind of thing that
+happens on a day, and Upcoming shows both without inventory becoming a task.
+Each domain keeps its own list on a day rather than being folded into a shared
+events table.
+
+**Not included, on purpose:** times of day, reminders and notifications,
+external calendar sync, a month grid, recurrence exceptions, habit streaks and
+completion history beyond "when was this last done", and natural-language
+recurrence in the capture bar.
 
 ---
 

@@ -57,9 +57,15 @@ TylerOS unusable:
 12. expiring food is surfaced on Today without taking the page over
 13. the kitchen refuses input that would make it untrue
 
+`e2e/recurrence.spec.ts` covers the one thing recurrence must never get wrong:
+
+14. a repeating item is completed one occurrence at a time
+15. recurrence is created, changed and removed from the item editor
+16. Upcoming shows the days ahead, including repeats that have no row yet
+
 They **write to the database they point at**. Everything they create is prefixed
-`smoke-<run>` or `kt-<run>` and deleted afterwards, but point `DATABASE_URL` at a
-development database.
+`smoke-<run>`, `kt-<run>` or `rc-<run>` and deleted afterwards, but point
+`DATABASE_URL` at a development database.
 
 This suite is deliberately outside `pnpm check`. A gate that needs a database is
 a gate that gets skipped, and then the fast tests rot with it.
@@ -143,6 +149,34 @@ Run `pnpm db:seed` first so there is realistic content to judge.
 - [ ] A negative quantity and a blank name are both refused inline.
 - [ ] At 375px the add row is two columns, not five, and food is visible without
       scrolling past the form.
+
+**Repeats — the one thing that must never get quietly wrong**
+
+- [ ] Give a task due today a repeat from the row menu. The toast names the
+      schedule ("Every Tuesday"), and a Weekly badge appears on the row.
+- [ ] Tick it off. It does **not** go to Done: a toast says when it is next due,
+      and the row moves to that date.
+- [ ] Tick off a repeat that is already overdue. The next date is the next one on
+      the schedule, not a period counted from today.
+- [ ] Open a repeating item. Status offers no "Done" — only occurrences finish.
+- [ ] Change the repeat in the editor. The sentence underneath updates as you
+      type, and naming a different date changes which weekday it says.
+- [ ] Set a repeat to monthly on the 31st and complete it in a short month. It
+      lands on the 28th, and the month after that is the 31st again.
+- [ ] "Skip this one" moves it on without claiming it was done.
+- [ ] "Stop repeating" leaves the date alone and brings back "Clear due date".
+- [ ] Clearing the date of a repeating item is refused, not silently obeyed.
+
+**Upcoming — the near future, without becoming a calendar**
+
+- [ ] Tomorrow, then weekdays, then dates. Days with nothing on them are absent.
+- [ ] A repeating item appears on every day it will come round, drawn as a muted
+      line rather than a row — those occurrences have no checkbox, because they
+      are not the occurrence that is due.
+- [ ] Food going off appears on its own day, under the same heading style.
+- [ ] With nothing in the fortnight, the empty state points back at Today.
+- [ ] At 375px the seven tabs fit, nothing is clipped, and there is no sideways
+      scroll. The row menu fits on screen and scrolls rather than running off it.
 
 **Keyboard and shape**
 

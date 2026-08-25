@@ -22,7 +22,8 @@ are not items and must get their own tables:
 
 - kitchen inventory — **built in 0.3**, as `kitchen_inventory`
 - warranties, receipts, appliance manuals
-- recurring routines
+- routine templates and checklists — a named list of steps is not a captured
+  thought. A repeating *task* is one, and 0.4 kept it on the spine: see below
 
 "Buy more olive oil" is an item. The jar of olive oil in the pantry is not. If a
 future module starts cramming inventory rows into `items` with mostly-null
@@ -33,6 +34,12 @@ own table and `items` gained nothing. The shopping list went the other way for
 the same reason — buying something is an intention, so it is an item with
 `kind = 'purchase'` rather than a second to-do list the rest of TylerOS cannot
 see. See ADRs 019 and 021.
+
+0.4 tested the **other** half of the same rule. "Take the bins out every Tuesday"
+_is_ a captured intention, so it stays an item — but how it repeats is four
+fields no other item uses, which ADR 001 says belongs in a 1:1 extension table
+rather than on `items`. So recurrence lives in `item_recurrence`, and `items`
+has now gone two milestones without gaining a column. See ADR 022.
 
 ## Layers
 
@@ -62,7 +69,9 @@ the database, which is why its tests run in milliseconds with no setup.
 | `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate  |
 | `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date |
 | `kitchen/`              | Food in the house: locations, quantities, expiry buckets |
+| `recurrence/`           | How something repeats, and when it is next due           |
 | `today/`                | Bucketing open items for the Today view                  |
+| `agenda/`               | The days ahead, one list per domain that has dates       |
 | `projects/`             | Projects and progress                                    |
 | `tags/`                 | Tag name normalisation                                   |
 | `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly    |
@@ -148,7 +157,10 @@ is free and removes a category of stale-badge bugs.
 ```
 projects ──1:N── items ──N:M── tags
                    |
-              kind, status, due_on
+                   |    kind, status, due_on
+                   |
+                   └──1:1── item_recurrence
+                              frequency, interval, anchor_on, last_completed_on
 
 kitchen_inventory        stands alone, on purpose
   name, location, quantity, unit, expires_on
@@ -170,6 +182,14 @@ every filter list.
 
 Three organising axes (kind, project, tag) is the ceiling. No nested folders, no
 custom fields, no taxonomy engine.
+
+**item_recurrence** — how a repeating item repeats, as a 1:1 extension of
+`items` rather than four columns null on nearly every row. Occurrences are
+**computed from `anchor_on`, never stored**: a schedule with no end cannot be a
+table, and counting from the anchor rather than from the previous occurrence is
+what stops a monthly repeat drifting backwards every short February. Completing
+a repeating item completes the current occurrence and moves `due_on` on; there
+is no path in the application that permanently finishes one. See ADR 022.
 
 **kitchen_inventory** — the first structured domain, and deliberately unrelated
 to everything above: no foreign keys, no tags, no project. `quantity` is nullable

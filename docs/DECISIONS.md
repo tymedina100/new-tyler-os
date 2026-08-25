@@ -424,3 +424,102 @@ nobody reads except at the shop.
 **The one seam:** using up the last of something deletes the kitchen record and
 creates a purchase item. That crossing lives in the kitchen service, which is
 allowed to orchestrate both, and nowhere else.
+
+---
+
+## 022 · One recurring item that moves, not a table of occurrences
+
+**Accepted** · 0.4
+
+A repeating responsibility is **one `Item`**. Completing it completes the current
+occurrence and moves the item's `due_on` to the next one. The rule lives in
+`item_recurrence`, a 1:1 extension of `items` keyed by `item_id`, holding a
+frequency, an interval, an anchor date and the date it was last done.
+
+**Considered:** columns on `items` directly; a separate `recurring_task` entity
+that spawns ordinary items; generating occurrence rows ahead of time; a full
+RFC 5545 `RRULE` string.
+
+**Why one item:** the alternative every scheduler reaches for — generate the
+occurrences — has no answer to "how many". A weekly repeat has no end, so it is
+either an unbounded table or a background job topping it up, and this
+application has neither cron nor workers by design. Computing the next date from
+a rule is a pure function with no infrastructure behind it at all.
+
+**Why not columns on `items`:** ADR 001 already wrote this rule down — three or
+more fields of its own means a 1:1 extension table. Four columns null on almost
+every row is exactly the mostly-null signal `docs/ARCHITECTURE.md` says to watch
+for, and `items` has now gone through kitchen inventory and recurrence without
+gaining a single column.
+
+**Why not RRULE:** it would be a parser, a serialiser and a whole vocabulary of
+things TylerOS has no way to display, to serve "the third weekday of the month
+unless it is a holiday". The frequency-plus-interval model expresses every
+example the milestone was actually about, and its limits are visible rather than
+theoretical.
+
+**The anchor is the interesting part.** Occurrences are counted from `anchor_on`
+rather than from the previous occurrence, so a monthly repeat clamped by a short
+February gives January 31st → February 28th → **March 31st**. Stepping one
+period at a time would give March 28th, and the schedule would quietly walk
+backwards a few days a year. The anchor moves only when the due date is
+deliberately changed, which is why saving the editor without touching the date
+cannot re-anchor it.
+
+**Completing is the only way to finish an occurrence, and there is no way to
+finish the responsibility by accident.** Every route to `done` — the row's
+circle, `x` in keyboard triage, bulk triage, an explicit status change — settles
+the occurrence instead. The editor does not offer `done` at all while an item
+repeats, and the schema refuses the combination. Ending a repeat is removing the
+repeat, or archiving.
+
+**Late and missed occurrences.** The next date is the next one **on the
+schedule**, counted after whichever is later of the due date and the day it was
+actually done. Bins missed on Tuesday and taken out on Thursday are due again on
+Tuesday, not Thursday. Three missed weeks are one late completion rather than
+three catch-ups: nothing accumulates, because nothing was ever generated. An
+overdue repeat keeps its real due date and shows as overdue for as long as it
+has been — TylerOS reports that the bins were missed rather than pretending they
+were not.
+
+**Cost:** there is no history of completions, only `last_completed_on`. "When did
+I last change the filter" is answerable; "how often do I actually do this" is
+not. **Revisit when:** something genuinely reads a series of past completions —
+that feature brings its own occurrence log, and it should be a log of what
+happened rather than a table of what was supposed to.
+
+---
+
+## 023 · Days hold one list per domain; there is no events table
+
+**Accepted** · 0.4
+
+`src/domain/agenda/` projects a window of days. Each day holds separate,
+separately-typed lists: items due, repeats projected from a rule, and food
+expiring. `/upcoming` renders them. No table, no shared base type, no `source`
+column.
+
+**Considered:** an `events` table every domain writes into; a `Timed` interface
+each domain implements; giving kitchen inventory a `due_on` and putting it on
+the item spine.
+
+**Why not a shared table:** it would make the fridge a to-do list. A best-by date
+and a bin day are both facts about a day and nothing else about them is alike —
+one is something to do, one is something that will happen whether or not anyone
+acts. ADR 019 kept that separation out of the schema; a projection that merges
+them would put it straight back in, one write path at a time.
+
+**Why not an interface:** two implementations is not enough to earn an
+abstraction, and this codebase says so in as many words. A named list per domain
+is readable, keeps each type intact, and makes a fourth time-bearing domain a
+four-line change here and nothing anywhere else.
+
+**Why projected occurrences are not rows:** the fortnight ahead shows every bin
+day, computed from the rule as the page renders. That is the payoff of ADR 022 —
+a view of the future that costs nothing to keep true. They are drawn as text
+rather than as item rows and cannot be completed, because completing a Tuesday
+that has not arrived would complete the wrong occurrence.
+
+**Revisit when:** a fourth domain gains dates, or something needs to interleave
+them in one ordered stream rather than group them. Either would be the point to
+generalise, with three real implementations to generalise from.
