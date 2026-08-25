@@ -1,7 +1,9 @@
-import { CalendarDays, FolderGit2, Hash } from "lucide-react";
+import { CalendarDays, FolderGit2, Hash, Repeat } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ITEM_KIND_LABELS, type ItemKind } from "@/domain/items/item";
+import type { ItemRecurrence } from "@/domain/recurrence/recurrence";
+import { describeRecurrence, summarizeRecurrence } from "@/domain/recurrence/recurrence";
 import { compareIsoDate, formatDueDate, type IsoDate } from "@/domain/shared/date";
 import { cn } from "@/lib/cn";
 
@@ -28,6 +30,23 @@ export function DueBadge({ dueOn, today }: { dueOn: IsoDate; today: IsoDate }) {
     >
       <CalendarDays aria-hidden className="size-3" />
       {formatDueDate(dueOn, today)}
+    </Badge>
+  );
+}
+
+/**
+ * That this comes back.
+ *
+ * Uncoloured on purpose — repeating is not urgency, and the due badge beside it
+ * is already carrying the only colour on the row. The short form is what fits;
+ * the full sentence, including which Tuesday, lives in the title attribute and
+ * in the item editor.
+ */
+export function RepeatBadge({ recurrence }: { recurrence: ItemRecurrence }) {
+  return (
+    <Badge title={describeRecurrence(recurrence)}>
+      <Repeat aria-hidden className="size-3" />
+      {summarizeRecurrence(recurrence)}
     </Badge>
   );
 }

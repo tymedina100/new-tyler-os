@@ -1,7 +1,7 @@
 "use client";
 
 import { Command } from "cmdk";
-import { FolderGit2, Inbox, ListChecks, Plus, Search, Sun } from "lucide-react";
+import { CalendarRange, FolderGit2, Inbox, ListChecks, Plus, Search, Sun } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { captureItemAction } from "@/server/actions/item-actions";
 
 const DESTINATIONS = [
   { href: "/", label: "Today", icon: Sun },
+  { href: "/upcoming", label: "Upcoming", icon: CalendarRange },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: FolderGit2 },

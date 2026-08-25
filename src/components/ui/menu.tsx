@@ -14,8 +14,14 @@ export function MenuContent({ className, ...props }: ComponentProps<typeof Dropd
       <DropdownMenu.Content
         align="end"
         sideOffset={6}
+        collisionPadding={8}
         className={cn(
           "animate-panel border-border bg-card z-50 min-w-44 rounded-lg border p-1 shadow-lg",
+          // An item row's menu is long - type, due date, repeat, lifecycle - and
+          // it grew past a phone's screen the moment repeats were added to it.
+          // Radix measures the room it actually has; this uses it and scrolls
+          // rather than letting the bottom of the menu fall off the display.
+          "max-h-(--radix-dropdown-menu-content-available-height) overflow-y-auto",
           className,
         )}
         {...props}

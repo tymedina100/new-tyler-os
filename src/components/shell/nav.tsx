@@ -1,6 +1,14 @@
 "use client";
 
-import { FolderGit2, Inbox, ListChecks, Refrigerator, Search, Sun } from "lucide-react";
+import {
+  CalendarRange,
+  FolderGit2,
+  Inbox,
+  ListChecks,
+  Refrigerator,
+  Search,
+  Sun,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -14,6 +22,7 @@ import { cn } from "@/lib/cn";
 
 const NAV_ITEMS = [
   { href: "/", label: "Today", icon: Sun },
+  { href: "/upcoming", label: "Upcoming", icon: CalendarRange },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
@@ -68,7 +77,9 @@ export function MobileNav({ inboxCount }: { inboxCount: number }) {
           href={href}
           aria-current={isActive(href) ? "page" : undefined}
           className={cn(
-            "relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.6875rem]",
+            // min-w-0 matters: seven tabs at 375px only fit because each one is
+            // allowed to be narrower than its label.
+            "relative flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 text-[0.625rem]",
             isActive(href) ? "text-primary" : "text-muted-foreground",
           )}
         >
@@ -80,7 +91,7 @@ export function MobileNav({ inboxCount }: { inboxCount: number }) {
               </span>
             ) : null}
           </span>
-          {label}
+          <span className="w-full truncate text-center">{label}</span>
         </Link>
       ))}
     </nav>

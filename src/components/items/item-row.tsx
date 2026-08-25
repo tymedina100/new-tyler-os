@@ -7,12 +7,21 @@ import {
   Check,
   MoreHorizontal,
   Pencil,
+  Repeat,
+  SkipForward,
   Trash2,
   Undo2,
 } from "lucide-react";
 import Link from "next/link";
 import { useOptimistic } from "react";
-import { DueBadge, KindBadge, ProjectBadge, TagBadge } from "@/components/items/item-badges";
+import { toast } from "sonner";
+import {
+  DueBadge,
+  KindBadge,
+  ProjectBadge,
+  RepeatBadge,
+  TagBadge,
+} from "@/components/items/item-badges";
 import { useAction } from "@/components/ui/use-action";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,13 +33,16 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 import { ITEM_KIND_LABELS, ITEM_KINDS, type ItemWithRelations } from "@/domain/items/item";
-import { addDays, type IsoDate } from "@/domain/shared/date";
+import { RECURRENCE_PRESETS } from "@/domain/recurrence/recurrence";
+import { addDays, formatDueDate, type IsoDate } from "@/domain/shared/date";
 import {
   deleteItemAction,
   restoreItemAction,
   setItemDueDateAction,
   setItemKindAction,
+  setItemRecurrenceAction,
   setItemStatusAction,
+  skipItemOccurrenceAction,
   toggleItemCompletionAction,
 } from "@/server/actions/item-actions";
 import { cn } from "@/lib/cn";
@@ -63,6 +75,26 @@ export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: Ite
 
   const isArchived = item.status === "archived";
   const selectable = selected !== undefined;
+  const recurrence = item.recurrence;
+
+  /**
+   * Ticking off a repeat looks like a bug unless it is narrated: the row is
+   * checked for a moment, then comes back unchecked on a different date. The
+   * toast is what turns that into "done, next Tuesday".
+   */
+  function settle(
+    operation: () => ReturnType<typeof toggleItemCompletionAction>,
+    verb: string,
+    optimistic?: () => void,
+  ): void {
+    run(async () => {
+      const result = await operation();
+      if (result.ok && result.data.nextDueOn !== null) {
+        toast.success(`${verb} Next: ${formatDueDate(result.data.nextDueOn, today)}.`);
+      }
+      return result;
+    }, optimistic);
+  }
 
   return (
     <li
@@ -90,11 +122,18 @@ export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: Ite
 
       <button
         type="button"
-        aria-label={optimisticDone ? `Reopen ${item.title}` : `Complete ${item.title}`}
+        aria-label={
+          optimisticDone
+            ? `Reopen ${item.title}`
+            : recurrence
+              ? `Complete this occurrence of ${item.title}`
+              : `Complete ${item.title}`
+        }
         aria-pressed={optimisticDone}
         onClick={() =>
-          run(
+          settle(
             () => toggleItemCompletionAction(item.id),
+            "Done.",
             () => setOptimisticDone(!optimisticDone),
           )
         }
@@ -126,6 +165,7 @@ export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: Ite
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <KindBadge kind={item.kind} />
           {item.dueOn ? <DueBadge dueOn={item.dueOn} today={today} /> : null}
+          {recurrence ? <RepeatBadge recurrence={recurrence} /> : null}
           {item.project ? <ProjectBadge project={item.project} /> : null}
           {item.tags.map((tag) => (
             <TagBadge key={tag.id} name={tag.name} />
@@ -165,12 +205,62 @@ export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: Ite
             <CalendarDays aria-hidden />
             Tomorrow
           </MenuItem>
-          {item.dueOn ? (
+          {/* A repeat needs its date: the offer to clear it would only fail. */}
+          {item.dueOn && !recurrence ? (
             <MenuItem onSelect={() => run(() => setItemDueDateAction(item.id, null))}>
               <CalendarOff aria-hidden />
               Clear due date
             </MenuItem>
           ) : null}
+
+          <MenuSeparator />
+          <MenuLabel>Repeats</MenuLabel>
+          {recurrence ? (
+            <>
+              <MenuItem
+                onSelect={() =>
+                  settle(() => skipItemOccurrenceAction(item.id), "Skipped this one.")
+                }
+              >
+                <SkipForward aria-hidden />
+                Skip this one
+              </MenuItem>
+              <MenuItem
+                onSelect={() =>
+                  run(async () => {
+                    const result = await setItemRecurrenceAction(item.id, null, null);
+                    if (result.ok) toast.success("It no longer repeats.");
+                    return result;
+                  })
+                }
+              >
+                <CalendarOff aria-hidden />
+                Stop repeating
+              </MenuItem>
+            </>
+          ) : (
+            RECURRENCE_PRESETS.map((preset) => (
+              <MenuItem
+                key={preset.label}
+                onSelect={() =>
+                  run(async () => {
+                    const result = await setItemRecurrenceAction(
+                      item.id,
+                      preset.frequency,
+                      preset.interval,
+                    );
+                    if (result.ok && result.data.description) {
+                      toast.success(`${result.data.description}.`);
+                    }
+                    return result;
+                  })
+                }
+              >
+                <Repeat aria-hidden />
+                {preset.label}
+              </MenuItem>
+            ))
+          )}
 
           <MenuSeparator />
           {isArchived ? (

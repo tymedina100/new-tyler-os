@@ -2,8 +2,9 @@
 
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { RecurrenceField } from "@/components/items/recurrence-field";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import {
@@ -14,6 +15,9 @@ import {
   type ItemWithRelations,
 } from "@/domain/items/item";
 import { MAX_TAGS_PER_ITEM } from "@/domain/items/item-schema";
+import type { RecurrenceFrequency } from "@/domain/recurrence/recurrence";
+import { NO_RECURRENCE } from "@/domain/recurrence/recurrence-schema";
+import type { IsoDate } from "@/domain/shared/date";
 import { deleteItemAction, updateItemAction } from "@/server/actions/item-actions";
 
 /**
@@ -25,13 +29,31 @@ import { deleteItemAction, updateItemAction } from "@/server/actions/item-action
 export function ItemForm({
   item,
   projects,
+  today,
 }: {
   item: ItemWithRelations;
   projects: readonly { id: string; name: string }[];
+  /** From the server, so the repeat preview cannot disagree about the date. */
+  today: IsoDate;
 }) {
   const [state, formAction, isSaving] = useActionState(updateItemAction, null);
   const [isDeleting, startDeleting] = useTransition();
   const router = useRouter();
+
+  // Mirrored, not controlled: the date input keeps whatever was typed before
+  // hydration, and the repeat description still follows it. See 0.2's recorded
+  // result in docs/VERIFICATION.md for what controlling it costs.
+  const [dueOn, setDueOn] = useState(item.dueOn ?? "");
+  const [frequency, setFrequency] = useState<RecurrenceFrequency | typeof NO_RECURRENCE>(
+    item.recurrence?.frequency ?? NO_RECURRENCE,
+  );
+  const [interval, setInterval] = useState(String(item.recurrence?.interval ?? 1));
+
+  // A repeating item is never finished, only its current occurrence is. Offering
+  // "Done" here would be offering something the server is right to refuse.
+  const statuses = ITEM_STATUSES.filter(
+    (status) => frequency === NO_RECURRENCE || status !== "done",
+  );
 
   useEffect(() => {
     if (state?.ok) toast.success("Saved.");
@@ -78,7 +100,7 @@ export function ItemForm({
 
           <Field label="Status" htmlFor="status" errors={fieldErrors?.status}>
             <Select id="status" name="status" defaultValue={item.status}>
-              {ITEM_STATUSES.map((status) => (
+              {statuses.map((status) => (
                 <option key={status} value={status}>
                   {ITEM_STATUS_LABELS[status]}
                 </option>
@@ -87,7 +109,13 @@ export function ItemForm({
           </Field>
 
           <Field label="Due" htmlFor="dueOn" errors={fieldErrors?.dueOn}>
-            <Input id="dueOn" name="dueOn" type="date" defaultValue={item.dueOn ?? ""} />
+            <Input
+              id="dueOn"
+              name="dueOn"
+              type="date"
+              defaultValue={item.dueOn ?? ""}
+              onChange={(event) => setDueOn(event.target.value)}
+            />
           </Field>
 
           <Field label="Project" htmlFor="projectId" errors={fieldErrors?.projectId}>
@@ -101,6 +129,18 @@ export function ItemForm({
             </Select>
           </Field>
         </div>
+
+        <RecurrenceField
+          existing={item.recurrence}
+          existingDueOn={item.dueOn}
+          frequency={frequency}
+          interval={interval}
+          dueOn={dueOn}
+          today={today}
+          onFrequencyChange={setFrequency}
+          onIntervalChange={setInterval}
+          errors={fieldErrors?.recurrence}
+        />
 
         <Field
           label="Tags"

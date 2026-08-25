@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ItemForm } from "@/components/items/item-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { ITEM_KIND_LABELS } from "@/domain/items/item";
-import { formatLongDate, toIsoDate } from "@/domain/shared/date";
+import { formatLongDate, toIsoDate, todayIsoDate } from "@/domain/shared/date";
 import { getDb } from "@/server/db/client";
 import { getItem } from "@/server/items/item-service";
 import { listProjectsWithProgress } from "@/server/projects/project-service";
@@ -29,7 +29,7 @@ export default async function ItemPage(props: PageProps<"/items/[id]">) {
         title={item.title}
         description={`${ITEM_KIND_LABELS[item.kind]} · captured ${formatLongDate(toIsoDate(item.createdAt))}`}
       />
-      <ItemForm item={item} projects={projects} />
+      <ItemForm item={item} projects={projects} today={todayIsoDate(new Date())} />
     </>
   );
 }
