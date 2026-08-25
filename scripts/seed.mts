@@ -1,7 +1,12 @@
 import "dotenv/config";
+import {
+  addInventoryItemSchema,
+  type AddInventoryItemInput,
+} from "@/domain/kitchen/inventory-schema";
 import { addDays, todayIsoDate } from "@/domain/shared/date";
 import { getDb } from "@/server/db/client";
 import * as items from "@/server/items/item-service";
+import { addInventoryItem, addToShoppingList } from "@/server/kitchen/inventory-service";
 import { createProject } from "@/server/projects/project-service";
 
 /**
@@ -73,5 +78,57 @@ await items.updateItem(db, {
   tags: ["planning"],
 });
 
-console.warn("Seeded TylerOS with 2 projects and 10 items.");
+/**
+ * Kitchen inventory. Fictional food, chosen to cover every shape the model
+ * allows: all three locations, measured and counted and container quantities,
+ * an uncounted one, an expired one, one going off within the window, and two
+ * packages of the same thing that must stay two records.
+ */
+const inventory: AddInventoryItemInput[] = [
+  {
+    name: "Chicken breast",
+    location: "freezer",
+    quantity: 2,
+    unit: "lb",
+    expiresOn: addDays(today, 60),
+    notes: null,
+  },
+  {
+    name: "Chicken breast",
+    location: "fridge",
+    quantity: 1.3,
+    unit: "lb",
+    expiresOn: addDays(today, 2),
+    notes: "opened, use first",
+  },
+  { name: "Eggs", location: "fridge", quantity: 8, unit: null, expiresOn: addDays(today, 12) },
+  {
+    name: "Greek yogurt",
+    location: "fridge",
+    quantity: 3,
+    unit: "cup",
+    expiresOn: addDays(today, -2),
+    notes: null,
+  },
+  { name: "Milk", location: "fridge", quantity: 1, unit: "bottle", expiresOn: addDays(today, 1) },
+  { name: "Frozen peas", location: "freezer", quantity: 0.5, unit: "bag", expiresOn: null },
+  { name: "Ground beef", location: "freezer", quantity: 1.3, unit: "lb", expiresOn: null },
+  { name: "Rice", location: "pantry", quantity: 4, unit: "cup", expiresOn: null },
+  { name: "Soy sauce", location: "pantry", quantity: 1, unit: "bottle", expiresOn: null },
+  { name: "Olive oil", location: "pantry", quantity: null, unit: null, notes: "large tin" },
+  { name: "Tinned tomatoes", location: "pantry", quantity: 3, unit: "can", expiresOn: null },
+].map((entry) => addInventoryItemSchema.parse(entry));
+
+for (const entry of inventory) {
+  await addInventoryItem(db, entry);
+}
+
+// A shopping list is made of items, not kitchen records. See ADR 019.
+await addToShoppingList(db, "Olive oil");
+const bread = await addToShoppingList(db, "Sourdough bread");
+await items.toggleItemCompletionById(db, bread);
+
+console.warn(
+  `Seeded TylerOS with 2 projects, 12 items and ${inventory.length} things in the kitchen.`,
+);
 process.exit(0);
