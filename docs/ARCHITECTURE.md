@@ -23,7 +23,7 @@ are not items and must get their own tables:
 - kitchen inventory — **built in 0.3**, as `kitchen_inventory`
 - warranties, receipts, appliance manuals
 - routine templates and checklists — a named list of steps is not a captured
-  thought. A repeating *task* is one, and 0.4 kept it on the spine: see below
+  thought. A repeating _task_ is one, and 0.4 kept it on the spine: see below
 
 "Buy more olive oil" is an item. The jar of olive oil in the pantry is not. If a
 future module starts cramming inventory rows into `items` with mostly-null

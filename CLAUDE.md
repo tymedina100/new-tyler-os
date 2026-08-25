@@ -85,7 +85,7 @@ area before opening any of its files.
 | `src/domain/`     | Types, Zod schemas, pure rules. Tests sit beside the source                                                          |
 | `src/server/`     | `db/`, repositories, services, `actions/`, `env.ts`                                                                  |
 | `src/app/`        | Routes. `page.tsx` is Today; one folder per screen                                                                   |
-| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`, `agenda/`                                              |
+| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`, `agenda/`                                             |
 | `src/lib/`        | Framework-adjacent helpers only (`cn`, search params). Not a dumping ground — a domain concept goes in `src/domain/` |
 | `tests/`          | Integration tests + the PGlite harness                                                                               |
 | `e2e/`            | Playwright smoke tests. Needs a real database                                                                        |

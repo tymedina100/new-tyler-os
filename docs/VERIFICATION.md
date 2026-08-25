@@ -264,3 +264,34 @@ And one that is worth knowing before writing tests here: the list page has its
 own **Quantity** field in the quick-add row, so a Playwright `getByLabel` that
 runs before a row's editor has mounted types into the list instead. Scope to the
 form, or wait for "Save changes".
+
+### 0.4 — Recurrence and time · 2026-08-25
+
+All three tiers run against the same remote PostgreSQL 18, after applying
+migration `0002_late_winter_soldier` (one enum, one table, one foreign key, one
+check constraint — purely additive, and `items`, `projects`, `tags` and
+`kitchen_inventory` were untouched). `pnpm check` green at **381 tests across 20
+files**, **16 smoke specs green** including three new recurrence flows, and the
+checklist above walked in Chromium at 1280×720 and 375×812: a repeat created
+from the row menu and from the editor, completed, skipped, edited, re-anchored
+by moving its date, and stopped; Upcoming read at both widths with a daily
+repeat projected across all thirteen remaining days of the fortnight.
+
+Two things found by running it rather than reading it:
+
+- **The row menu stopped fitting on the screen.** Adding five repeat presets took
+  it to 662px in a 720px window, and it would have run off the bottom of a phone.
+  It now caps itself at the height Radix reports as available and scrolls. Worth
+  knowing that the menu was already close to the edge at twelve entries — the
+  next thing added to it should check again.
+- **The kitchen editor spec was flaky for exactly the reason 0.3 wrote down.**
+  `getByLabel("Quantity")` resolved against the quick-add row on the page being
+  navigated away from. A recorded hazard that nobody acted on is a hazard; it
+  waits for the editor now.
+
+One caveat about the manual tier, since it looks like a bug the first time: a
+dev preview rendered in a **hidden** browser pane never leaves its loading
+skeleton. React reveals streamed Suspense content from a `requestAnimationFrame`
+callback, and a pane that is not compositing never fires one. The server is fine
+— `fetch()` returns the whole document. Playwright is the authoritative
+interactive run for that reason.
