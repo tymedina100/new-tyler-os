@@ -3,6 +3,7 @@ import {
   customType,
   date,
   index,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -12,6 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { ITEM_KINDS, ITEM_STATUSES } from "@/domain/items/item";
+import { KITCHEN_LOCATIONS } from "@/domain/kitchen/inventory";
 import { PROJECT_STATUSES } from "@/domain/projects/project";
 
 /**
@@ -36,6 +38,7 @@ const tsvector = customType<{ data: string; driverData: string }>({
 export const itemKindEnum = pgEnum("item_kind", ITEM_KINDS);
 export const itemStatusEnum = pgEnum("item_status", ITEM_STATUSES);
 export const projectStatusEnum = pgEnum("project_status", PROJECT_STATUSES);
+export const kitchenLocationEnum = pgEnum("kitchen_location", KITCHEN_LOCATIONS);
 
 export const projects = pgTable(
   "projects",
@@ -120,6 +123,42 @@ export const itemTags = pgTable(
   ],
 );
 
+/**
+ * Kitchen inventory.
+ *
+ * Its own table, on purpose. A jar of olive oil is a fact about the world, not
+ * something captured to act on, and cramming it into `items` would mean six
+ * mostly-null columns and an inbox full of groceries. See docs/ARCHITECTURE.md.
+ *
+ * There is no unique constraint on `name`: two chicken packages with different
+ * dates are two truthful records, and merging them would invent a fact.
+ */
+export const kitchenInventory = pgTable(
+  "kitchen_inventory",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    location: kitchenLocationEnum("location").notNull(),
+    /** Null means "some, uncounted". Zero means the food is gone. */
+    quantity: numeric("quantity", { precision: 10, scale: 2, mode: "number" }),
+    /** Null means a bare count. Free text, so "bottle" needs no migration. */
+    unit: text("unit"),
+    /** A calendar date, like every other date in TylerOS. See ADR 005. */
+    expiresOn: date("expires_on", { mode: "string" }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("kitchen_inventory_location_idx").on(table.location),
+    index("kitchen_inventory_expires_on_idx").on(table.expiresOn),
+    index("kitchen_inventory_name_idx").on(sql`lower(${table.name})`),
+  ],
+);
+
 export const projectsRelations = relations(projects, ({ many }) => ({
   items: many(items),
 }));
@@ -143,3 +182,5 @@ export type NewItemRow = typeof items.$inferInsert;
 export type ProjectRow = typeof projects.$inferSelect;
 export type NewProjectRow = typeof projects.$inferInsert;
 export type TagRow = typeof tags.$inferSelect;
+export type KitchenInventoryRow = typeof kitchenInventory.$inferSelect;
+export type NewKitchenInventoryRow = typeof kitchenInventory.$inferInsert;
