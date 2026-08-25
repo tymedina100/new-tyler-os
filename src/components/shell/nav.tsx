@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderGit2, Inbox, ListChecks, Search, Sun } from "lucide-react";
+import { FolderGit2, Inbox, ListChecks, Refrigerator, Search, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
+  { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/search", label: "Search", icon: Search },
 ] as const;
 
