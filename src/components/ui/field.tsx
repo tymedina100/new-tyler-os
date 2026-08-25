@@ -18,7 +18,10 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
  */
 export function Select({ className, children, ...props }: ComponentProps<"select">) {
   return (
-    <select className={cn(controlClasses, "h-9 appearance-none py-0 pr-8", className)} {...props}>
+    <select
+      className={cn(controlClasses, "select-chevron h-9 appearance-none py-0 pr-8", className)}
+      {...props}
+    >
       {children}
     </select>
   );

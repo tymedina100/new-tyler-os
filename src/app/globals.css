@@ -99,6 +99,18 @@
 }
 
 @layer utilities {
+  /*
+   * Native selects lose their arrow to `appearance: none`, so it is drawn back
+   * on. A data URI cannot use `currentColor`, so this is a mid grey that reads
+   * correctly against both the light and the dark surface.
+   */
+  .select-chevron {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%239a9aa5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+    background-size: 0.75rem;
+  }
+
   /* Radix and cmdk animate via data attributes rather than class changes. */
   @keyframes tyleros-fade-in {
     from {

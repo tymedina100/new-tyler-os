@@ -77,8 +77,10 @@ export function CommandPalette() {
       onOpenChange={(next) => (next ? setOpen(true) : close())}
       label="Command palette"
       shouldFilter={false}
-      className="animate-panel border-border bg-card fixed top-[12vh] left-1/2 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border shadow-2xl"
-      overlayClassName="animate-overlay fixed inset-0 z-50 bg-overlay backdrop-blur-[1px]"
+      overlayClassName="animate-overlay bg-overlay fixed inset-0 z-50 backdrop-blur-[1px]"
+      // cmdk sends `className` to the inner command element, so the panel itself
+      // has to be styled through `contentClassName`.
+      contentClassName="animate-panel border-border bg-card fixed top-[12vh] left-1/2 z-50 w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border shadow-2xl"
     >
       <Command.Input
         value={query}
