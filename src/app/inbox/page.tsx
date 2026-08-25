@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ItemList } from "@/components/items/item-list";
+import { InboxTriage } from "@/components/items/inbox-triage";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { todayIsoDate } from "@/domain/shared/date";
@@ -31,10 +31,10 @@ export default async function InboxPage() {
       {items.length === 0 ? (
         <EmptyState
           title="Inbox zero"
-          description="Anything you capture lands here first. Give it a type or a date from the row menu and it moves on."
+          description="Anything you capture lands here first. Give it a type or a date — from the row menu, or with a single key — and it moves on."
         />
       ) : (
-        <ItemList items={items} today={today} />
+        <InboxTriage items={items} today={today} />
       )}
     </>
   );

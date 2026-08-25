@@ -11,9 +11,9 @@ import {
   Undo2,
 } from "lucide-react";
 import Link from "next/link";
-import { useOptimistic, useTransition } from "react";
-import { toast } from "sonner";
+import { useOptimistic } from "react";
 import { DueBadge, KindBadge, ProjectBadge, TagBadge } from "@/components/items/item-badges";
+import { useItemAction } from "@/components/items/use-item-action";
 import { Badge } from "@/components/ui/badge";
 import {
   Menu,
@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/menu";
 import { ITEM_KIND_LABELS, ITEM_KINDS, type ItemWithRelations } from "@/domain/items/item";
 import { addDays, type IsoDate } from "@/domain/shared/date";
-import type { ActionResult } from "@/server/action-result";
 import {
   deleteItemAction,
   restoreItemAction,
@@ -40,6 +39,15 @@ interface ItemRowProps {
   item: ItemWithRelations;
   /** Passed from the server so the client never has to guess the date. */
   today: IsoDate;
+  /**
+   * Set by keyboard triage in the inbox. Elsewhere the row has no notion of
+   * being "current" and these stay undefined.
+   */
+  selected?: boolean;
+  /** Marked for bulk triage. The next action will include this row. */
+  marked?: boolean;
+  onSelect?: () => void;
+  rowRef?: (node: HTMLLIElement | null) => void;
 }
 
 /**
@@ -49,29 +57,37 @@ interface ItemRowProps {
  * broken. Everything else runs in a transition and raises a toast if it fails -
  * a failed action must never look like a successful one.
  */
-export function ItemRow({ item, today }: ItemRowProps) {
-  const [isPending, startTransition] = useTransition();
+export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: ItemRowProps) {
+  const { isPending, run } = useItemAction();
   const [optimisticDone, setOptimisticDone] = useOptimistic(item.status === "done");
 
-  function run(action: () => Promise<ActionResult<unknown>>, optimistic?: () => void) {
-    startTransition(async () => {
-      optimistic?.();
-      const result = await action();
-      if (!result.ok) toast.error(result.error);
-    });
-  }
-
   const isArchived = item.status === "archived";
+  const selectable = selected !== undefined;
 
   return (
     <li
+      ref={rowRef}
+      // Roving tabindex: the selected row is the list's single tab stop, so Tab
+      // moves past the list rather than through every item in it.
+      tabIndex={selectable ? (selected ? 0 : -1) : undefined}
+      aria-current={selected ? "true" : undefined}
+      data-marked={marked ? "true" : undefined}
+      onFocus={onSelect}
+      onClick={onSelect}
       className={cn(
         "group border-border bg-card flex items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors",
         "hover:border-input focus-within:border-input",
+        selectable && "outline-none",
+        selected && "border-ring ring-ring/30 ring-2",
+        // Marked rows are tinted rather than ringed, so "where I am" and "what
+        // is included" stay visually distinct when a row is both.
+        marked && "bg-muted border-input",
         isPending && "opacity-60",
         isArchived && "opacity-70",
       )}
     >
+      {marked ? <span className="sr-only">Marked for bulk triage.</span> : null}
+
       <button
         type="button"
         aria-label={optimisticDone ? `Reopen ${item.title}` : `Complete ${item.title}`}
