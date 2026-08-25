@@ -1,8 +1,10 @@
 import { relations, sql, type SQL } from "drizzle-orm";
 import {
+  check,
   customType,
   date,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -15,6 +17,7 @@ import {
 import { ITEM_KINDS, ITEM_STATUSES } from "@/domain/items/item";
 import { KITCHEN_LOCATIONS } from "@/domain/kitchen/inventory";
 import { PROJECT_STATUSES } from "@/domain/projects/project";
+import { MAX_RECURRENCE_INTERVAL, RECURRENCE_FREQUENCIES } from "@/domain/recurrence/recurrence";
 
 /**
  * The TylerOS database schema.
@@ -39,6 +42,7 @@ export const itemKindEnum = pgEnum("item_kind", ITEM_KINDS);
 export const itemStatusEnum = pgEnum("item_status", ITEM_STATUSES);
 export const projectStatusEnum = pgEnum("project_status", PROJECT_STATUSES);
 export const kitchenLocationEnum = pgEnum("kitchen_location", KITCHEN_LOCATIONS);
+export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", RECURRENCE_FREQUENCIES);
 
 export const projects = pgTable(
   "projects",
@@ -124,6 +128,49 @@ export const itemTags = pgTable(
 );
 
 /**
+ * How an item repeats.
+ *
+ * A 1:1 extension of `items` rather than four more columns on it, which is what
+ * ADR 001 said to do the moment a concept needed three or more fields of its
+ * own. Most items never repeat, so those columns would be null on nearly every
+ * row — and `items` has now gone two milestones without gaining one.
+ *
+ * There are no future occurrence rows anywhere. A schedule with no end cannot
+ * be stored as rows, so occurrences are computed from `anchor_on` on demand.
+ * See src/domain/recurrence/ and ADR 022.
+ */
+export const itemRecurrence = pgTable(
+  "item_recurrence",
+  {
+    /** The primary key too: an item repeats one way or not at all. */
+    itemId: uuid("item_id")
+      .primaryKey()
+      .references(() => items.id, { onDelete: "cascade" }),
+    frequency: recurrenceFrequencyEnum("frequency").notNull(),
+    interval: integer("interval").notNull().default(1),
+    /**
+     * The origin of the series. Occurrences are counted from here rather than
+     * from the previous one, so a monthly repeat clamped to February 28th does
+     * not drag March backwards with it.
+     */
+    anchorOn: date("anchor_on", { mode: "string" }).notNull(),
+    /** When the most recent occurrence was actually done. One fact, not a log. */
+    lastCompletedOn: date("last_completed_on", { mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    check(
+      "item_recurrence_interval_check",
+      sql`${table.interval} >= 1 and ${table.interval} <= ${sql.raw(String(MAX_RECURRENCE_INTERVAL))}`,
+    ),
+  ],
+);
+
+/**
  * Kitchen inventory.
  *
  * Its own table, on purpose. A jar of olive oil is a fact about the world, not
@@ -165,7 +212,15 @@ export const projectsRelations = relations(projects, ({ many }) => ({
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
   project: one(projects, { fields: [items.projectId], references: [projects.id] }),
+  recurrence: one(itemRecurrence, {
+    fields: [items.id],
+    references: [itemRecurrence.itemId],
+  }),
   itemTags: many(itemTags),
+}));
+
+export const itemRecurrenceRelations = relations(itemRecurrence, ({ one }) => ({
+  item: one(items, { fields: [itemRecurrence.itemId], references: [items.id] }),
 }));
 
 export const tagsRelations = relations(tags, ({ many }) => ({
@@ -182,5 +237,7 @@ export type NewItemRow = typeof items.$inferInsert;
 export type ProjectRow = typeof projects.$inferSelect;
 export type NewProjectRow = typeof projects.$inferInsert;
 export type TagRow = typeof tags.$inferSelect;
+export type ItemRecurrenceRow = typeof itemRecurrence.$inferSelect;
+export type NewItemRecurrenceRow = typeof itemRecurrence.$inferInsert;
 export type KitchenInventoryRow = typeof kitchenInventory.$inferSelect;
 export type NewKitchenInventoryRow = typeof kitchenInventory.$inferInsert;
