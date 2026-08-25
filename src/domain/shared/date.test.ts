@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  addMonths,
   compareIsoDate,
   daysBetween,
+  daysInMonth,
   formatDueDate,
   formatLongDate,
   isIsoDate,
+  monthsBetween,
+  ordinalDayOfMonth,
   toIsoDate,
+  weekdayName,
 } from "./date";
 
 describe("toIsoDate", () => {
@@ -82,5 +87,70 @@ describe("formatLongDate", () => {
   it("reads as a heading", () => {
     expect(formatLongDate("2026-08-24")).toBe("Monday, August 24");
     expect(formatLongDate("2027-01-01")).toBe("Friday, January 1");
+  });
+});
+
+describe("addMonths", () => {
+  it("keeps the day of the month when the month has one", () => {
+    expect(addMonths("2026-08-25", 1)).toBe("2026-09-25");
+    expect(addMonths("2026-08-25", 3)).toBe("2026-11-25");
+    expect(addMonths("2026-08-25", 0)).toBe("2026-08-25");
+  });
+
+  it("clamps to the last day of a month that is too short", () => {
+    expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addMonths("2026-01-31", 3)).toBe("2026-04-30");
+    expect(addMonths("2026-03-31", -1)).toBe("2026-02-28");
+  });
+
+  it("gets February right in a leap year", () => {
+    expect(addMonths("2024-01-31", 1)).toBe("2024-02-29");
+    expect(addMonths("2024-02-29", 12)).toBe("2025-02-28");
+    expect(addMonths("2024-02-29", 48)).toBe("2028-02-29");
+  });
+
+  it("crosses year boundaries in both directions", () => {
+    expect(addMonths("2026-11-15", 3)).toBe("2027-02-15");
+    expect(addMonths("2026-02-15", -3)).toBe("2025-11-15");
+  });
+});
+
+describe("daysInMonth", () => {
+  it("knows the short months and the leap years", () => {
+    expect(daysInMonth(2026, 1)).toBe(28);
+    expect(daysInMonth(2024, 1)).toBe(29);
+    expect(daysInMonth(2100, 1)).toBe(28);
+    expect(daysInMonth(2000, 1)).toBe(29);
+    expect(daysInMonth(2026, 3)).toBe(30);
+    expect(daysInMonth(2026, 11)).toBe(31);
+  });
+});
+
+describe("monthsBetween", () => {
+  it("counts whole months, ignoring the day", () => {
+    expect(monthsBetween("2026-01-31", "2026-02-01")).toBe(1);
+    expect(monthsBetween("2026-01-01", "2026-01-31")).toBe(0);
+    expect(monthsBetween("2026-08-25", "2027-08-25")).toBe(12);
+    expect(monthsBetween("2026-08-25", "2026-05-01")).toBe(-3);
+  });
+});
+
+describe("weekdayName and ordinalDayOfMonth", () => {
+  it("names the weekday of a date", () => {
+    expect(weekdayName("2026-08-25")).toBe("Tuesday");
+    expect(weekdayName("2026-08-29")).toBe("Saturday");
+  });
+
+  it("says the day of the month the way a person would", () => {
+    expect(ordinalDayOfMonth("2026-08-01")).toBe("1st");
+    expect(ordinalDayOfMonth("2026-08-02")).toBe("2nd");
+    expect(ordinalDayOfMonth("2026-08-03")).toBe("3rd");
+    expect(ordinalDayOfMonth("2026-08-04")).toBe("4th");
+    expect(ordinalDayOfMonth("2026-08-11")).toBe("11th");
+    expect(ordinalDayOfMonth("2026-08-12")).toBe("12th");
+    expect(ordinalDayOfMonth("2026-08-13")).toBe("13th");
+    expect(ordinalDayOfMonth("2026-08-21")).toBe("21st");
+    expect(ordinalDayOfMonth("2026-08-22")).toBe("22nd");
+    expect(ordinalDayOfMonth("2026-08-31")).toBe("31st");
   });
 });
