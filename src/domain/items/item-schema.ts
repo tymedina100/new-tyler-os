@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalRecurrenceSchema } from "@/domain/recurrence/recurrence-schema";
 import { isIsoDate } from "@/domain/shared/date";
 import { normalizeTagNames } from "@/domain/tags/tag";
 import { ITEM_KINDS, ITEM_STATUSES } from "./item";
@@ -72,9 +73,27 @@ export const itemFieldsSchema = z.object({
   dueOn: dueOnSchema,
   projectId: projectIdSchema,
   tags: tagListSchema,
+  recurrence: optionalRecurrenceSchema,
 });
 
-export const updateItemSchema = itemFieldsSchema.extend({ id: z.uuid() });
+/**
+ * Two cross-field rules, both about the same thing: a repeat is a schedule, and
+ * a schedule needs a live occurrence to be a schedule at all.
+ *
+ * They are refusals rather than silent corrections. Guessing a date for a
+ * repeat, or quietly dropping a repeat because something was marked done, would
+ * both change what the user said they wanted without telling them.
+ */
+export const updateItemSchema = itemFieldsSchema
+  .extend({ id: z.uuid() })
+  .refine((input) => input.recurrence === null || input.dueOn !== null, {
+    path: ["dueOn"],
+    message: "A repeating item needs a date — it is the occurrence that is due.",
+  })
+  .refine((input) => input.recurrence === null || input.status !== "done", {
+    path: ["status"],
+    message: "Repeating items are finished one occurrence at a time. Stop the repeat to end it.",
+  });
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;
 
 export const itemIdSchema = z.object({ id: z.uuid() });

@@ -1,3 +1,4 @@
+import type { ItemRecurrence } from "@/domain/recurrence/recurrence";
 import type { IsoDate } from "@/domain/shared/date";
 import type { TagRef } from "@/domain/tags/tag";
 
@@ -41,6 +42,13 @@ export interface Item {
 export interface ItemWithRelations extends Item {
   project: { id: string; name: string } | null;
   tags: TagRef[];
+  /**
+   * How this item repeats, or `null` for the overwhelming majority that do not.
+   * It lives in its own table rather than on the item — see ADR 022 — but it
+   * travels with the item everywhere, because "does this come back" changes
+   * what completing it means.
+   */
+  recurrence: ItemRecurrence | null;
 }
 
 export const ITEM_KIND_LABELS: Record<ItemKind, string> = {

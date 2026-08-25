@@ -1,11 +1,19 @@
-import { and, desc, eq, ilike, inArray, isNotNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNotNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { ItemKind, ItemStatus, ItemWithRelations } from "@/domain/items/item";
 import type { ItemFilters } from "@/domain/items/item-filters";
 import { OPEN_ITEM_STATUSES } from "@/domain/items/item";
 import type { ItemLifecycle } from "@/domain/items/item-rules";
+import type { ItemRecurrence, RecurrenceFrequency } from "@/domain/recurrence/recurrence";
 import type { IsoDate } from "@/domain/shared/date";
 import type { Database } from "@/server/db/client";
-import { itemTags, items, type NewItemRow, tags } from "@/server/db/schema";
+import {
+  itemRecurrence,
+  itemTags,
+  items,
+  type NewItemRecurrenceRow,
+  type NewItemRow,
+  tags,
+} from "@/server/db/schema";
 
 /**
  * Data access for items.
@@ -34,7 +42,15 @@ interface ItemRecord {
   createdAt: Date;
   updatedAt: Date;
   project: { id: string; name: string } | null;
+  recurrence: RecurrenceRecord | null;
   itemTags: { tag: { id: string; name: string } }[];
+}
+
+interface RecurrenceRecord {
+  frequency: RecurrenceFrequency;
+  interval: number;
+  anchorOn: string;
+  lastCompletedOn: string | null;
 }
 
 function toItemWithRelations(row: ItemRecord): ItemWithRelations {
@@ -42,8 +58,16 @@ function toItemWithRelations(row: ItemRecord): ItemWithRelations {
   return { ...item, tags: links.map((link) => link.tag) };
 }
 
+const RECURRENCE_COLUMNS = {
+  frequency: true,
+  interval: true,
+  anchorOn: true,
+  lastCompletedOn: true,
+} as const;
+
 const RELATIONS = {
   project: { columns: { id: true, name: true } },
+  recurrence: { columns: RECURRENCE_COLUMNS },
   itemTags: { with: { tag: { columns: { id: true, name: true } } } },
 } as const;
 
@@ -72,6 +96,62 @@ export async function findItemLifecycle(db: Database, id: string): Promise<ItemL
     .limit(1);
 
   return row ?? null;
+}
+
+/**
+ * Everything needed to settle an occurrence: where the item stands, when it is
+ * due, and whether it comes back. One row, one optional join — a checkbox click
+ * on a recurring item must not cost more than one on any other.
+ */
+export interface ItemSchedule {
+  lifecycle: ItemLifecycle;
+  dueOn: IsoDate | null;
+  recurrence: ItemRecurrence | null;
+}
+
+export async function findItemSchedule(db: Database, id: string): Promise<ItemSchedule | null> {
+  const row = await db.query.items.findFirst({
+    where: eq(items.id, id),
+    columns: { status: true, completedAt: true, archivedAt: true, dueOn: true },
+    with: { recurrence: { columns: RECURRENCE_COLUMNS } },
+  });
+
+  if (!row) return null;
+
+  const { dueOn, recurrence, ...lifecycle } = row;
+  return { lifecycle, dueOn, recurrence };
+}
+
+/** An item repeats one way or not at all, so writing a rule replaces any rule. */
+export async function upsertItemRecurrence(
+  db: Database,
+  values: NewItemRecurrenceRow,
+): Promise<void> {
+  await db
+    .insert(itemRecurrence)
+    .values(values)
+    .onConflictDoUpdate({
+      target: itemRecurrence.itemId,
+      set: {
+        frequency: values.frequency,
+        interval: values.interval,
+        anchorOn: values.anchorOn,
+        lastCompletedOn: values.lastCompletedOn ?? null,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function updateItemRecurrenceRow(
+  db: Database,
+  itemId: string,
+  patch: Partial<NewItemRecurrenceRow>,
+): Promise<void> {
+  await db.update(itemRecurrence).set(patch).where(eq(itemRecurrence.itemId, itemId));
+}
+
+export async function deleteItemRecurrence(db: Database, itemId: string): Promise<void> {
+  await db.delete(itemRecurrence).where(eq(itemRecurrence.itemId, itemId));
 }
 
 export async function listItems(
@@ -117,6 +197,37 @@ export async function listTodayCandidates(
     where: and(
       inArray(items.status, [...OPEN_ITEM_STATUSES]),
       or(lte(items.dueOn, horizon), eq(items.status, "inbox")),
+    ),
+    columns: WITHOUT_SEARCH_VECTOR,
+    with: RELATIONS,
+    orderBy: [sql`${items.dueOn} asc nulls last`, desc(items.createdAt)],
+    limit: 500,
+  });
+
+  return rows.map(toItemWithRelations);
+}
+
+/**
+ * Everything the coming fortnight might contain.
+ *
+ * Two sources in one query: open work due inside the window, and **every** open
+ * recurring item regardless of when its current occurrence falls. The second is
+ * not redundant — a weekly repeat that was missed a fortnight ago still comes
+ * round again on Tuesday, and its future occurrences are computed rather than
+ * stored, so the row has to be loaded for the projection to exist at all.
+ */
+export async function listAgendaCandidates(
+  db: Database,
+  from: IsoDate,
+  to: IsoDate,
+): Promise<ItemWithRelations[]> {
+  const rows = await db.query.items.findMany({
+    where: and(
+      inArray(items.status, [...OPEN_ITEM_STATUSES]),
+      or(
+        and(gte(items.dueOn, from), lte(items.dueOn, to)),
+        inArray(items.id, db.select({ id: itemRecurrence.itemId }).from(itemRecurrence)),
+      ),
     ),
     columns: WITHOUT_SEARCH_VECTOR,
     with: RELATIONS,

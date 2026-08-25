@@ -243,6 +243,7 @@ describe("editing", () => {
       kind: "idea",
       status: "someday",
       dueOn: null,
+      recurrence: null,
       projectId: null,
       tags: ["furniture"],
     });
@@ -283,6 +284,7 @@ describe("search", () => {
       kind: "purchase",
       status: "active",
       dueOn: null,
+      recurrence: null,
       projectId: null,
       tags: [],
     });

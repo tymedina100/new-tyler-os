@@ -9,6 +9,8 @@ import {
   setItemStatusSchema,
   updateItemSchema,
 } from "@/domain/items/item-schema";
+import { describeRecurrence } from "@/domain/recurrence/recurrence";
+import { setItemRecurrenceSchema } from "@/domain/recurrence/recurrence-schema";
 import { type ActionResult, runAction } from "@/server/action-result";
 import { getDb } from "@/server/db/client";
 import * as service from "@/server/items/item-service";
@@ -53,11 +55,50 @@ export async function updateItemAction(
   });
 }
 
-export async function toggleItemCompletionAction(id: string): Promise<ActionResult<void>> {
+/**
+ * Completing an item — or, when it repeats, completing this occurrence of it.
+ *
+ * The next due date comes back so the caller can say so out loud. A recurring
+ * item ticked off and reappearing on a different date is alarming unless
+ * something tells you that is what just happened.
+ */
+export async function toggleItemCompletionAction(
+  id: string,
+): Promise<ActionResult<service.CompletionOutcome>> {
   return runAction("toggleItemCompletion", async () => {
     const input = itemIdSchema.parse({ id });
-    await service.toggleItemCompletionById(getDb(), input.id);
+    const outcome = await service.toggleItemCompletionById(getDb(), input.id);
     revalidateEverything();
+    return outcome;
+  });
+}
+
+export async function skipItemOccurrenceAction(
+  id: string,
+): Promise<ActionResult<service.CompletionOutcome>> {
+  return runAction("skipItemOccurrence", async () => {
+    const input = itemIdSchema.parse({ id });
+    const outcome = await service.skipItemOccurrence(getDb(), input.id);
+    revalidateEverything();
+    return outcome;
+  });
+}
+
+/** Making an item repeat, changing how it repeats, or stopping it. */
+export async function setItemRecurrenceAction(
+  id: string,
+  frequency: string | null,
+  interval: number | null,
+): Promise<ActionResult<{ dueOn: string | null; description: string | null }>> {
+  return runAction("setItemRecurrence", async () => {
+    const input = setItemRecurrenceSchema.parse({ id, recurrence: { frequency, interval } });
+    const result = await service.setItemRecurrence(getDb(), input.id, input.recurrence);
+    revalidateEverything();
+
+    return {
+      dueOn: result.dueOn,
+      description: result.recurrence ? describeRecurrence(result.recurrence) : null,
+    };
   });
 }
 
@@ -113,6 +154,12 @@ function readItemForm(formData: FormData) {
     dueOn: formData.get("dueOn"),
     projectId: formData.get("projectId"),
     tags: formData.get("tags"),
+    // Two fields, one concept. The schema decides what "none" means, so the
+    // action never has to know that a repeat can be absent.
+    recurrence: {
+      frequency: formData.get("recurrenceFrequency"),
+      interval: formData.get("recurrenceInterval"),
+    },
   };
 }
 

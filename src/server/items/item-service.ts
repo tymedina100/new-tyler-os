@@ -10,8 +10,16 @@ import {
   toggleItemCompletion,
 } from "@/domain/items/item-rules";
 import type { CaptureItemInput, UpdateItemInput } from "@/domain/items/item-schema";
+import type { ItemRecurrence, RecurrenceRule } from "@/domain/recurrence/recurrence";
+import type { RecurrencePatch } from "@/domain/recurrence/recurrence-rules";
+import {
+  completeOccurrence,
+  resolveAnchor,
+  skipOccurrence,
+  startingOccurrence,
+} from "@/domain/recurrence/recurrence-rules";
 import { addDays, type IsoDate, todayIsoDate } from "@/domain/shared/date";
-import { NotFoundError } from "@/domain/shared/errors";
+import { DomainError, NotFoundError } from "@/domain/shared/errors";
 import { buildTodayView, type TodayView, UPCOMING_WINDOW_DAYS } from "@/domain/today/today-view";
 import type { Database } from "@/server/db/client";
 import * as repo from "@/server/items/item-repository";
@@ -66,8 +74,8 @@ export async function updateItem(
   now = new Date(),
 ): Promise<string> {
   return db.transaction(async (tx) => {
-    const lifecycle = await requireLifecycle(tx, input.id);
-    const statePatch = applyStatusChange(lifecycle, input.status, now);
+    const schedule = await requireSchedule(tx, input.id);
+    const statePatch = applyStatusChange(schedule.lifecycle, input.status, now);
 
     await repo.updateItemRow(tx, input.id, {
       title: input.title,
@@ -78,6 +86,7 @@ export async function updateItem(
       ...statePatch,
     });
 
+    await writeRecurrence(tx, input.id, schedule, input.recurrence, input.dueOn);
     await attachTags(tx, input.id, input.tags);
     await deleteOrphanedTags(tx);
     return input.id;
@@ -99,9 +108,18 @@ export async function setItemStatus(
   id: string,
   status: ItemStatus,
   now = new Date(),
-): Promise<void> {
-  const lifecycle = await requireLifecycle(db, id);
-  await repo.updateItemRow(db, id, applyStatusChange(lifecycle, status, now));
+): Promise<CompletionOutcome> {
+  const schedule = await requireSchedule(db, id);
+
+  // Reaching `done` by any route completes the current occurrence, never the
+  // responsibility. There is no path in TylerOS that can permanently finish a
+  // repeat by accident; ending one is an explicit edit. See ADR 022.
+  if (status === "done" && schedule.recurrence !== null) {
+    return settleOccurrence(db, id, schedule, todayIsoDate(now), completeOccurrence);
+  }
+
+  await repo.updateItemRow(db, id, applyStatusChange(schedule.lifecycle, status, now));
+  return { nextDueOn: null };
 }
 
 export async function setItemDueDate(
@@ -109,22 +127,110 @@ export async function setItemDueDate(
   id: string,
   dueOn: IsoDate | null,
 ): Promise<void> {
-  const lifecycle = await requireLifecycle(db, id);
+  const schedule = await requireSchedule(db, id);
+
+  if (dueOn === null && schedule.recurrence !== null) {
+    throw new DomainError(
+      "invalid_transition",
+      "A repeating item needs a date. Stop it repeating before clearing the date.",
+    );
+  }
 
   await repo.updateItemRow(db, id, {
     dueOn,
     // Giving something a date is a decision about it, so it leaves the inbox.
-    status: dueOn === null ? lifecycle.status : resolveTriagedStatus(lifecycle.status, undefined),
+    status:
+      dueOn === null
+        ? schedule.lifecycle.status
+        : resolveTriagedStatus(schedule.lifecycle.status, undefined),
   });
+
+  if (dueOn !== null && schedule.recurrence !== null) {
+    // Moving the date of a repeat reschedules the series, so it re-anchors.
+    await repo.updateItemRecurrenceRow(db, id, {
+      anchorOn: resolveAnchor(
+        { anchorOn: schedule.recurrence.anchorOn, dueOn: schedule.dueOn },
+        dueOn,
+      ),
+    });
+  }
+}
+
+/** What the caller needs to tell the user, once an occurrence has been settled. */
+export interface CompletionOutcome {
+  /** The date this item is next due, or `null` when it does not repeat. */
+  nextDueOn: IsoDate | null;
 }
 
 export async function toggleItemCompletionById(
   db: Database,
   id: string,
   now = new Date(),
-): Promise<void> {
-  const lifecycle = await requireLifecycle(db, id);
-  await repo.updateItemRow(db, id, toggleItemCompletion(lifecycle, now));
+): Promise<CompletionOutcome> {
+  const schedule = await requireSchedule(db, id);
+
+  if (schedule.recurrence !== null && schedule.lifecycle.status !== "done") {
+    return settleOccurrence(db, id, schedule, todayIsoDate(now), completeOccurrence);
+  }
+
+  await repo.updateItemRow(db, id, toggleItemCompletion(schedule.lifecycle, now));
+  return { nextDueOn: null };
+}
+
+/**
+ * Letting one occurrence go by.
+ *
+ * The honest counterpart to completing. Without it, the only way to clear a
+ * repeat you genuinely did not do is to claim you did — and a personal system
+ * that has been lied to once is a personal system nobody trusts again.
+ */
+export async function skipItemOccurrence(
+  db: Database,
+  id: string,
+  now = new Date(),
+): Promise<CompletionOutcome> {
+  const schedule = await requireSchedule(db, id);
+
+  if (schedule.recurrence === null) {
+    throw new DomainError("invalid_transition", "Only a repeating item has an occurrence to skip.");
+  }
+
+  return settleOccurrence(db, id, schedule, todayIsoDate(now), skipOccurrence);
+}
+
+/**
+ * Making an item repeat, changing how it repeats, or stopping it.
+ *
+ * One entry point for all three, because they are the same decision seen from
+ * different sides and splitting them would mean three places that have to agree
+ * about the anchor.
+ */
+export async function setItemRecurrence(
+  db: Database,
+  id: string,
+  rule: RecurrenceRule | null,
+  now = new Date(),
+): Promise<{ dueOn: IsoDate | null; recurrence: ItemRecurrence | null }> {
+  const schedule = await requireSchedule(db, id);
+
+  if (rule === null) {
+    await repo.deleteItemRecurrence(db, id);
+    return { dueOn: schedule.dueOn, recurrence: null };
+  }
+
+  const dueOn = startingOccurrence(schedule.dueOn, todayIsoDate(now));
+
+  return db.transaction(async (tx) => {
+    if (dueOn !== schedule.dueOn) {
+      await repo.updateItemRow(tx, id, {
+        dueOn,
+        status: resolveTriagedStatus(schedule.lifecycle.status, undefined),
+      });
+    }
+
+    const recurrence = await writeRecurrence(tx, id, schedule, rule, dueOn);
+    return { dueOn, recurrence };
+  });
 }
 
 export async function restoreItemById(db: Database, id: string): Promise<void> {
@@ -175,6 +281,86 @@ async function requireLifecycle(db: Database, id: string): Promise<ItemLifecycle
   const lifecycle = await repo.findItemLifecycle(db, id);
   if (!lifecycle) throw new NotFoundError("Item", id);
   return lifecycle;
+}
+
+async function requireSchedule(db: Database, id: string): Promise<repo.ItemSchedule> {
+  const schedule = await repo.findItemSchedule(db, id);
+  if (!schedule) throw new NotFoundError("Item", id);
+  return schedule;
+}
+
+/**
+ * Moving a recurring item on to its next occurrence.
+ *
+ * The domain decided *which* date; this only writes it. The item stays open —
+ * that is the whole point — and any completion or archive stamp is cleared,
+ * because a responsibility that is due again is not a finished one.
+ *
+ * `startingOccurrence` repairs the one state that should not exist: a repeat
+ * with no current date. Healing it deterministically beats throwing at someone
+ * who just clicked a checkbox.
+ */
+async function settleOccurrence(
+  db: Database,
+  id: string,
+  schedule: repo.ItemSchedule,
+  today: IsoDate,
+  settle: (recurrence: ItemRecurrence, dueOn: IsoDate, today: IsoDate) => RecurrencePatch,
+): Promise<CompletionOutcome> {
+  const recurrence = schedule.recurrence;
+  if (recurrence === null) {
+    throw new DomainError("invalid_transition", "This item does not repeat.");
+  }
+
+  const patch = settle(recurrence, startingOccurrence(schedule.dueOn, today), today);
+
+  await db.transaction(async (tx) => {
+    await repo.updateItemRow(tx, id, {
+      dueOn: patch.dueOn,
+      status: resolveTriagedStatus(schedule.lifecycle.status, undefined),
+      completedAt: null,
+      archivedAt: null,
+    });
+
+    if (patch.lastCompletedOn !== recurrence.lastCompletedOn) {
+      await repo.updateItemRecurrenceRow(tx, id, { lastCompletedOn: patch.lastCompletedOn });
+    }
+  });
+
+  return { nextDueOn: patch.dueOn };
+}
+
+/**
+ * Persisting a rule, or removing one.
+ *
+ * The anchor is the subtle part: it is kept as it was unless the due date
+ * actually moved, so saving the editor without touching the date cannot turn
+ * "monthly on the 31st" into "monthly on the 28th" after one short February.
+ */
+async function writeRecurrence(
+  db: Database,
+  id: string,
+  schedule: repo.ItemSchedule,
+  rule: RecurrenceRule | null,
+  dueOn: IsoDate | null,
+): Promise<ItemRecurrence | null> {
+  if (rule === null || dueOn === null) {
+    if (schedule.recurrence !== null) await repo.deleteItemRecurrence(db, id);
+    return null;
+  }
+
+  const existing = schedule.recurrence;
+  const recurrence: ItemRecurrence = {
+    ...rule,
+    anchorOn: resolveAnchor(
+      existing && { anchorOn: existing.anchorOn, dueOn: schedule.dueOn },
+      dueOn,
+    ),
+    lastCompletedOn: existing?.lastCompletedOn ?? null,
+  };
+
+  await repo.upsertItemRecurrence(db, { itemId: id, ...recurrence });
+  return recurrence;
 }
 
 async function attachTags(db: Database, itemId: string, names: readonly string[]): Promise<void> {

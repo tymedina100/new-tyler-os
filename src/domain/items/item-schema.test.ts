@@ -86,3 +86,43 @@ describe("captureItemSchema", () => {
     expect(captureItemSchema.safeParse({ text: "watch Severance" }).success).toBe(true);
   });
 });
+
+describe("updateItemSchema and repeats", () => {
+  const id = "00000000-0000-4000-8000-000000000000";
+  const repeating = {
+    ...baseInput,
+    id,
+    dueOn: "2026-08-25",
+    recurrence: { frequency: "weekly", interval: "2" },
+  };
+
+  it("reads a repeat out of the two fields the form sends", () => {
+    const result = updateItemSchema.parse(repeating);
+    expect(result.recurrence).toEqual({ frequency: "weekly", interval: 2 });
+  });
+
+  it("treats an item with no repeat as the ordinary case", () => {
+    const result = updateItemSchema.parse({ ...baseInput, id, recurrence: { frequency: "none" } });
+    expect(result.recurrence).toBeNull();
+  });
+
+  it("refuses a repeat with no date, because that is not a schedule", () => {
+    const result = updateItemSchema.safeParse({ ...repeating, dueOn: "" });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["dueOn"]);
+  });
+
+  it("refuses to mark a repeating item done, since only an occurrence is done", () => {
+    const result = updateItemSchema.safeParse({ ...repeating, status: "done" });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["status"]);
+  });
+
+  it("still allows a non-repeating item to be marked done", () => {
+    expect(
+      updateItemSchema.safeParse({ ...baseInput, id, status: "done", recurrence: null }).success,
+    ).toBe(true);
+  });
+});
