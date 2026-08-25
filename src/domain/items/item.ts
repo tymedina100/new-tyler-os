@@ -66,7 +66,3 @@ export function isOpenStatus(status: ItemStatus): boolean {
 export function isItemKind(value: string): value is ItemKind {
   return (ITEM_KINDS as readonly string[]).includes(value);
 }
-
-export function isItemStatus(value: string): value is ItemStatus {
-  return (ITEM_STATUSES as readonly string[]).includes(value);
-}

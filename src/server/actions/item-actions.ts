@@ -6,7 +6,6 @@ import {
   itemIdSchema,
   setItemDueDateSchema,
   setItemKindSchema,
-  setItemProjectSchema,
   setItemStatusSchema,
   updateItemSchema,
 } from "@/domain/items/item-schema";
@@ -85,17 +84,6 @@ export async function setItemDueDateAction(
   return runAction("setItemDueDate", async () => {
     const input = setItemDueDateSchema.parse({ id, dueOn });
     await service.setItemDueDate(getDb(), input.id, input.dueOn);
-    revalidateEverything();
-  });
-}
-
-export async function setItemProjectAction(
-  id: string,
-  projectId: string | null,
-): Promise<ActionResult<void>> {
-  return runAction("setItemProject", async () => {
-    const input = setItemProjectSchema.parse({ id, projectId });
-    await service.setItemProject(getDb(), input.id, input.projectId);
     revalidateEverything();
   });
 }

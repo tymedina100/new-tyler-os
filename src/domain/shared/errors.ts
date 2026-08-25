@@ -6,7 +6,7 @@
  * user-facing action results (see src/server/action-result.ts).
  */
 
-export type DomainErrorCode = "invalid_transition" | "not_found" | "validation_failed" | "conflict";
+export type DomainErrorCode = "invalid_transition" | "not_found" | "conflict";
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

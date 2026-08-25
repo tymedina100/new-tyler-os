@@ -93,8 +93,3 @@ export const setItemDueDateSchema = z.object({
   id: z.uuid(),
   dueOn: dueOnSchema,
 });
-
-export const setItemProjectSchema = z.object({
-  id: z.uuid(),
-  projectId: projectIdSchema,
-});

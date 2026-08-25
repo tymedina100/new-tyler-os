@@ -99,20 +99,6 @@ export async function setItemDueDate(
   });
 }
 
-export async function setItemProject(
-  db: Database,
-  id: string,
-  projectId: string | null,
-): Promise<void> {
-  const lifecycle = await requireLifecycle(db, id);
-
-  await repo.updateItemRow(db, id, {
-    projectId,
-    status:
-      projectId === null ? lifecycle.status : resolveTriagedStatus(lifecycle.status, undefined),
-  });
-}
-
 export async function toggleItemCompletionById(
   db: Database,
   id: string,
@@ -148,10 +134,6 @@ export async function listItemsForView(
   filters: repo.ItemListFilters,
 ): Promise<ItemWithRelations[]> {
   return repo.listItems(db, filters);
-}
-
-export async function searchItems(db: Database, query: string): Promise<ItemWithRelations[]> {
-  return repo.searchItems(db, query);
 }
 
 export interface TodayData {

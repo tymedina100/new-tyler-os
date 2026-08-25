@@ -194,42 +194,45 @@ describe("search", () => {
   });
 
   it("finds items by a word in the title", async () => {
-    const results = await itemService.searchItems(db(), "severance");
+    const results = await searchFor("severance");
     expect(results.map((item) => item.title)).toEqual(["watch Severance"]);
   });
 
   it("finds items by a word in the notes", async () => {
-    const results = await itemService.searchItems(db(), "clamp");
+    const results = await searchFor("clamp");
     expect(results.map((item) => item.title)).toEqual(["monitor arm"]);
   });
 
   it("matches word stems, not just exact spellings", async () => {
-    const results = await itemService.searchItems(db(), "holding");
+    const results = await searchFor("holding");
     expect(results.map((item) => item.title)).toEqual(["monitor arm"]);
   });
 
   it("still finds a half-remembered fragment", async () => {
-    const results = await itemService.searchItems(db(), "sever");
+    const results = await searchFor("sever");
     expect(results.map((item) => item.title)).toEqual(["watch Severance"]);
   });
 
   it("ranks a title match above a notes match", async () => {
-    const results = await itemService.searchItems(db(), "arm");
+    const results = await searchFor("arm");
     expect(results[0]?.title).toBe("monitor arm");
   });
 
   it("returns nothing for a term that appears nowhere", async () => {
-    expect(await itemService.searchItems(db(), "helicopter")).toEqual([]);
+    expect(await searchFor("helicopter")).toEqual([]);
   });
 
   it("treats punctuation as text rather than as query syntax", async () => {
-    await expect(itemService.searchItems(db(), "100% cotton & wool")).resolves.toBeInstanceOf(
-      Array,
-    );
+    await expect(searchFor("100% cotton & wool")).resolves.toBeInstanceOf(Array);
   });
 });
 
 async function createProject(name: string): Promise<string> {
   const { createProject: create } = await import("@/server/projects/project-service");
   return create(db(), { name, description: null, status: "active" });
+}
+
+/** Search as the UI performs it: the universal retrieval path, no filters. */
+function searchFor(query: string) {
+  return itemService.findItems(db(), query, {});
 }
