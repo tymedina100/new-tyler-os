@@ -13,6 +13,7 @@ import { computeProjectProgress, PROJECT_STATUS_LABELS } from "@/domain/projects
 import { todayIsoDate } from "@/domain/shared/date";
 import { getDb } from "@/server/db/client";
 import { listItemsForView } from "@/server/items/item-service";
+import { listProjectRefs } from "@/server/projects/project-repository";
 import { getProject } from "@/server/projects/project-service";
 
 export async function generateMetadata(props: PageProps<"/projects/[id]">): Promise<Metadata> {
@@ -28,9 +29,10 @@ export default async function ProjectPage(props: PageProps<"/projects/[id]">) {
   const project = await getProject(db, id);
   if (!project) notFound();
 
-  const [openItems, doneItems] = await Promise.all([
+  const [openItems, doneItems, projectRefs] = await Promise.all([
     listItemsForView(db, { projectId: id, statuses: OPEN_ITEM_STATUSES }),
     listItemsForView(db, { projectId: id, statuses: ["done"] }),
+    listProjectRefs(db),
   ]);
 
   const progress = computeProjectProgress(openItems.length, doneItems.length);
@@ -58,7 +60,12 @@ export default async function ProjectPage(props: PageProps<"/projects/[id]">) {
         wait for triage would be ceremony rather than help.
       */}
       <div className="mb-6">
-        <CaptureBar projectId={project.id} placeholder={`Capture into ${project.name}…`} />
+        <CaptureBar
+          projectId={project.id}
+          placeholder={`Capture into ${project.name}…`}
+          today={today}
+          projects={projectRefs}
+        />
       </div>
 
       <div className="grid gap-6">

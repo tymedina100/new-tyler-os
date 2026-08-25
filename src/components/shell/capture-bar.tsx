@@ -1,8 +1,12 @@
 "use client";
 
-import { CornerDownLeft, Plus } from "lucide-react";
-import { useActionState, useEffect, useRef } from "react";
+import { CalendarDays, CornerDownLeft, FolderGit2, Hash, Plus, TriangleAlert } from "lucide-react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { parseCapture } from "@/domain/capture/parse-capture";
+import type { ProjectRef } from "@/domain/projects/project";
+import { formatDueDate, type IsoDate } from "@/domain/shared/date";
 import { captureItemAction } from "@/server/actions/item-actions";
+import { isTypingTarget } from "@/lib/keyboard";
 import { cn } from "@/lib/cn";
 
 /**
@@ -13,23 +17,44 @@ import { cn } from "@/lib/cn";
  * that would slow a capture down - choosing a type, picking a date - belongs to
  * triage, not to this box.
  *
- * `#tag` is parsed out of the text server-side, so organising costs no extra
- * interaction for the cases where you already know where something goes.
+ * `#tag`, `@project` and a trailing date are parsed out of the text, and the
+ * result is previewed below the field as you type. The preview is not a
+ * confirmation step: Enter still captures immediately. It exists because a box
+ * that quietly rewrites what you typed is worse than one that never tried.
+ *
+ * The preview runs the same pure parser the server will run, with the same
+ * reference date, so what it shows is what gets stored.
  */
 export function CaptureBar({
   projectId,
   placeholder = "Capture anything…",
+  today,
+  projects,
 }: {
   projectId?: string;
   placeholder?: string;
+  today: IsoDate;
+  projects: readonly ProjectRef[];
 }) {
   const [state, formAction, isPending] = useActionState(captureItemAction, null);
+  const [text, setText] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Clearing the box after a successful capture is a state adjustment, not a
+  // side effect: doing it in an effect would render the just-saved text once
+  // more before wiping it.
+  const [handledState, setHandledState] = useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
+    if (state?.ok) setText("");
+  }
 
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
+      // Focus returns to the box because the next capture is usually seconds
+      // away. This is a DOM call, which is what an effect is actually for.
       inputRef.current?.focus();
     }
   }, [state]);
@@ -37,7 +62,7 @@ export function CaptureBar({
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "c" || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isEditableTarget(event.target)) return;
+      if (isTypingTarget(event.target)) return;
 
       event.preventDefault();
       inputRef.current?.focus();
@@ -47,7 +72,22 @@ export function CaptureBar({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const parsed = useMemo(
+    () => (text.trim().length === 0 ? null : parseCapture(text, { today, projects })),
+    [text, today, projects],
+  );
+
+  const project = parsed?.projectId
+    ? (projects.find((candidate) => candidate.id === parsed.projectId) ?? null)
+    : null;
+
   const error = state && !state.ok ? state.error : null;
+  const hasPreview =
+    parsed !== null &&
+    (parsed.dueOn !== null ||
+      project !== null ||
+      parsed.tags.length > 0 ||
+      parsed.unresolvedProject !== null);
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-1.5">
@@ -66,8 +106,15 @@ export function CaptureBar({
           autoComplete="off"
           aria-label="Capture"
           aria-invalid={error ? true : undefined}
+          aria-describedby={hasPreview ? "capture-preview" : undefined}
           placeholder={placeholder}
           maxLength={280}
+          // Deliberately uncontrolled. Capture must accept text typed before the
+          // page has hydrated, and a controlled value would replace it with the
+          // empty initial state the moment React took over. The mirror below is
+          // only for the preview, so the worst case is a preview that appears
+          // one keystroke late rather than a capture that is silently lost.
+          onChange={(event) => setText(event.target.value)}
           className="placeholder:text-muted-foreground h-11 flex-1 bg-transparent text-sm outline-none"
         />
         {projectId ? <input type="hidden" name="projectId" value={projectId} /> : null}
@@ -86,13 +133,91 @@ export function CaptureBar({
         <p role="alert" className="text-destructive px-1 text-xs">
           {error}
         </p>
+      ) : hasPreview && parsed !== null ? (
+        <CapturePreview
+          title={parsed.title}
+          dueOn={parsed.dueOn}
+          today={today}
+          project={project}
+          tags={parsed.tags}
+          unresolved={parsed.unresolvedProject}
+        />
       ) : (
         <p className="text-muted-foreground hidden px-1 text-xs sm:block">
           Press <Key>c</Key> to capture, <Key>⌘</Key>
-          <Key>K</Key> for commands. Add <Key>#tags</Key> inline.
+          <Key>K</Key> for commands. Add <Key>#tags</Key>, <Key>@project</Key> or a date inline.
         </p>
       )}
     </form>
+  );
+}
+
+/**
+ * What the capture will become, shown while it is still editable. Deliberately
+ * a single quiet line: it informs, it does not ask for a decision.
+ */
+function CapturePreview({
+  title,
+  dueOn,
+  today,
+  project,
+  tags,
+  unresolved,
+}: {
+  title: string;
+  dueOn: IsoDate | null;
+  today: IsoDate;
+  project: ProjectRef | null;
+  tags: readonly string[];
+  unresolved: { ref: string; reason: "unknown" | "ambiguous" } | null;
+}) {
+  return (
+    <div
+      id="capture-preview"
+      aria-live="polite"
+      className="text-muted-foreground flex flex-wrap items-center gap-1.5 px-1 text-xs"
+    >
+      <span className="text-foreground max-w-full truncate font-medium">{title}</span>
+
+      {dueOn ? (
+        <Chip>
+          <CalendarDays aria-hidden className="size-3" />
+          {formatDueDate(dueOn, today)}
+        </Chip>
+      ) : null}
+
+      {project ? (
+        <Chip>
+          <FolderGit2 aria-hidden className="size-3" />
+          {project.name}
+        </Chip>
+      ) : null}
+
+      {tags.map((tag) => (
+        <Chip key={tag}>
+          <Hash aria-hidden className="size-3" />
+          {tag}
+        </Chip>
+      ))}
+
+      {unresolved ? (
+        <span className="text-destructive inline-flex items-center gap-1">
+          <TriangleAlert aria-hidden className="size-3" />
+          {unresolved.reason === "ambiguous"
+            ? `“@${unresolved.ref}” matches more than one project`
+            : `No project called “${unresolved.ref}”`}
+          <span className="text-muted-foreground">— kept in the title</span>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="border-border inline-flex items-center gap-1 rounded border px-1.5 py-0.5 leading-none">
+      {children}
+    </span>
   );
 }
 
@@ -101,15 +226,5 @@ function Key({ children }: { children: string }) {
     <kbd className="border-border bg-muted rounded border px-1 font-mono text-[0.6875rem]">
       {children}
     </kbd>
-  );
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable ||
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement
   );
 }

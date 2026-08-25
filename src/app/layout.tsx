@@ -3,8 +3,10 @@ import { Toaster } from "sonner";
 import { CaptureBar } from "@/components/shell/capture-bar";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { MobileNav, SidebarNav } from "@/components/shell/nav";
+import { todayIsoDate } from "@/domain/shared/date";
 import { getDb } from "@/server/db/client";
 import { countItemsByStatus } from "@/server/items/item-service";
+import { listProjectRefs } from "@/server/projects/project-repository";
 import "./globals.css";
 
 /**
@@ -29,7 +31,12 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const counts = await countItemsByStatus(getDb());
+  const db = getDb();
+  // The capture bar previews what it will parse, so it needs the same projects
+  // and the same reference date the server will use. Today comes from here
+  // rather than the browser: the two would disagree across a timezone.
+  const [counts, projects] = await Promise.all([countItemsByStatus(db), listProjectRefs(db)]);
+  const today = todayIsoDate(new Date());
 
   return (
     <html lang="en">
@@ -57,7 +64,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="border-border bg-background/90 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur md:px-6">
-              <CaptureBar />
+              <CaptureBar today={today} projects={projects} />
             </div>
 
             <main className="flex-1 px-4 pt-5 pb-24 md:px-6 md:pb-10">{children}</main>
