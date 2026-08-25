@@ -2,6 +2,8 @@ import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import { ItemFilterBar } from "@/components/items/item-filter-bar";
 import { ItemList } from "@/components/items/item-list";
+import { ItemSection } from "@/components/items/item-section";
+import { InventoryResults } from "@/components/kitchen/inventory-results";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import {
@@ -14,6 +16,7 @@ import { todayIsoDate } from "@/domain/shared/date";
 import { readParam } from "@/lib/search-params";
 import { getDb } from "@/server/db/client";
 import { findItems } from "@/server/items/item-service";
+import { findInventory } from "@/server/kitchen/inventory-service";
 import { listProjectsWithProgress } from "@/server/projects/project-service";
 
 export const metadata: Metadata = { title: "Search" };
@@ -46,7 +49,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
     (status !== "all" ? status : undefined),
   );
 
-  const [items, projects] = await Promise.all([
+  const [items, inventory, projects] = await Promise.all([
     hasCriteria
       ? findItems(db, search, {
           kinds: kindsForFilter(kind),
@@ -55,8 +58,13 @@ export default async function SearchPage(props: PageProps<"/search">) {
           tagName,
         })
       : Promise.resolve([]),
+    // Kitchen records are searched separately and shown separately. Folding them
+    // into the item query would mean pretending a jar of olive oil is an Item.
+    search ? findInventory(db, search) : Promise.resolve([]),
     listProjectsWithProgress(db),
   ]);
+
+  const total = items.length + inventory.length;
 
   const today = todayIsoDate(new Date());
 
@@ -64,9 +72,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
     <>
       <PageHeader
         title="Search"
-        description={
-          hasCriteria ? `${items.length} ${items.length === 1 ? "result" : "results"}` : undefined
-        }
+        description={hasCriteria ? `${total} ${total === 1 ? "result" : "results"}` : undefined}
       />
 
       <form
@@ -96,13 +102,25 @@ export default async function SearchPage(props: PageProps<"/search">) {
           title="Search everything"
           description="Titles and notes are indexed by Postgres, so a half-remembered word is usually enough. The filters work on their own too."
         />
-      ) : items.length === 0 ? (
+      ) : total === 0 ? (
         <EmptyState
           title="Nothing matched"
           description="Try a shorter word, or widen the filters."
         />
       ) : (
-        <ItemList items={items} today={today} />
+        <div className="grid gap-6">
+          {items.length > 0 ? (
+            <ItemSection title="Items" count={items.length}>
+              <ItemList items={items} today={today} />
+            </ItemSection>
+          ) : null}
+
+          {inventory.length > 0 ? (
+            <ItemSection title="In the kitchen" count={inventory.length}>
+              <InventoryResults items={inventory} today={today} />
+            </ItemSection>
+          ) : null}
+        </div>
       )}
     </>
   );

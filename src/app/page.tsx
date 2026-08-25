@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ItemList } from "@/components/items/item-list";
 import { ItemSection } from "@/components/items/item-section";
+import { UseSoonStrip } from "@/components/kitchen/use-soon-strip";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
@@ -8,6 +9,7 @@ import { formatLongDate } from "@/domain/shared/date";
 import { UPCOMING_WINDOW_DAYS } from "@/domain/today/today-view";
 import { getDb } from "@/server/db/client";
 import { getTodayData } from "@/server/items/item-service";
+import { getExpiringSoon } from "@/server/kitchen/inventory-service";
 
 /**
  * Today answers one question: what actually needs me right now.
@@ -16,13 +18,18 @@ import { getTodayData } from "@/server/items/item-service";
  * because a screen that shows everything is a screen nobody reads.
  */
 export default async function TodayPage() {
-  const { today, view } = await getTodayData(getDb());
+  const db = getDb();
+  const [{ today, view }, expiring] = await Promise.all([getTodayData(db), getExpiringSoon(db)]);
+
+  // Food about to be wasted is the only inventory Today shows, and it does not
+  // stop the page being empty of work.
+  const nothingToDo = view.totalSurfaced === 0 && expiring.items.length === 0;
 
   return (
     <>
       <PageHeader title="Today" description={formatLongDate(today)} />
 
-      {view.totalSurfaced === 0 ? (
+      {nothingToDo ? (
         <EmptyState
           title="Nothing needs you right now"
           description="No overdue work, nothing due today, and an empty inbox. Capture something above when it turns up."
@@ -55,6 +62,12 @@ export default async function TodayPage() {
           {view.upcoming.length > 0 ? (
             <ItemSection title={`Next ${UPCOMING_WINDOW_DAYS} days`} count={view.upcoming.length}>
               <ItemList items={view.upcoming} today={today} />
+            </ItemSection>
+          ) : null}
+
+          {expiring.items.length > 0 ? (
+            <ItemSection title="Use soon" count={expiring.items.length}>
+              <UseSoonStrip items={expiring.items} today={today} />
             </ItemSection>
           ) : null}
         </div>
