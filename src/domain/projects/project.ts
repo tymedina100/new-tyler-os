@@ -16,6 +16,16 @@ export interface Project {
   updatedAt: Date;
 }
 
+/**
+ * The least a project can be and still be referred to. Capture resolves
+ * `@kitchen` against a list of these, and the capture bar ships them to the
+ * browser to preview the result, so the shape is deliberately tiny.
+ */
+export interface ProjectRef {
+  id: string;
+  name: string;
+}
+
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   active: "Active",
   paused: "Paused",

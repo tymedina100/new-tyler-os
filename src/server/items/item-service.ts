@@ -1,4 +1,4 @@
-import { parseCaptureText } from "@/domain/capture/parse-capture";
+import { parseCapture } from "@/domain/capture/parse-capture";
 import type { ItemKind, ItemStatus, ItemWithRelations } from "@/domain/items/item";
 import { type ItemFilters, matchesItemFilters } from "@/domain/items/item-filters";
 import type { ItemLifecycle } from "@/domain/items/item-rules";
@@ -15,6 +15,7 @@ import { NotFoundError } from "@/domain/shared/errors";
 import { buildTodayView, type TodayView, UPCOMING_WINDOW_DAYS } from "@/domain/today/today-view";
 import type { Database } from "@/server/db/client";
 import * as repo from "@/server/items/item-repository";
+import { listProjectRefs } from "@/server/projects/project-repository";
 import { deleteOrphanedTags, ensureTags } from "@/server/tags/tag-repository";
 
 /**
@@ -25,15 +26,33 @@ import { deleteOrphanedTags, ensureTags } from "@/server/tags/tag-repository";
  * which is why the interesting behaviour is testable without a database.
  */
 
-/** Capture: the one path every piece of information enters TylerOS through. */
-export async function captureItem(db: Database, input: CaptureItemInput): Promise<string> {
-  const parsed = parseCaptureText(input.text);
+/**
+ * Capture: the one path every piece of information enters TylerOS through.
+ *
+ * The text is parsed for a date, a project and tags before anything is written,
+ * so "pay electric bill friday @Home #finance" arrives already filed. An inline
+ * `@project` wins over the page the capture came from: typing the reference is
+ * a more specific instruction than standing on a project screen.
+ *
+ * A parsed due date does **not** take the item out of the inbox. Its kind is
+ * still undecided, and `buildTodayView` already files a dated inbox item under
+ * its date rather than under "needs triage", so nothing is hidden by waiting.
+ */
+export async function captureItem(
+  db: Database,
+  input: CaptureItemInput,
+  now = new Date(),
+): Promise<string> {
+  const projects = await listProjectRefs(db);
+  const parsed = parseCapture(input.text, { today: todayIsoDate(now), projects });
+  const projectId = parsed.projectId ?? input.projectId;
 
   return db.transaction(async (tx) => {
     const id = await repo.insertItem(tx, {
       title: parsed.title,
-      status: initialCaptureStatus(input.projectId),
-      projectId: input.projectId,
+      status: initialCaptureStatus(projectId),
+      dueOn: parsed.dueOn,
+      projectId,
     });
 
     await attachTags(tx, id, parsed.tags);

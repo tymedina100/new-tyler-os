@@ -1,11 +1,23 @@
 import { asc, eq, sql } from "drizzle-orm";
-import type { Project } from "@/domain/projects/project";
+import type { Project, ProjectRef } from "@/domain/projects/project";
 import type { Database } from "@/server/db/client";
 import { type NewProjectRow, projects } from "@/server/db/schema";
 
 export async function findProjectById(db: Database, id: string): Promise<Project | null> {
   const [row] = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
   return row ?? null;
+}
+
+/**
+ * Just enough of a project to resolve an `@reference` typed into the capture
+ * bar. Every capture reads this, and the capture bar ships it to the browser to
+ * preview what will happen, so it deliberately carries nothing else.
+ */
+export async function listProjectRefs(db: Database): Promise<ProjectRef[]> {
+  return db
+    .select({ id: projects.id, name: projects.name })
+    .from(projects)
+    .orderBy(asc(projects.name));
 }
 
 /**

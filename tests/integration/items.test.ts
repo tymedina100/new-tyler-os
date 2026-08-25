@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { DomainError } from "@/domain/shared/errors";
 import * as itemService from "@/server/items/item-service";
+import { listProjects } from "@/server/projects/project-repository";
 import { listTagsWithUsage } from "@/server/tags/tag-repository";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 
@@ -67,6 +68,100 @@ describe("capture", () => {
 
     expect(item?.status).toBe("active");
     expect(item?.project?.name).toBe("Kitchen");
+  });
+});
+
+/**
+ * The parser itself is covered exhaustively by the domain tests. What can only
+ * be proven here is that a parsed capture actually reaches the columns: the
+ * date, the project foreign key and the tag join rows.
+ */
+describe("capture parsing", () => {
+  const tuesday = new Date(2026, 7, 25);
+
+  it("stores a natural-language date as a calendar date", async () => {
+    const id = await itemService.captureItem(
+      db(),
+      { text: "pay electric bill friday", projectId: null },
+      tuesday,
+    );
+    const item = await itemService.getItem(db(), id);
+
+    expect(item?.title).toBe("pay electric bill");
+    expect(item?.dueOn).toBe("2026-08-28");
+  });
+
+  it("resolves an inline @project against the existing projects", async () => {
+    const projectId = await createProject("Kitchen Refresh");
+    const id = await itemService.captureItem(
+      db(),
+      { text: "order worktop samples @kitchenrefresh", projectId: null },
+      tuesday,
+    );
+    const item = await itemService.getItem(db(), id);
+
+    expect(item?.title).toBe("order worktop samples");
+    expect(item?.projectId).toBe(projectId);
+    // A project is a home, so the item is already triaged.
+    expect(item?.status).toBe("active");
+  });
+
+  it("keeps an unknown @project in the title rather than losing it", async () => {
+    const id = await itemService.captureItem(
+      db(),
+      { text: "plant the bulbs @Gardening", projectId: null },
+      tuesday,
+    );
+    const item = await itemService.getItem(db(), id);
+
+    expect(item?.title).toBe("plant the bulbs @Gardening");
+    expect(item?.projectId).toBeNull();
+    expect(item?.status).toBe("inbox");
+  });
+
+  it("never creates a project just because one was referenced", async () => {
+    await itemService.captureItem(db(), { text: "plant the bulbs @Gardening", projectId: null });
+    expect(await listProjects(db())).toHaveLength(0);
+  });
+
+  it("stores a date, a project and tags from one capture", async () => {
+    const projectId = await createProject("Kitchen Refresh");
+    const id = await itemService.captureItem(
+      db(),
+      { text: "order the worktop @kitchen #home #urgent next friday", projectId: null },
+      tuesday,
+    );
+    const item = await itemService.getItem(db(), id);
+
+    expect(item?.title).toBe("order the worktop");
+    expect(item?.dueOn).toBe("2026-09-04");
+    expect(item?.projectId).toBe(projectId);
+    expect(item?.tags.map((tag) => tag.name).sort()).toEqual(["home", "urgent"]);
+  });
+
+  it("lets an inline @project override the project the capture came from", async () => {
+    const kitchen = await createProject("Kitchen Refresh");
+    const media = await createProject("Media");
+    const id = await itemService.captureItem(
+      db(),
+      { text: "watch Severance @Media", projectId: kitchen },
+      tuesday,
+    );
+    const item = await itemService.getItem(db(), id);
+
+    expect(item?.projectId).toBe(media);
+  });
+
+  it("leaves a dated capture in the inbox, because its kind is still unknown", async () => {
+    const id = await itemService.captureItem(
+      db(),
+      { text: "call the plumber tomorrow", projectId: null },
+      tuesday,
+    );
+    const item = await itemService.getItem(db(), id);
+
+    expect(item?.status).toBe("inbox");
+    expect(item?.dueOn).toBe("2026-08-26");
   });
 });
 
