@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import { isDomainError } from "@/domain/shared/errors";
+import { hasValidSession } from "@/server/auth/session-cookie";
 
 /**
  * The contract between server actions and the UI.
@@ -29,14 +30,30 @@ export function actionFailed(error: string, fieldErrors?: FieldErrors): ActionRe
 const UNEXPECTED_ERROR =
   "Something went wrong on the server. The details were written to the server log.";
 
+const NOT_AUTHENTICATED_ERROR = "Your session has ended. Sign in again.";
+
 /**
- * Wraps an action body, translating the three kinds of failure TylerOS has:
- * invalid input, a broken domain rule, and everything else.
+ * Wraps an action body, translating the four kinds of failure TylerOS has: no
+ * session, invalid input, a broken domain rule, and everything else.
+ *
+ * The session check is what makes every one of the 24 actions in
+ * `src/server/actions/` a protected route without any of them naming auth —
+ * `src/proxy.ts` is the optimistic check that keeps an unauthenticated request
+ * from ever reaching a page; this is the one Next's own authentication guide
+ * says every action needs regardless, because "a page-level authentication
+ * check does not extend to the Server Actions defined within it." The one
+ * action that must run without a session — signing in — does not call this
+ * function; see `src/server/actions/auth-actions.ts`. See ADR 030.
  */
 export async function runAction<T>(
   label: string,
   body: () => Promise<T>,
 ): Promise<ActionResult<T>> {
+  if (!(await hasValidSession(Date.now()))) {
+    console.error(`[tyleros] ${label} rejected: no valid session`);
+    return actionFailed(NOT_AUTHENTICATED_ERROR);
+  }
+
   try {
     return { ok: true, data: await body() };
   } catch (error) {
