@@ -1,13 +1,18 @@
 import "dotenv/config";
+import { chromium } from "@playwright/test";
 import postgres from "postgres";
+import { AUTH_STORAGE_STATE_PATH, E2E_AUTH_PASSPHRASE } from "./auth-fixtures";
 
 /**
- * Refuses to start the smoke suite unless the database is actually ready.
+ * Refuses to start the smoke suite unless the database is actually ready, and
+ * signs in once so every other spec inherits a working session.
  *
- * Without this, a missing DATABASE_URL surfaces as a browser timing out on a
- * 500 page, which reads like a broken application rather than a missing
- * prerequisite. Failing here, with the command to run, is the difference
- * between a useful suite and one that gets disabled.
+ * Without the database check, a missing DATABASE_URL surfaces as a browser
+ * timing out on a 500 page, which reads like a broken application rather than
+ * a missing prerequisite. Without the sign-in, every existing spec would need
+ * its own login step just to reach the screen it actually tests — this file
+ * does it once, by driving the real form, and saves the resulting cookie to
+ * `AUTH_STORAGE_STATE_PATH` for `playwright.config.ts` to hand to every test.
  */
 export default async function globalSetup(): Promise<void> {
   const url = process.env.DATABASE_URL;
@@ -43,5 +48,28 @@ export default async function globalSetup(): Promise<void> {
     );
   } finally {
     await sql.end({ timeout: 2 }).catch(() => undefined);
+  }
+
+  await signInOnce();
+}
+
+/**
+ * Drives the real `/login` form, exactly as a person would, and saves the
+ * cookie it produces. Not a shortcut through `signInAction` directly — this
+ * is also the first proof, before any spec runs, that the passphrase set on
+ * the dev server (`playwright.config.ts`) actually matches the one used here.
+ */
+async function signInOnce(): Promise<void> {
+  const browser = await chromium.launch();
+
+  try {
+    const page = await browser.newPage();
+    await page.goto("http://localhost:3000/login");
+    await page.getByLabel("Passphrase").fill(E2E_AUTH_PASSPHRASE);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL("http://localhost:3000/");
+    await page.context().storageState({ path: AUTH_STORAGE_STATE_PATH });
+  } finally {
+    await browser.close();
   }
 }

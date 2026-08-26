@@ -1,4 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import {
+  AUTH_STORAGE_STATE_PATH,
+  E2E_AUTH_PASSPHRASE,
+  E2E_SESSION_SECRET,
+} from "./e2e/auth-fixtures";
 
 /**
  * Smoke tests against a real database and a real browser.
@@ -9,6 +14,13 @@ import { defineConfig, devices } from "@playwright/test";
  *
  * Chromium only. This suite exists to prove TylerOS is wired together end to
  * end, not to test browser compatibility for a single-user personal app.
+ *
+ * The dev server this spins up is guarded, the same as any other TylerOS
+ * deployment — see docs/DECISIONS.md ADR 030. `global-setup.ts` signs in once
+ * through the real form and every spec inherits that session via
+ * `storageState`, so the five existing suites needed no change to keep
+ * running signed in. `auth.spec.ts` is the one file that deliberately opts out
+ * of that inherited session to exercise the unauthenticated paths.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -27,6 +39,7 @@ export default defineConfig({
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    storageState: AUTH_STORAGE_STATE_PATH,
   },
 
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
@@ -38,5 +51,10 @@ export default defineConfig({
     timeout: 180_000,
     stdout: "pipe",
     stderr: "pipe",
+    env: {
+      ...process.env,
+      AUTH_PASSPHRASE: E2E_AUTH_PASSPHRASE,
+      SESSION_SECRET: E2E_SESSION_SECRET,
+    },
   },
 });
