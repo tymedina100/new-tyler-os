@@ -90,8 +90,13 @@ test("inventory is added, filtered by location, edited and used up", async ({ pa
   ).toBeVisible();
 
   // --- found by the one search box, labelled as kitchen, not as an item ---
+  // The group was "In the kitchen" when it was the only thing beside items.
+  // Since 0.6 search reaches three domains and the headings are parallel
+  // nouns - Items, Projects, Kitchen - but the point of the assertion is
+  // unchanged: this record is shown as kitchen, and never folded into items.
   await page.goto(`/search?q=${encodeURIComponent(RUN)}`);
-  await expect(page.getByRole("heading", { name: /In the kitchen/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Kitchen/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Items/i })).toHaveCount(0);
   await expect(page.getByRole("link", { name: new RegExp(name) }).first()).toBeVisible();
 
   // --- used up: the record goes and the shopping list gains a line --------
