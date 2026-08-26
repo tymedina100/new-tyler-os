@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { AddInventoryItemInput } from "@/domain/kitchen/inventory-schema";
 import * as itemService from "@/server/items/item-service";
 import * as kitchen from "@/server/kitchen/inventory-service";
+import { searchEverything } from "@/server/search/search-service";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 
 /**
@@ -321,7 +322,8 @@ describe("the shopping list", () => {
   it("is findable by the existing item search, with no kitchen query involved", async () => {
     await kitchen.addToShoppingList(db(), "Sourdough bread");
 
-    const found = await itemService.findItems(db(), "sourdough", {});
-    expect(found.map((i) => i.title)).toEqual(["Sourdough bread"]);
+    const results = await searchEverything(db(), "sourdough");
+    const items = results.groups.find((group) => group.domain === "item");
+    expect(items?.hits.map((hit) => hit.title)).toEqual(["Sourdough bread"]);
   });
 });

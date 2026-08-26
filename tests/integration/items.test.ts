@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { DomainError } from "@/domain/shared/errors";
 import * as itemService from "@/server/items/item-service";
+import { searchEverything } from "@/server/search/search-service";
 import { listProjects } from "@/server/projects/project-repository";
 import { listTagsWithUsage } from "@/server/tags/tag-repository";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
@@ -329,7 +330,15 @@ async function createProject(name: string): Promise<string> {
   return create(db(), { name, description: null, status: "active" });
 }
 
-/** Search as the UI performs it: the universal retrieval path, no filters. */
-function searchFor(query: string) {
-  return itemService.findItems(db(), query, {});
+/**
+ * Item search as the UI performs it.
+ *
+ * Through `searchEverything`, because that is the only path the Search page
+ * takes since 0.6 — and reading the item group back out keeps every assertion
+ * below about items exactly as it was. A group that matched nothing is absent
+ * rather than empty, which is what makes the "no results" case an empty list.
+ */
+async function searchFor(query: string) {
+  const results = await searchEverything(db(), query);
+  return results.groups.find((group) => group.domain === "item")?.hits ?? [];
 }

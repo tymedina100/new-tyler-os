@@ -1,4 +1,4 @@
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, or, type SQL, sql } from "drizzle-orm";
 import type { Project, ProjectRef } from "@/domain/projects/project";
 import type { Database } from "@/server/db/client";
 import { type NewProjectRow, projects } from "@/server/db/schema";
@@ -39,6 +39,49 @@ export async function listSuggestibleProjectRefs(
     .where(inArray(projects.status, ["active", "paused"]))
     .orderBy(asc(sql`lower(${projects.name})`))
     .limit(limit);
+}
+
+/**
+ * Substring search over a project's name and description.
+ *
+ * `ILIKE` rather than a `tsvector`, for the reason ADR 019 gave the kitchen:
+ * project names are one or two short words, somebody looking for "Desk Setup"
+ * types "desk", and full-text search matches whole lexemes so it would miss the
+ * half-word. A personal system has a few dozen projects, which is a sequential
+ * scan too small to measure — an index that cannot serve a leading wildcard
+ * would be decoration, and a generated column to maintain for it more so.
+ *
+ * Ordering is left to the caller. Search ranks its own results across every
+ * domain at once, and a repository that also had an opinion would be quietly
+ * competing with it. See src/domain/search/search-ranking.ts.
+ */
+export async function searchProjects(
+  db: Database,
+  query: string,
+  limit: number,
+): Promise<Project[]> {
+  return db.select().from(projects).where(nameOrDescriptionMatch(query)).limit(limit);
+}
+
+/**
+ * Every word has to appear somewhere, in either field, in any order — the same
+ * rule the kitchen uses, so "setup desk" and "desk setup" both find the project
+ * and search does not behave differently depending on which domain you are in.
+ */
+function nameOrDescriptionMatch(query: string): SQL {
+  const terms = query.split(/\s+/).filter((term) => term.length > 0);
+
+  const conditions = terms.map((term) => {
+    const pattern = `%${term.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+    const match = or(ilike(projects.name, pattern), ilike(projects.description, pattern));
+
+    if (match === undefined) throw new Error("Project search built an empty condition.");
+    return match;
+  });
+
+  const all = and(...conditions);
+  if (all === undefined) throw new Error("Project search built an empty condition.");
+  return all;
 }
 
 /**

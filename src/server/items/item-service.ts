@@ -1,6 +1,5 @@
 import { parseCapture } from "@/domain/capture/parse-capture";
 import type { ItemKind, ItemStatus, ItemWithRelations } from "@/domain/items/item";
-import { type ItemFilters, matchesItemFilters } from "@/domain/items/item-filters";
 import type { ItemLifecycle } from "@/domain/items/item-rules";
 import {
   applyStatusChange,
@@ -436,21 +435,14 @@ async function attachTags(db: Database, itemId: string, names: readonly string[]
 }
 
 /**
- * The universal retrieval path.
+ * Retrieval no longer lives here.
  *
- * With a search term, Postgres ranks the matches and any further filters narrow
- * that ranked list in memory - re-querying would discard the ranking. Without
- * one, the filters go straight to SQL where they belong.
+ * `findItems` used to be "the universal retrieval path", back when universal
+ * meant items. It does not any more: a query now reaches the projects and the
+ * kitchen as well, and composing that belongs to something that answers to
+ * none of the three. See `src/server/search/search-service.ts` and ADR 028.
+ *
+ * Items are still searched by `searchItems` in this domain's own repository —
+ * the `tsvector` and its `ILIKE` fallback are unchanged and still item-owned.
+ * What went away is the item spine pretending to be the whole system.
  */
-export async function findItems(
-  db: Database,
-  search: string | undefined,
-  filters: ItemFilters,
-): Promise<ItemWithRelations[]> {
-  if (search) {
-    const results = await repo.searchItems(db, search);
-    return results.filter((item) => matchesItemFilters(item, filters));
-  }
-
-  return repo.listItems(db, filters);
-}
