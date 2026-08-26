@@ -75,9 +75,23 @@ lost:
 22. a failed save keeps the draft and says what was wrong
 23. several saves in one sitting each land
 
+`e2e/suggestions.spec.ts` covers AI suggestions — **with no AI in the run**. The
+provider is not mocked, it is absent: proposals are written straight into
+`item_suggestions`, which is exactly what a real pass leaves behind, and what is
+asserted is everything that happens afterwards.
+
+24. a suggestion is offered, accepted, and applied to the item
+25. a suggestion can be waved away without touching the item
+26. a stale suggestion cannot undo a choice the user made first
+
+A spec that called a live model would fail on a Tuesday because a sentence came
+back `note` instead of `task`. The classification itself is covered where it can
+be covered honestly: pure rules in `src/domain/suggestions/`, and a substituted
+`Classifier` in `tests/integration/suggestions.test.ts`.
+
 They **write to the database they point at**. Everything they create is prefixed
-`smoke-<run>`, `kt-<run>`, `rc-<run>` or `ed-<run>` and deleted afterwards,
-but point `DATABASE_URL` at a development database.
+`smoke-<run>`, `kt-<run>`, `rc-<run>`, `ed-<run>` or `sg-<run>` and deleted
+afterwards, but point `DATABASE_URL` at a development database.
 
 This suite is deliberately outside `pnpm check`. A gate that needs a database is
 a gate that gets skipped, and then the fast tests rot with it.
@@ -221,6 +235,31 @@ Run `pnpm db:seed` first so there is realistic content to judge.
 - [ ] Tab reaches every control; the focus ring is always visible.
 - [ ] At 375px wide: bottom tab bar, nothing clipped, no horizontal scroll.
 - [ ] In both OS colour schemes, nothing is unreadable.
+
+**AI suggestions — start by checking they are not there**
+
+The first two apply to every machine. The rest need `ANTHROPIC_API_KEY` set, and
+are skipped otherwise — say so rather than implying they passed.
+
+- [ ] With no `ANTHROPIC_API_KEY`, capture several items and open the inbox.
+      There is no "Suggested" row anywhere, and the server log says nothing
+      about suggestions. This is the shipping default.
+- [ ] Set `AI_SUGGESTIONS=off` with a key present. Same result.
+- [ ] With a key set, capture "replace air filter". Enter returns instantly —
+      the box clears with no perceptible pause. That is the requirement; a
+      suggestion appearing later is a bonus.
+- [ ] Open the inbox a moment later. Any proposal is a **dashed** chip, plainly
+      different from the solid badges beside it.
+- [ ] Accept one chip and ignore the others. Only that one applies; the rest stay.
+- [ ] Capture `clean bathroom every tuesday @Home #urgent`. The project, the
+      tag, the repeat and the date are all the parser's, and no suggestion
+      contradicts any of them.
+- [ ] Change a suggested field yourself, then accept the stale chip. It says
+      your own choice was kept, and the item does not move.
+- [ ] Press "Not now". The row goes, and does not come back on reload.
+- [ ] Break the key deliberately (edit a character) and capture. The capture
+      lands normally, no error reaches the screen, and the server log shows one
+      line naming a failure category.
 
 **Failure states — the ones nobody checks**
 
@@ -388,3 +427,66 @@ The parser's own edges are covered by fast tests rather than by hand: 56 in
 `recurrence-phrase.test.ts` and 37 more in `parse-capture.test.ts`, including
 every phrase in the grammar, every alias, the false positives above, out-of-range
 intervals, and month, week and year boundaries.
+
+### 0.5 — AI-assisted capture suggestions · 2026-08-26
+
+Gate and smoke green. Manual verification was **partial by necessity**, and the
+split matters more than usual for this milestone, so it is spelled out.
+
+**Gate.** 24 test files, 578 tests, up from 21 and 479. No network, no database,
+no API key — unchanged, and that is the point: the provider seam is a function
+parameter, so a fake is a lambda rather than a mocked module.
+
+**Smoke.** All 26 specs green against a remote PostgreSQL 18, including the 23
+that predate this milestone. They ran with **no `ANTHROPIC_API_KEY` set**, so
+that pass is itself the AI-disabled verification: capture, triage, recurrence,
+kitchen and the editor draft all behave exactly as they did in 0.4.1.
+
+**Migration.** `0003_high_tombstone.sql` applied to real PostgreSQL 18;
+`pnpm check:env` reports 4 of 4 and correctly reported 3 of 4 beforehand.
+
+**Live provider: not verified, because there is nothing to verify with.** No
+`ANTHROPIC_API_KEY` exists in the environment, the user profile, the machine, or
+`.env`. Application API access is a separate paid product from a Claude
+subscription, so obtaining one is a billing decision that is not this
+milestone's to make. Everything up to that line is built and tested; the request
+itself has never been sent to Anthropic. The prompt, the wire shape and the
+response handling are covered by their own tests, but nobody has yet seen this
+code get a real answer.
+
+**What the browser confirmed, and what it could not.** The inbox with AI
+unconfigured renders identically to 0.4.1 — no suggestion row, and the capture
+action logged nothing about suggestions. With fixture rows inserted, the row
+rendered with correct semantics ("Suggested", "Set type to Task", "File under
+X", "Add the tag y", "Dismiss suggestion: …", "Not now") and the chips computed
+as `border-style: dashed` against the real badges' `solid`.
+
+Interactive acceptance could **not** be driven in the in-app browser pane: it
+never hydrated there (`__reactProps` absent, HMR socket refused, and every
+element inside `main` reporting a zero-size rect — including the pre-existing
+`h1`, so not a fault in the new component). Capture still worked there through
+progressive enhancement, which is a decent accident: it demonstrates the form
+POST path works with no JavaScript at all. The click-through was verified in
+Playwright's Chromium instead, three times over, which is the stronger evidence
+anyway.
+
+**Two things measurement caught that review had not:**
+
+- The chips were **20px tall**, under the 24px minimum a tap target wants. Found
+  by measuring `boundingBox()` at 375px rather than by looking, which is the
+  only way that particular defect is ever found. Now 24px, at both widths, with
+  zero horizontal overflow.
+- `getByLabel("Type")` matched the chip labelled "Set type to Task" as well as
+  the editor's `<select>`. A test-authoring fault rather than a product one, but
+  it is a fair warning that two controls on one page now answer to "type".
+
+**One bug caught before any database saw it.** The first version of the unique
+proposal index was a single index over `coalesce(kind::text, project_id::text,
+tag_name)`. Postgres rejects it — casting an enum to text is only STABLE, not
+IMMUTABLE. The PGlite harness applies migrations from scratch on every run, so
+this failed in `pnpm test` seconds after being written rather than on a real
+database later. That is the whole argument for that harness, paid back again.
+
+**Skipped on purpose:** the live-provider checklist items above, and the OS
+colour-scheme pass for the new row (it uses only existing semantic tokens and
+introduces no colour of its own).

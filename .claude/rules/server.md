@@ -13,6 +13,7 @@ degrades.
 | `*-repository.ts` | Speaks SQL. Returns domain shapes. **No business rules.**  |
 | `*-service.ts`    | Orchestrates: load state → ask the domain → write a patch. |
 | `actions/*.ts`    | `"use server"`. Validates input, calls a service.          |
+| `ai/*.ts`         | The only provider-aware code. Called by services, never UI. |
 
 ## Invariants
 
@@ -41,9 +42,15 @@ degrades.
 - Querying from a route component or an action directly instead of going through
   a repository, because it is "just one select". The next change needs it in two
   places and the SQL diverges.
-- Adding an `ai/` module that imports from `src/domain/`. AI belongs in
-  `src/server/ai/*` (does not exist yet) and may only be imported _by_ the
-  server layer, never _by_ the domain.
+- Letting `src/domain/` import from `src/server/ai/*`. The rules about AI —
+  what may be asked, what grounds, whether a suggestion still applies — are pure
+  and live in `src/domain/suggestions/`. Only the call itself is in `ai/`.
+- Giving `src/server/ai/` a server action, or importing it from a component.
+  `ai-config.ts` reads the API key; a client component importing it would ship
+  that key to the browser. Lint forbids it — see ADR 026.
+- Reaching for an interface or a registry when a second AI provider is
+  imagined. `Classifier` is a **function type passed as an argument**, the same
+  shape as `db: Database`. One implementation, and a lambda in tests.
 - Widening `Database` or casting it to a concrete driver type to make a call
   typecheck. If the abstract type does not have the method, use a `sql` fragment
   through `db.execute`.

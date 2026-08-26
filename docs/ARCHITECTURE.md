@@ -74,6 +74,7 @@ the database, which is why its tests run in milliseconds with no setup.
 | `agenda/`               | The days ahead, one list per domain that has dates                  |
 | `projects/`             | Projects and progress                                               |
 | `tags/`                 | Tag name normalisation                                              |
+| `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds   |
 | `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly               |
 | `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                   |
 
@@ -163,11 +164,14 @@ That is a rule about drafts, not a client store — see ADR 024.
 
 ```
 projects ──1:N── items ──N:M── tags
-                   |
-                   |    kind, status, due_on
-                   |
-                   └──1:1── item_recurrence
-                              frequency, interval, anchor_on, last_completed_on
+   |               |
+   |               |    kind, status, due_on
+   |               |
+   |               ├──1:1── item_recurrence
+   |               |          frequency, interval, anchor_on, last_completed_on
+   |               |
+   └──────────────1:N── item_suggestions
+                              field, kind | project_id | tag_name, status
 
 kitchen_inventory        stands alone, on purpose
   name, location, quantity, unit, expires_on
@@ -197,6 +201,16 @@ table, and counting from the anchor rather than from the previous occurrence is
 what stops a monthly repeat drifting backwards every short February. Completing
 a repeating item completes the current occurrence and moves `due_on` on; there
 is no path in the application that permanently finishes one. See ADR 022.
+
+**item_suggestions** — what AI proposed about an item, and what the user did
+about it. **One row per proposed value**, not per model response, which is what
+makes partial acceptance fall out for free: accepting the project has no opinion
+about the tags beside it. Exactly one of `kind`, `project_id` and `tag_name` is
+set per row, decided by `field` and enforced by a check constraint — a tagged
+union, not the mostly-null columns ADR 001 warns about. Each row carries the
+value its own field held when it was proposed, so accepting a stale suggestion
+retires it instead of undoing a newer manual choice. The prompt and the raw
+response are **not** stored. See ADR 027.
 
 **kitchen_inventory** — the first structured domain, and deliberately unrelated
 to everything above: no foreign keys, no tags, no project. `quantity` is nullable
@@ -251,22 +265,43 @@ There are still no component tests. Rendering assertions on a UI this young cost
 more than they catch; the smoke suite covers whether the wiring works, and the
 manual checklist covers whether it is pleasant to use.
 
-## How future AI connects without contaminating the domain
+## How AI connects without contaminating the domain
 
-Designed as a seam, **not built**:
+Designed as a seam in 0.1, **built in 0.5**, and it went in where it was drawn.
 
-1. AI code lives in `src/server/ai/*`. It may be imported _by_ `src/server/`, and
-   never _by_ `src/domain/`. The lint rule already forbids the reverse.
-2. AI output is a **proposal**, never an overwrite. A future `item_suggestions`
-   table holds suggested kinds, projects and tags for the user to accept or
-   ignore. User-entered data is never silently replaced by a model's guess.
-3. Semantic search becomes a `pgvector` column alongside `search_vector`, and the
-   retrieval service chooses a strategy. Owning the SQL is what makes this a
-   migration rather than a rewrite.
+1. **AI code lives in `src/server/ai/*`**, imported _by_ `src/server/` and never
+   _by_ `src/domain/`. Three files: configuration, the provider call, the prompt.
+2. **AI output is a proposal, never an overwrite.** `item_suggestions` holds
+   proposed kinds, projects and tags for the user to accept or ignore. Applying
+   one goes through the ordinary item service, so there is no second way for an
+   item to change and no rule an AI path could skip.
+3. Semantic search is still ahead: a `pgvector` column alongside `search_vector`,
+   with the retrieval service choosing a strategy. Owning the SQL is what makes
+   that a migration rather than a rewrite.
 
-No interfaces, adapters or strategy patterns exist for this yet. Writing an
-abstraction for a single hypothetical implementation is the trap; the seam is the
-dependency rule, which costs nothing today.
+The rules of the boundary, all of them enforced rather than described:
+
+- **The domain never imports it.** Lint. The rules themselves — what to ask, what
+  survived grounding, whether accepting still holds — are pure functions in
+  `src/domain/suggestions/`, so the interesting behaviour of a non-deterministic
+  subsystem tests in milliseconds with no model, no network and no database.
+- **The UI never imports it.** Lint, in the other direction and for a different
+  reason: `ai-config.ts` reads the API key, and a client component importing it
+  would bundle that key into browser JavaScript. Every other server module is
+  reachable from a component through a `"use server"` action; this one is not
+  reachable at all.
+- **The provider is a function parameter** — `Classifier`, exactly as `db` is. Not
+  an interface, an adapter or a registry: one implementation, and a lambda in
+  tests. That is why `pnpm test` still opens no sockets.
+
+**Deterministic facts win by omission.** A value the capture parser resolved is
+never put in the request, so there is no arbitration step in which a model's
+answer could beat the user's own syntax. The model is simply not asked.
+
+**Nothing AI-shaped is on the critical path.** The suggestion runs from `after()`,
+once the capture response has already been sent. With no `ANTHROPIC_API_KEY` no
+call is made and no row is written — which is how this repository ships, and the
+state its browser suite runs in. See ADRs 026 and 027.
 
 ## Traps this design is built against
 
@@ -274,6 +309,8 @@ dependency rule, which costs nothing today.
 | ----------------------------- | ------------------------------------------------------------------- |
 | Unrelated CRUD pages          | One Item spine; the inbox is a status                               |
 | AI dependence                 | No AI in the core; every feature works without it                   |
+| AI overwriting the user       | It proposes rows; only acceptance writes, and stale never wins      |
+| A key in browser JavaScript   | Lint forbids UI importing `src/server/ai/*`; verified to fire       |
 | Hard to migrate               | Plain SQL migrations, owned and readable                            |
 | Hard to test                  | Pure domain; `db` passed as an argument                             |
 | Tight coupling                | One-way layering, enforced by lint                                  |

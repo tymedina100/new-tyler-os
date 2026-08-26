@@ -96,7 +96,11 @@ export function ItemSuggestions({
             onClick={() => accept(suggestion)}
             disabled={isPending}
             aria-label={acceptLabel(suggestion)}
-            className="hover:text-foreground inline-flex items-center gap-1 rounded-l py-1 pr-1 pl-1.5 leading-none font-medium transition-colors disabled:cursor-not-allowed"
+            // `min-h-6` rather than padding alone: at this type size the chip
+            // came out 20px tall, under the 24px minimum a target needs to be
+            // comfortably tappable. Measured, not guessed — see 0.5 in
+            // docs/VERIFICATION.md.
+            className="hover:text-foreground inline-flex min-h-6 items-center gap-1 rounded-l pr-1 pl-1.5 leading-none font-medium transition-colors disabled:cursor-not-allowed"
           >
             <SuggestionIcon suggestion={suggestion} />
             {describe(suggestion)}
@@ -113,7 +117,7 @@ export function ItemSuggestions({
             onClick={() => dismiss(suggestion.id)}
             disabled={isPending}
             aria-label={`Dismiss suggestion: ${describe(suggestion)}`}
-            className="text-muted-foreground/50 hover:text-foreground focus-visible:text-foreground rounded-r px-1 py-1 transition-colors disabled:cursor-not-allowed"
+            className="text-muted-foreground/50 hover:text-foreground focus-visible:text-foreground inline-flex min-h-6 min-w-6 items-center justify-center rounded-r transition-colors disabled:cursor-not-allowed"
           >
             <X aria-hidden className="size-3" />
           </button>
@@ -124,7 +128,7 @@ export function ItemSuggestions({
         type="button"
         onClick={dismissAll}
         disabled={isPending}
-        className="hover:text-foreground rounded px-1 py-0.5 underline underline-offset-2 transition-colors disabled:cursor-not-allowed"
+        className="hover:text-foreground inline-flex min-h-6 items-center rounded px-1 underline underline-offset-2 transition-colors disabled:cursor-not-allowed"
       >
         Not now
       </button>

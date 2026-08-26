@@ -15,10 +15,9 @@ tracks the current state of your life, and — eventually — helps you decide a
 act on it. Single-user, self-hosted, no accounts, no telemetry.
 
 Those three are in order, and the order is the plan: capture first, because
-nothing else works without it; then the state of things, which is what structured
-domains like the kitchen record; and only over a system already worth keeping
-true, help deciding. Nothing in that last part is built, and none of it is a
-reason to add abstractions today.
+nothing else works without it; then the state of things, which structured domains
+like the kitchen record; and only over a system worth keeping true, help deciding.
+That last part is barely begun and is no reason to add abstractions.
 
 ## Product philosophy
 
@@ -41,18 +40,14 @@ technical grounds but fails one of these, the philosophy wins.
 search query, one spine that modules extend rather than fork.
 
 Structured records — kitchen inventory, warranties, receipts — are **not items**
-and get their own tables. Mostly-null columns appearing on `items` is the signal
-that this boundary is being crossed.
+and get their own tables. Mostly-null columns on `items` are the signal that this
+boundary is being crossed.
 
-0.3 tested this for real and it held: `kitchen_inventory` is its own table and
-`items` gained nothing. The shopping list went the other way for the same reason
-— buying something is an intention, so it is an item with `kind = 'purchase'`.
-"Buy more olive oil" is an item; the jar in the pantry is not.
-
-0.4 tested the other half. A repeating task **is** a captured intention, so it
-stays an item — but the four fields saying how it repeats went into
-`item_recurrence`, a 1:1 extension table. Three or more fields of one concept's
-own is the line. See ADR 022.
+Three milestones have tested this and `items` has not gained a column since 0.1.
+A jar of olive oil is not an item (`kitchen_inventory`, 0.3) but buying one is
+(`kind = 'purchase'`). A repeat stays an item; its four schedule fields went to
+`item_recurrence` (0.4) — three fields of one concept's own is the line. What a
+model guessed is not a property either (`item_suggestions`, 0.5). ADRs 019, 027.
 
 ## Layers
 
@@ -72,18 +67,17 @@ Dependencies run **one way**. ESLint enforces it, so a violation fails
 Deciding where a change belongs: a rule goes in `domain`, a query in a
 repository, orchestration in a service, rendering in `app`.
 
-Each layer's detailed conventions live in a path-scoped rule that loads by itself
-when you open a matching file: `.claude/rules/domain.md`,
-`.claude/rules/server.md`, `.claude/rules/ui.md`, `.claude/rules/database.md`,
-`.claude/rules/testing.md`. Read one directly if you are planning work in that
-area before opening any of its files.
+Each layer's conventions live in a path-scoped rule that loads by itself when you
+open a matching file: `.claude/rules/domain.md`, `.claude/rules/server.md`,
+`.claude/rules/ui.md`, `.claude/rules/database.md`, `.claude/rules/testing.md`.
+Read one directly if you are planning work in that area before opening its files.
 
 ## Repository map
 
 | Path              | Contents                                                                                                             |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `src/domain/`     | Types, Zod schemas, pure rules. Tests sit beside the source                                                          |
-| `src/server/`     | `db/`, repositories, services, `actions/`, `env.ts`                                                                  |
+| `src/server/`     | `db/`, repositories, services, `actions/`, `ai/` (provider-only), `env.ts`                                          |
 | `src/app/`        | Routes. `page.tsx` is Today; one folder per screen                                                                   |
 | `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`, `agenda/`                                             |
 | `src/lib/`        | Framework-adjacent helpers only (`cn`, search params). Not a dumping ground — a domain concept goes in `src/domain/` |
@@ -110,9 +104,8 @@ pnpm db:seed          # realistic sample data
 is deliberately outside it. Setup for both supported environments — local Docker,
 and no-admin with a remote Postgres — is in `README.md`.
 
-**If the app will not start, run `pnpm check:env` before debugging the code.**
-Not every machine here has a database; a failing page is far more often a missing
-`DATABASE_URL` than a bug.
+**If the app will not start, run `pnpm check:env` before debugging the code.** A
+failing page is far more often a missing `DATABASE_URL` than a bug.
 
 ## Engineering rules
 
@@ -124,13 +117,13 @@ Not every machine here has a database; a failing page is far more often a missin
   `package.json` does the job. Check first; say why in the commit.
 - **No large files in `src/`.** Past ~250 lines, split by concept. (CLI scripts
   under `scripts/` are lists of independent checks and read fine longer.)
-- **Prefer an explicit domain concept to a generic utility.** `buildTodayView`
-  beats `groupBy`.
+- **Prefer a domain concept to a generic utility.** `buildTodayView` > `groupBy`.
 - **Naming:** files `kebab-case`; components `PascalCase` named exports; database
   `snake_case` plural. Say what a thing is — `item-repository.ts`, not `utils.ts`.
 - **Do not add** authentication, an API layer, a client state library,
-  multi-tenancy, a plugin system, or AI. Each is a recorded decision in
-  `docs/DECISIONS.md`, not an oversight.
+  multi-tenancy, or a plugin system — each a recorded decision, not an oversight.
+- **AI may only propose.** It never overwrites, never blocks a flow, and is never
+  required. Everything works with it switched off, which is the default.
 
 ## Protecting the architecture from drift
 
@@ -138,23 +131,20 @@ The main risk to this codebase is not a bug. It is many sessions each making a
 locally reasonable choice that quietly replaces an established pattern.
 
 1. **Read the existing implementation before introducing a new pattern.** This
-   codebase is small enough to read. Find how it is already done and extend that.
-2. **Read the relevant ADRs before changing an architectural area.** Look for the
-   area in `docs/DECISIONS.md`. If it names a rejected alternative, that
-   alternative is not an improvement to propose again.
+   codebase is small enough to read. Find how it is done and extend that.
+2. **Read the relevant ADRs before changing an architectural area.** If
+   `docs/DECISIONS.md` names a rejected alternative, it is not one to re-propose.
 3. **"Also reasonable" is not a reason to replace a decision.** Only a concrete
    problem with the current approach is. Say what the problem is.
 4. **No broad refactors during feature work.** Notice things and mention them;
    change them in their own commit.
-5. **Write an ADR when you make a genuinely significant decision** — a new
-   dependency, a boundary moving, a pattern that will be copied. Same change, not
-   later.
+5. **Write an ADR for a genuinely significant decision** — a new dependency, a
+   boundary moving, a pattern that will be copied. Same change, not later.
 6. **Keep the docs true in the same change.** Architecture edits update
    `docs/ARCHITECTURE.md`; a shipped milestone updates `docs/ROADMAP.md` and the
    line below. `pnpm check:context` catches broken references, not stale prose.
 7. **Run `pnpm check` before calling work done.** Fix failures rather than
-   documenting them. If UI behaviour changed, also see
-   `docs/VERIFICATION.md`.
+   documenting them. If UI behaviour changed, see `docs/VERIFICATION.md`.
 
 ## Where knowledge lives
 
@@ -172,28 +162,38 @@ Put information in one place, and reference it from the others.
 | What changed and when                    | git history — not a doc            |
 
 **Critical project truths belong in this repository, never only in session
-memory.** Auto memory is useful for machine-specific facts and working
-preferences; if something must survive a fresh clone, commit it.
+memory.** Auto memory suits machine-specific facts; if something must survive a
+fresh clone, commit it.
 
 **Engineering context is not personal data.** Do not add facts about Tyler's
-life, habits or schedule to these files to help Claude "know the user" — TylerOS
-itself is the system responsible for storing personal context. These files
-describe how to build it.
+life, habits or schedule here to help Claude "know the user" — TylerOS itself is
+the system responsible for personal context. These files say how to build it.
 
 ## Current milestone
 
-**0.4 — Recurrence and time. Shipped.** Items can repeat; completing one
-completes **the current occurrence** and moves it to the next, anchored to the
-schedule rather than to when it was done. No occurrence rows exist — future dates
-are computed from `item_recurrence`, a 1:1 extension table, so `items` still has
-no new columns. `/upcoming` shows the next fortnight, each dated domain keeping
-its own list. ADRs 022–023.
+**0.4 / 0.4.1 — Recurrence, then daily-use hardening. Shipped.** Items repeat;
+completing one completes **the current occurrence**, anchored to the schedule not
+to when it was done. No occurrence rows — dates are computed from
+`item_recurrence`. A repeat can be typed into capture. The editor owns its submit,
+because React resets a form driven by its `action` prop. ADRs 022–025.
 
-**0.4.1 — Daily-use hardening. Shipped.** A repeat can be typed into the capture
-bar ("take trash out every tuesday"), using the same anchor and persistence path
-as the editor; anything outside a small closed grammar stays as title text. The
-editor now owns its own submit, because a form driven by React's `action` prop is
-reset when the action resolves — which was wiping edits made during a save. ADRs
-024–025.
+**0.5 — AI-assisted capture suggestions. Shipped.** The first AI here, under one
+rule: **AI may propose, the user decides, deterministic facts win.**
 
-**0.5 is not started**; it adds AI strictly as a proposer. See `docs/ROADMAP.md`.
+A fresh capture may get proposed kind, project and tags in `item_suggestions` —
+one row per proposed value, so each is accepted or ignored alone. Nothing applies
+until accepted, through the ordinary item service. Each row stores what its field
+held when proposed, so accepting a stale one **retires it rather than undoing a
+newer manual choice**. Precedence is by **omission**: anything the parser
+resolved is never in the request, so no arbitration step exists for a model to
+win. The vocabulary is closed — kind enum, live project names, existing tags —
+and nothing that fails to ground is repaired. It runs from `after()`, so Enter
+never waits.
+
+`src/server/ai/` is the only provider-aware code and the rules are pure in
+`src/domain/suggestions/`. The provider is a **function parameter**, like `db` —
+no interface, no registry. Lint forbids UI importing `src/server/ai/*`: that puts
+the API key in browser JavaScript. **With no `ANTHROPIC_API_KEY` this is inert**,
+which is how the repo ships. ADRs 026–027.
+
+**Next is retrieval** — `pgvector` semantic search. See `docs/ROADMAP.md`.

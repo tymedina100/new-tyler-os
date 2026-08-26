@@ -633,3 +633,113 @@ what makes completion, skipping, Upcoming and the badges work with no new code.
 loses it. That is ADR 018's trade-off applied to repeats, and the preview is the
 mitigation: it spells the schedule out as "Every Tuesday" before Enter, where a
 bare "Weekly" would leave the reader unsure which day it landed on.
+
+---
+
+## 026 · One AI call, behind a function type, with no SDK
+
+**Accepted** · 0.5
+
+TylerOS's entire AI surface is one non-streaming `POST /v1/messages` in
+`src/server/ai/anthropic-messages.ts`, reached through a `Classifier` function
+type. It classifies one captured line against a closed vocabulary. There is no
+second turn, no tool use, no memory, no retrieval and no agent.
+
+**No provider SDK.** `@anthropic-ai/sdk` was considered and rejected on three
+grounds. The request is a small JSON body that `fetch` sends natively on Node 22,
+so nothing in `package.json` was missing. The SDK's headline feature here —
+automatic retries — is actively wrong for an optional suggestion, which should
+stop quietly rather than re-bill on its own initiative. And a `dependencies` entry
+is bundled into every server build, for a feature that ships switched off.
+
+The cost is real and accepted: auth headers and the error taxonomy are ours. Both
+are about fifteen lines, and the taxonomy had to be written anyway, because the
+failure categories are what the log prints.
+
+**No abstraction for a second provider.** `Classifier` is a *function type passed
+as an argument*, exactly as `db: Database` is — not an interface, an adapter, a
+strategy or a registry. One implementation calls Anthropic; tests pass a lambda.
+If a second provider ever arrives it will be a second function, and the seam is
+already there. ADR 025 rejected a parser registry for the same reason.
+
+**Considered and rejected:** the SDK; `output_config.format` structured outputs
+(the wire shape could not be verified against a live API from the machine this was
+built on, and a robust parse of a shape that *could* be verified beats guessing —
+malformed output is a required-handled case regardless); a tool definition used
+purely as an output schema (tool use is out of scope for this milestone by
+instruction, and using one as a JSON schema is that in all but name); mocking the
+provider by module interception in tests.
+
+**The key.** It is read in `ai-config.ts`, passed to one function, put in one
+header, and never stored, returned, logged or attached to an error. Every failure
+value is a fixed member of a closed union, so no provider text can reach a log.
+
+`server-only` would have made a UI import of that file a build error, and was
+tried. Next resolves it internally but Vitest does not, so it is a dependency that
+only looks free — it broke `pnpm test` immediately. The enforcement is instead a
+lint rule forbidding `@/server/ai/*` from `src/components/**` and `src/app/**`,
+which is how every other boundary in this repository is enforced, costs nothing,
+runs in the gate, and was verified to fire before being kept.
+
+**Model.** `claude-opus-5` by default, overridable with `AI_MODEL`. This fires once
+per capture, so the cost/quality trade-off is the owner's; the default is not
+downgraded on their behalf.
+
+---
+
+## 027 · Suggestions are rows the user resolves, one proposed value at a time
+
+**Accepted** · 0.5
+
+`item_suggestions` holds **one row per proposed value**, not one row per model
+response. `items` gained no column, and nothing that queries `items` can read a
+model's guess as a fact.
+
+**Why one row per value:** partial acceptance. The user must be able to take
+"project: Home" and ignore "tag: maintenance", so each proposal has to resolve on
+its own. A single row with a per-field status would have meant tracking three
+statuses inside one row — a JSON blob pretending to be a schema.
+
+**Why not a whole-response staleness signature.** That was the first design and it
+is wrong in a way that is easy to miss: accepting a proposal *mutates the item*, so
+a signature over the item would stale every sibling the instant the first one was
+accepted, and partial acceptance would be nominal rather than real. Instead each
+row stores `observed_value` — what its own field held when it was proposed — plus
+`observed_title`, shared, because a retitled item is a different capture and
+everything about the old words goes with it.
+
+Accepting then has three outcomes, decided by the pure `reconcileSuggestion`:
+`applicable`, `redundant` (the item already says this), and `superseded` (the item
+moved on — retire the proposal, **change nothing**). The last is the one that
+matters: a newer manual choice always survives an older automated one, and the
+toast says so rather than claiming a save that did not happen.
+
+**Duplicate safety is in SQL.** Two partial unique indexes, plus `on conflict do
+nothing`. The first attempt was a single index over `coalesce(kind::text,
+project_id::text, tag_name)` and Postgres refuses it — casting an enum to text is
+only STABLE, not IMMUTABLE. The integration harness caught that before it reached
+any database, which is the argument for applying migrations from scratch on every
+test run. Splitting on `field` states the real rule better anyway: an item has one
+kind and one project, while tags are a set.
+
+Above that sits a service guard: **one pass per item, ever**. It is the retry guard
+and the answer to persistent nagging at once — a dismissed proposal never returns.
+
+**What is deliberately not stored:** the prompt, the raw response, token counts,
+cost, or a request log. None is needed to render a suggestion or to decide whether
+it still applies, and retaining the text of personal captures beside a provider's
+reply is a privacy cost with no user-visible return. What survives a run is the
+grounded proposal and the model identifier.
+
+**Considered:** a general `ai_events` table (a universal log for one feature);
+storing tag *ids* rather than names (a proposal must not create a tag before
+anybody accepts it); `on delete set null` for the suggested project, matching
+`items` (an item outlives its project; a proposal into a deleted project does not).
+
+**Applying goes through the ordinary item service.** `setItemKind`,
+`setItemProject` and `addItemTag` — the same functions the row menu and the editor
+call. There is no second way for an item to change, so no rule an AI path could
+skip. `addItemTag` deliberately does not triage: a kind says what something is and
+a project says where it lives, but a tag answers neither, and ejecting an
+untriaged item from the inbox over one label would take it off the triage screen
+before its kind was decided.

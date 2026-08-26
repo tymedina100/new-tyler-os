@@ -142,17 +142,54 @@ frequency for and which `every 12 months` already covers.
 
 ---
 
-## 0.5 · AI, as a proposer
+## 0.5 · AI-assisted capture suggestions — shipped
 
-Only after the manual system is genuinely in daily use, because AI that improves
-an unused system improves nothing.
+The first AI in TylerOS, under one rule: **AI may propose, the user decides,
+deterministic facts win.**
 
-- Suggested kind, project and tags on capture — written to a suggestions table,
-  never over the user's own data
-- Semantic search via `pgvector`, alongside the existing full-text index
-- Natural-language retrieval over captured items
+- Suggested kind, project and tags on a fresh capture, written to
+  `item_suggestions` and applied only when accepted
+- Accept one and ignore the rest; "Not now" clears the row in a click
+- A suggestion that has gone stale can never undo a choice made after it
+- Proposals are visibly proposals: dashed chips, where everything TylerOS
+  actually knows is solid
 
-Constraints that do not move: the core must keep working with AI switched off, AI
+Deterministic parsing wins by **omission** rather than by arbitration. A project
+the parser resolved, a `#tag` the user typed, a date, a repeat — none is in the
+request at all, so there is no later moment where a model's answer and the
+user's own syntax have to be reconciled. AI fills gaps in untriaged items and
+speaks about nothing else.
+
+The model chooses from a closed vocabulary — the exact kind enum, live project
+names, existing tags — and cannot create a project or a tag. Anything that fails
+to ground is dropped rather than repaired. The request carries the captured title
+and those lists, and nothing else: this is classification, not retrieval.
+
+It runs from `after()`, so it starts once the capture response has been sent.
+Enter never waits on a model. Every failure — unconfigured, timeout, 4xx, 5xx,
+rate limit, refusal, malformed JSON, an invented project — ends the same way: no
+suggestion, one log line, the capture untouched. See ADRs 026 and 027.
+
+**Shipped switched off.** With no `ANTHROPIC_API_KEY`, TylerOS is byte-for-byte
+the deterministic application it was in 0.4.1. That is the default state of this
+repository, and the state its browser suite runs in.
+
+**Not included, on purpose:** semantic search and `pgvector`, natural-language
+retrieval, AI editing of existing items, background scanning of what is already
+captured, suggestions for recurrence or dates, a settings screen, a second
+provider, and any cost or evaluation dashboard.
+
+---
+
+## Next · retrieval
+
+Semantic search via `pgvector` alongside the existing full-text index, and
+natural-language retrieval over captured items — the two halves of 0.5's original
+sketch that were deliberately left out, because classification and retrieval are
+different problems and doing both at once would have meant doing neither
+carefully.
+
+Constraints that do not move: the core keeps working with AI switched off, AI
 code stays in `src/server/ai/*`, and the domain never imports it.
 
 ---
