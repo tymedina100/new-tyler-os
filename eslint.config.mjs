@@ -92,7 +92,23 @@ const eslintConfig = defineConfig([
 
   prettier,
 
-  globalIgnores([".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts", "drizzle/**"]),
+  // Generated output, none of it authored here. The Playwright directories
+  // matter more than they look: a trace bundle contains multi-megabyte vendor
+  // bundles, and linting one crashes the stylish formatter outright
+  // ("RangeError: Invalid string length"). That turned `pnpm check` — the
+  // gate — into a command that failed for anybody who had run `pnpm test:e2e`
+  // first, with an error naming neither the cause nor the fix.
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "coverage/**",
+    "next-env.d.ts",
+    "drizzle/**",
+    "playwright-report/**",
+    "test-results/**",
+    ".playwright/**",
+  ]),
 ]);
 
 export default eslintConfig;
