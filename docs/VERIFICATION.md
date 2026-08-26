@@ -102,9 +102,35 @@ The last two are measurements rather than judgements: `scrollWidth` against
 `clientWidth` at 375px, every row inside the viewport, and a 44px floor on the
 tap target. A screenshot would prove none of it.
 
+`e2e/auth.spec.ts` covers the access boundary the other 31 specs all run
+behind — see [0.7](#07--daily-access-foundation--2026-08-26):
+
+32. every top-level destination redirects to sign-in with no session
+33. a protected route visited signed out is where sign-in returns to
+34. the manifest and the icon load with no cookie at all
+35. a wrong passphrase is rejected, visibly, and grants nothing
+36. the correct passphrase reaches Today
+37. signing out ends the session immediately, everywhere
+
+`e2e/mobile-nav.spec.ts` covers the phone-shaped shell: the four destinations
+in the bottom bar, everything else through the More sheet, and that neither
+costs a real destination:
+
+38. Today, Inbox and Search are one tap away from the bottom bar
+39. capture is one tap away and focuses the box every screen already has
+40. the More sheet reaches Upcoming, Tasks, Projects, Kitchen and the shopping list
+41. the More sheet can sign out
+42. the bottom bar's tap targets meet the 44px floor
+43. nothing spills sideways at 375px, on the page or with the sheet open
+44. the desktop sidebar still shows every destination, and hides the phone-only
+    More button
+
 They **write to the database they point at**. Everything they create is prefixed
 `smoke-<run>`, `kt-<run>`, `rc-<run>`, `ed-<run>`, `sg-<run>` or `sx<run>` and
 deleted afterwards, but point `DATABASE_URL` at a development database.
+`auth.spec.ts` and `mobile-nav.spec.ts` create nothing — they sign in through
+the real form (once, in `global-setup.ts`, reused by every other spec) and
+otherwise only navigate.
 
 This suite is deliberately outside `pnpm check`. A gate that needs a database is
 a gate that gets skipped, and then the fast tests rot with it.
@@ -239,15 +265,45 @@ friday`) — the stated date is the one it starts on.
       are not the occurrence that is due.
 - [ ] Food going off appears on its own day, under the same heading style.
 - [ ] With nothing in the fortnight, the empty state points back at Today.
-- [ ] At 375px the seven tabs fit, nothing is clipped, and there is no sideways
-      scroll. The row menu fits on screen and scrolls rather than running off it.
+- [ ] At 375px the bottom bar's five slots fit, nothing is clipped, and there is
+      no sideways scroll. The row menu fits on screen and scrolls rather than
+      running off it.
 
 **Keyboard and shape**
 
-- [ ] `Cmd/Ctrl+K` opens the palette; it navigates, captures, and searches.
+- [ ] `Cmd/Ctrl+K` opens the palette; it navigates, captures, and searches, and
+      lists Kitchen and the shopping list alongside the rest — see
+      [0.7](#07--daily-access-foundation--2026-08-26).
 - [ ] Tab reaches every control; the focus ring is always visible.
-- [ ] At 375px wide: bottom tab bar, nothing clipped, no horizontal scroll.
+- [ ] At 375px wide: the four-slot-plus-More bottom bar, nothing clipped, no
+      horizontal scroll.
 - [ ] In both OS colour schemes, nothing is unreadable.
+
+**Access — signing in, signing out, and staying out until you do**
+
+- [ ] With `AUTH_PASSPHRASE` and `SESSION_SECRET` set, visit any screen signed
+      out. Landing is `/login`, and the address bar remembers where you were
+      headed (`?next=`).
+- [ ] A wrong passphrase is rejected inline, visibly, and nothing further loads.
+- [ ] The right passphrase reaches Today, and reloading stays signed in.
+- [ ] Sign out from the sidebar (desktop) or the More sheet (phone). The very
+      next request for a protected screen returns to `/login`.
+- [ ] With neither variable set and `NODE_ENV=development`, every screen is
+      reachable with no sign-in step, and the server console says once that
+      auth is off.
+- [ ] The installed-app checks in
+      [PWA / installability](#pwa--installability) below.
+
+**PWA / installability**
+
+- [ ] Chrome's install affordance (address-bar icon or the browser menu) offers
+      to install TylerOS, and installing opens it in its own window with the
+      "T" mark as its icon.
+- [ ] The installed window has no browser chrome — no address bar, no tabs.
+- [ ] On iOS Safari, "Add to Home Screen" produces the same "T" icon, not a
+      screenshot thumbnail.
+- [ ] `/manifest.webmanifest`, `/icon` and `/apple-icon` all load directly in a
+      private/incognito window, signed out.
 
 **AI suggestions — start by checking they are not there**
 
@@ -301,6 +357,11 @@ are skipped otherwise — say so rather than implying they passed.
 - [ ] Visit `/items/00000000-0000-4000-8000-000000000000`. It is a clean 404.
 - [ ] Stop the database and try an action. A toast reports the failure; it does
       not look like it worked.
+- [ ] Build for production with `AUTH_PASSPHRASE`/`SESSION_SECRET` unset
+      (`NODE_ENV=production`, not development): the build itself succeeds, the
+      server logs the problem once at startup, and every screen except
+      `/login`, the manifest and the icons answers `503` rather than serving
+      anything.
 
 ## Recording the result
 
@@ -586,3 +647,101 @@ this session, so no screenshots were taken. Every visual claim above was
 converted into a measurement in Chromium instead, which is stronger evidence than
 a screenshot would have been — but "looks right" was not assessed by eye at
 either width, and that is the gap.
+
+---
+
+### 0.7 — Daily Access Foundation · 2026-08-26
+
+**Gate:** `pnpm check` green — 29 files, 691 tests, up from 636 at 0.6.
+**Browser:** all 44 specs green (31 pre-existing, 13 new), against the same
+remote PostgreSQL 18.6, `pnpm check:env` reporting 4 of 4 migrations —
+**no migration was added by this milestone**, which is the expected outcome
+of an access/PWA/navigation milestone rather than a gap. `next build`
+succeeded twice: with `AUTH_PASSPHRASE`/`SESSION_SECRET` present, and — the
+claim that actually needed proving — with both absent.
+
+**The build-vs-runtime split was verified, not assumed.** `src/instrumentation.ts`
+was temporarily instrumented to log on module load and on every `register()`
+call. A `next build` with both secrets absent produced **zero** output from
+either log line, across two separate builds; a real `next start` with the
+same absent secrets logged the misconfiguration exactly once, at boot. Every
+protected route then answered `503` (`curl` against `/` and `/kitchen`), while
+`/login`, `/manifest.webmanifest`, `/icon` and `/apple-icon` all answered `200`
+with no cookie. Setting both secrets and restarting: unauthenticated `/` and
+`/kitchen` redirected `307` to `/login?next=…`, and `/login` itself served
+`200`.
+
+**No secret reaches the client.** `.next/static/` after a production build
+was grepped for `AUTH_PASSPHRASE`, `SESSION_SECRET`, `passphraseMatches`,
+`createHmac`, the literal test secret value used in this session, and the
+module paths `server/auth/session` and `server/auth/auth-config` — zero
+matches across all of them. The same strings are present in `.next/server/`,
+confirming the absence is the module boundary working rather than dead-code
+elimination hiding a real problem.
+
+**A real Chromium session, driven interactively, signed in as itself.** The
+in-app browser pane could not composite frames in this session either — the
+same limitation recorded at 0.4 through 0.6 — so no screenshots exist here.
+Everything below was proven through the DOM, the network log and the console
+instead, which is what the plan asked for when a screenshot is unavailable:
+
+- Signed in with a wrong passphrase (rejected inline, visibly, `POST /login`
+  still `200`), then with the correct one — landed on Today, sidebar showing
+  all seven destinations, open/done counts, and a **Sign out** row.
+- capture → Inbox → Today → Kitchen → Search, driven for real: a captured
+  item with an inline `#tag` appeared in the inbox under "Needs triage," on
+  Today under the same heading, and in Search results with the query word
+  highlighted — the same round trip 0.1 first proved, now happening behind a
+  session. Cleaned up afterwards by deleting the one row it created.
+- At 375px, signed in: the bottom bar reads Today · Inbox · Search · Capture ·
+  More, each tab **75×59px**. The More sheet opened and listed Upcoming,
+  Tasks, Projects, Kitchen, Shopping list and Sign out; a link from it
+  navigated and closed the sheet in one action; Sign out from inside it ended
+  the session and the very next request for `/kitchen` redirected to
+  `/login`. `scrollWidth` matched `clientWidth` at 375 on Today, Kitchen,
+  Projects and with the sheet open.
+- `/manifest.webmanifest`, `/icon` and `/apple-icon` all fetched `200` from
+  inside the page with no session — confirmed live, not only by `curl`.
+- Dark mode (`prefers-color-scheme: dark` emulated) rendered the expected
+  near-black background and near-white text; no console errors appeared in
+  either colour scheme beyond the pane's own HMR WebSocket noise, present
+  before sign-in too and unrelated to this milestone.
+- Console across the whole session: only `WebSocket connection … failed` for
+  the dev-only HMR socket and one `The destination stream closed early` —
+  both pre-existing artefacts of this preview environment, not of the
+  application; no error originating in TylerOS's own code appeared at any
+  point.
+
+**Two things measurement caught that review had not — both in new UI, both
+under the 44px tap-target floor:**
+
+- The More sheet's rows measured **40px**. `py-2.5` matched the rest of the
+  app's list rows, which had never been held to a phone tap-target floor
+  before there was a sheet to tap on a phone. Now `py-3.5` with `min-h-11`,
+  measured at 48px.
+- The login form's passphrase field and its Sign In button measured **36px**
+  — the shared `Input`/`Button` default (`h-9`) used throughout the rest of
+  the app, which has never needed a larger floor because nothing else is the
+  very first control an unauthenticated visitor taps on a phone. Given a
+  local `h-11` override on this one page rather than raising the shared
+  primitive's default height for every form in the application. Now 44px.
+
+Both were found the same way 0.5's chip defect was: by measuring
+`getBoundingClientRect()` rather than by reading the code, and both were
+fixed and re-measured live via Fast Refresh in the same session, then
+re-verified by the full gate and the full browser suite afterwards.
+
+**One interaction limitation of this session's browser pane, distinct from
+the screenshot one:** synthetic pointer clicks through the `computer` tool
+timed out specifically at the 375px viewport, on elements that clicked
+correctly at 1280px moments earlier — apparently the same "pane not
+compositing" condition affecting more than screenshots this time. Every
+interaction that mattered was still exercised, either via a real DOM
+`.click()` / `form.requestSubmit()` dispatched through `javascript_tool`, or
+— for the exact gesture this could not confirm interactively — by the
+already-green `mobile-nav.spec.ts` result in a real, compositing Chromium
+instance under Playwright. The two are complementary rather than one
+standing in for the other: Playwright is the authoritative record of the
+gesture actually working; this session is the authoritative record of what
+the signed-in application actually looks like on the wire and in the DOM at
+that width.

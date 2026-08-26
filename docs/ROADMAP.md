@@ -215,6 +215,47 @@ needing the fifty-first result means the query was too vague.
 
 ---
 
+## 0.7 · Daily Access Foundation — shipped
+
+TylerOS had grown past the point where a new domain was more valuable than
+being safe and reliable to actually reach — from a phone, away from the
+machine that runs it, without weakening anything the first six milestones
+built. This milestone added no domain. It made what already existed
+accessible.
+
+- **One authorized identity.** A passphrase and a signed cookie, checked at
+  the route boundary (`src/proxy.ts`) and, independently, inside every server
+  action — not a second implementation of the same check, but the one
+  document Next itself recommends: an optimistic check at the edge, and an
+  authoritative one on every mutation, because a page-level check does not
+  extend to the actions a page calls. No accounts, no roles, no `user_id`
+- **Installable, not offline.** A manifest and a generated icon; TylerOS can
+  sit on a home screen and open in its own window. No service worker — a
+  cache in front of Server Actions is a way to show stale personal data, not
+  a feature this milestone needed
+- **A phone gets four destinations, not seven.** Today, Inbox, capture and
+  Search in the bottom bar; everything else behind one more tap in a sheet.
+  The sidebar keeps all seven, because it has the room to
+- **Capture is one tap away from anywhere**, focusing the same box every
+  screen already had rather than opening a second one
+- **Production defaults are safe, development stays free.** A weak or
+  absent secret is a hard failure outside development; inside it, TylerOS
+  runs open until a passphrase is set, and says so
+
+Nothing about how AI connects changed. `ANTHROPIC_API_KEY` is still optional,
+still absent from this repository's own environment, and 0.5's suggestion
+flow is exactly as it was. See ADRs 030, 031 and 032.
+
+**Not included, on purpose:** multiple users, OAuth or any provider-based
+auth library, push notifications, offline mutation, a rate-limiting service
+(recorded instead as a deployment-time hardening note), and a public
+deployment — this milestone stopped at a verified local production build and
+asked before anything became reachable on the internet. **Item bodies and
+attachment-free notes**, once suggested for this slot, moved to "Later" below
+instead of being dropped.
+
+---
+
 ## Next · semantic retrieval, once something needs it
 
 Deferred from 0.6 deliberately, not skipped. Until now retrieval reached one
@@ -237,6 +278,13 @@ dozens of times a day, so it is the last flow that should ever need a key.
 
 Meal planning and recipes, media tracking, wishlists, notes and memories,
 household management, routines, external integrations, specialised agents.
+
+**Item bodies and attachment-free notes** — a longer body on an item, with no
+rich-text editor and no file attachments — sat in 0.7's slot at one point and
+was moved here rather than dropped. It is a real gap: an item today is a
+title and nothing else. It waited because 0.7 turned out to be about whether
+TylerOS could be reached at all, which mattered more once daily use started
+meaning "from a phone, away from the desk."
 
 Meal planning is the one 0.3 unlocked, and the one most likely to be asked for
 next. It should still wait: it needs comparable quantities, which ADR 020
@@ -262,3 +310,6 @@ Recorded so they do not get proposed again as improvements:
 - Dashboards, charts or analytics about personal data nobody acts on
 - Storing personal-life facts in repository instruction files. TylerOS is the
   system responsible for personal context; the repo describes how to build it
+- A process-local counter presented as rate limiting. It is not a real
+  boundary once more than one server instance can run, and shipping one
+  anyway is exactly the security theater ADR 030 was asked to avoid

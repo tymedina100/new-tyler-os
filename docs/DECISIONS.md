@@ -851,3 +851,218 @@ rather than a rewrite — which is the whole reason ADR 002 chose Drizzle.
 **Not deferred, refused:** search history, saved searches, search analytics, and
 LLM query rewriting. The first three are data about personal behaviour nobody
 would act on, and the fourth puts a model between the user and their own words.
+
+---
+
+## 030 · One authorized identity, a signed cookie, no accounts
+
+**Accepted** · 0.7
+
+TylerOS becomes reachable outside localhost in 0.7, which is the exact
+condition ADR 003 named for revisiting "no authentication." This ADR is that
+revisit. It keeps the other half of ADR 003 unchanged: there is still no
+`user_id` anywhere, because there is still exactly one person.
+
+**Threat model.** TylerOS protects one thing — everything captured, tracked or
+decided by one person — from one class of adversary: anyone who is not that
+person, reaching a URL. It does not protect against a compromised device, a
+shared unlocked phone, or a subpoena; those are out of scope for a single-user
+personal application the same way they are for a password manager's own local
+vault. "Authenticated" here means "holds the one passphrase," not "is a
+specific identity" — there is no identity to be, so the session payload
+carries no subject at all, only an expiry and a nonce.
+
+**Mechanism: a passphrase, and an HMAC-signed cookie, in `node:crypto`.** No
+new dependency. `src/proxy.ts` runs on the Node.js runtime by default in
+Next 16 (middleware's replacement, and middleware itself gained Node.js
+support in 15.5), so `createHmac`/`timingSafeEqual` are available at the exact
+boundary that needs them. This is the same reasoning ADR 026 used for the one
+Anthropic call: a request this small does not need a library to make it safer,
+and a dependency bundled into every build for one feature is a cost paid
+whether or not the feature is used.
+
+**Considered and rejected:**
+
+- **Auth.js / NextAuth**, or any provider-based library. It brings accounts,
+  providers, adapters and role concepts this application has explicitly
+  decided against (`docs/ROADMAP.md`, "things that would be mistakes"), to
+  authenticate a person who is not signing up for anything.
+- **iron-session** (or any session library built on `jose`). It encrypts a
+  payload; the payload here holds no secret worth encrypting, only an expiry
+  and a nonce, so encryption buys nothing a plain HMAC signature does not
+  already buy, at the cost of two dependencies.
+- **HTTP Basic auth.** The browser re-sends the credential with every single
+  request rather than once, and offers no clean way to sign out — actively
+  hostile to a home-screen app someone opens dozens of times a day (0.7's own
+  reason for existing).
+- **Passkeys / WebAuthn.** The right answer for a multi-device, no-password
+  future, and a real credential store and recovery story to build first. Noted
+  as a future opportunity, not a corner cut here.
+
+**Two independent checks, not one.** `src/proxy.ts` is Next's own recommended
+_optimistic_ check — it reads the cookie and nothing else, runs on every
+request including prefetches, and redirects to `/login` before a protected
+page ever renders. Next's own authentication guide is explicit that this is
+not sufficient alone: "a page-level authentication check does not extend to
+the Server Actions defined within it." So `runAction` in
+`src/server/action-result.ts` — the one funnel all 24 server actions already
+passed through — now verifies the session itself, first, before its body runs.
+Every existing action gained this by construction, with no action file
+touched. The one action that must run with no session yet, signing in, does
+not call `runAction`; see `src/server/actions/auth-actions.ts`.
+
+**A route added later is covered without anyone remembering to.**
+`src/proxy.test.ts` discovers every real `page.tsx` and `route.ts` under
+`src/app/` from disk and asserts two things for each: the proxy's own matcher
+actually reaches it, and it is not on the public allowlist unless a human
+wrote a reason for it in `src/server/auth/public-routes.ts`. No `route.ts`
+exists yet — ADR 004 still holds — but if one arrives, this is what stops it
+becoming a public endpoint by omission rather than by decision.
+
+**Session behaviour.** A 30-day rolling cookie: `HttpOnly`, `SameSite=Lax`,
+`Secure` outside development, refreshed on every valid request. Thirty days
+and rolling, not short-lived, because the realistic failure mode for a
+personal app is being logged out at an inconvenient moment, not a stolen
+session — the device's own lock screen is the actual boundary a stolen phone
+crosses first.
+
+**Secret strength is enforced, not merely documented.** Production
+configuration rejects a `SESSION_SECRET` under 32 characters, an
+`AUTH_PASSPHRASE` under 16, either with fewer than 8 distinct characters (so
+`aaaa…` and `abababab…` cannot pass on length alone), and a small denylist of
+placeholder values — including the ones this repository's own `.env.example`
+would tempt someone to leave in place. See
+`src/server/auth/auth-config.ts`, in `describeAuthConfig`.
+
+**No process-local login-attempt rate limiting.** A counter in memory is not a
+real boundary once more than one server instance can be running, which any
+serverless target implies, and shipping one anyway would be exactly the
+security theater this milestone was asked to avoid. If TylerOS is deployed
+somewhere public, rate limiting belongs at the platform (Vercel's own abuse
+protection, or a WAF rule) — recorded as a deployment-time hardening note in
+`README.md`, not faked in application code.
+
+**Development behaviour.** With `NODE_ENV=development` and neither secret set,
+TylerOS is open, and says so once on the server console. Setting a passphrase
+locally makes development behave exactly like production. Outside development,
+an absent or weak secret is a hard failure — but where it fails is chosen
+deliberately: `next build` must still succeed with no secrets configured,
+because a production build is frequently made on a machine that does not hold
+production secrets (a CI runner, a deploy preview). This was verified
+empirically, not assumed: an instrumented build with `AUTH_PASSPHRASE` and
+`SESSION_SECRET` both absent produced zero output from `register()` in
+`src/instrumentation.ts`, proving `register()` does not run during `next
+build` in this Next 16.3.2 setup, only at the boot of a real server instance —
+see `docs/VERIFICATION.md`. The hard failure is therefore a per-request `503`
+from `src/proxy.ts`, which a build never reaches; `instrumentation.ts` only
+adds a loud, one-time log line when the real server actually starts, so the
+problem is visible immediately rather than discovered from the first `503`.
+
+**`/login` is a second root layout, not a branch inside the first.**
+`src/app/(app)/layout.tsx` queries the database for sidebar counts and project
+names, and renders the capture bar, the navigation and the command palette —
+none of which an unauthenticated visitor should see, or which should depend on
+a session to render at all. Next's own convention for exactly this — a route
+needing a different `<html>`/`<body>` than the rest of the app — is multiple
+root layouts through route groups, which is what `src/app/(app)/` and
+`src/app/(auth)/` are. The one documented cost is a full page reload crossing
+between the two groups, which is not a cost at all here: signing in and out
+are already full navigations.
+
+**Recovery.** There is no account recovery flow, by design — there is no
+account. Losing the passphrase means editing `AUTH_PASSPHRASE` in the
+environment and restarting the server, the same as forgetting any other
+environment-configured credential this application already has. This is
+appropriate for a one-person application and would not be for anything with a
+second user who could be locked out by a change they did not make.
+
+---
+
+## 031 · Installable, not offline
+
+**Accepted** · 0.7
+
+TylerOS gains a web app manifest and icons in 0.7, and explicitly no service
+worker. "No fake offline mode" is the stated preference over an unreliable one,
+and TylerOS mutates through Server Actions on every screen — a cache in front
+of that is a way to show stale personal data or silently drop a capture, not a
+feature.
+
+**Icons are generated code, not files kept in sync by hand.** `src/app/icon.tsx`
+and `src/app/apple-icon.tsx` use `next/og`'s `ImageResponse` — already part of
+`next`, so no new dependency — to render a single "T" mark once at build time.
+The alternative considered was a hand-rolled PNG-writing script committing
+binary assets under a `public` directory; that is a second source of truth for an image
+that has to match the app's own accent colour, and a script whose only job is
+encoding PNG bytes correctly is real risk for no real benefit here. The mark's
+colour is the same `--primary` token `src/app/globals.css` already defines,
+converted once to sRGB by hand, so there's exactly one place a rebrand would
+touch even though the icon route can't read the stylesheet at render time.
+
+**One icon, purpose `"any"`, not a maskable-optimised set.** A single square
+icon in the manifest is enough to satisfy Chrome's installability criteria.
+Building a maskable variant with the correct safe-zone padding is a real,
+separate piece of work with no evidence yet that the plain icon looks wrong on
+anyone's home screen — deferred, not skipped.
+
+**`start_url: "/"` even though every route needs a session.** Opening an
+installed icon and landing on `/login` — because `src/proxy.ts` treats an
+installed app's launch exactly like any other visit — is the correct behaviour
+for a single-user app with no "signed-out home page" concept to design.
+
+**No service worker, and Next's own offline primitives are noted, not used.**
+Next 16 ships an experimental `useOffline` hook for connectivity-aware UI and
+retrying failed Server Action requests; it does not solve reliable _offline
+mutation_, which still needs a queue and a conflict rule TylerOS does not have.
+Reaching for it now would be the same mistake ADR 029 refused for search:
+solving a problem before evidence exists that it is one.
+
+**The Next.js dev route indicator moved out of the way, permanently, for a
+real reason beyond testing.** Its default position overlaps the bottom
+navigation bar's leftmost tab at the exact widths this milestone targets, on
+every developer's own phone-width `pnpm dev` session, not only in the browser
+suite. It is also answering a question — static or dynamic? — that this
+application settled for every route in `docs/ARCHITECTURE.md` before 0.1
+shipped. `devIndicators: false` in `next.config.ts`; compile and runtime errors
+still surface regardless.
+
+---
+
+## 032 · Four daily destinations on a phone, and a More sheet for the rest
+
+**Accepted** · 0.7
+
+The bottom tab bar carried all seven top-level destinations since 0.1. 0.6
+added Search as an eighth with nowhere to go, and shipped it into the sidebar
+only — `src/components/shell/nav.tsx` already carried a comment admitting
+seven tabs at 375px only fit because each one is narrower than its own label.
+0.7 is what that comment was waiting for.
+
+**Four in the bar, not eight, not three.** Today, Inbox, capture, and Search —
+the instruction's own stated priorities — plus a fifth slot that opens
+everything else. Capture takes a slot rather than living only inside the
+capture bar, because reaching it from anywhere without scrolling to the header
+was 0.7's most concrete mobile-capture ask. It is a button, not a link: there
+is already exactly one capture box on every screen (project pages render a
+second, scoped one), and a phone-nav "capture" action should focus that box,
+not open a competing one that could drift from the deterministic parser
+behind it.
+
+**A sheet, not a hamburger menu, not a second row of tabs.** A hamburger menu
+hides the fact that anything is behind it; a bottom sheet triggered by a
+visible, labelled "More" tab does not. A second row of smaller tabs was
+rejected for the reason the first seven already failed at: there still isn't
+room, and a row of unlabelled icons trades one illegible bar for two. The
+sheet is built on `@radix-ui/react-dialog` directly — already a dependency of
+`cmdk`, and now used the way the codebase's other overlay (the command
+palette) already establishes the pattern for: an `animate-overlay` backdrop
+and one new keyframe, `tyleros-slide-up`, beside the existing fade and scale
+ones in `src/app/globals.css`.
+
+**The desktop sidebar is unchanged.** All seven destinations, still always
+visible, because a sidebar has the width a bottom bar does not; the only
+addition is a sign-out row, since 0.7 introduced something to sign out of. The
+command palette gained the two destinations it had never carried — Kitchen and
+the shopping list — so every destination is reachable from a keyboard exactly
+as it is from a tap, and neither surface has to be treated as the complete
+list.

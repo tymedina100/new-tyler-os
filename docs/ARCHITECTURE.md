@@ -320,6 +320,77 @@ There are still no component tests. Rendering assertions on a UI this young cost
 more than they catch; the smoke suite covers whether the wiring works, and the
 manual checklist covers whether it is pleasant to use.
 
+## Access
+
+**Built in 0.7.** TylerOS is single-user by decision (ADR 003) and now reachable
+beyond localhost, which is the condition ADR 003 itself named for adding
+authentication. There is still no `user_id` anywhere and still exactly one
+person; what changed is that a request can now arrive from anyone, not just
+from someone already at the machine.
+
+Two independent checks, not one, because Next's own guidance is explicit that
+a page-level check does not extend to the Server Actions a page calls:
+
+```
+src/proxy.ts                  runs before every request. Reads a cookie, and
+                               nothing else — the "optimistic" check.
+      |
+      v
+src/server/action-result.ts   runAction() verifies the same session again,
+                               inside every one of the 24 actions, before its
+                               body runs. The authoritative check.
+```
+
+`runAction` is the funnel every server action already passed through for its
+own error handling (ADR 012); the session check joined it there, so every
+existing action gained it without a single action file being touched. The one
+action that must run with **no** session — signing in — does not call
+`runAction`; see `src/server/actions/auth-actions.ts`.
+
+**A session is a signed cookie, not a database row.** `src/server/auth/session.ts`
+signs `{ expiresAt, nonce }` with `node:crypto`'s `createHmac`, over
+`SESSION_SECRET`. No identity is in the payload — there is exactly one subject,
+so naming it would record a fact, not establish one. `src/proxy.ts` verifies it
+on every request and rolls the cookie forward on success, so a session in daily
+use never silently expires.
+
+**Two root layouts, not one with a branch inside it.** `src/app/(app)/layout.tsx`
+is everything that existed before 0.7: it queries the database for sidebar
+counts and renders the capture bar, the navigation and the command palette.
+None of that should run, or be visible, before a session exists. Next's
+convention for exactly this — a route needing a different `<html>`/`<body>`
+than the rest of the app — is multiple root layouts through route groups, so
+`/login` lives in its own `src/app/(auth)/` with a layout that makes no
+database call at all. See ADR 030.
+
+**A route is protected by construction, not by a checklist.** Nothing has to be
+added to a new page or action to make it require a session — `src/proxy.ts`'s
+matcher already covers everything except the framework's own asset pipeline,
+and `runAction` already covers every action. What a new route needs is the
+opposite: a deliberate, commented entry in `src/server/auth/public-routes.ts`
+if it must be reachable with **no** session, which is rare enough that the
+current list has five entries and every one names why. `src/proxy.test.ts`
+discovers every real `page.tsx` and `route.ts` on disk and proves both halves
+hold — the matcher reaches it, and it is not on the allowlist unless someone
+put it there on purpose — so a route added later stays covered without anyone
+having to remember to protect it.
+
+**Configuration fails at two different times, on purpose.** `next build` must
+succeed with no secrets configured, the same reason `src/server/env.ts` is
+lazy — a production build is often made somewhere that does not hold
+production secrets. `src/server/auth/auth-config.ts` reads and validates
+`AUTH_PASSPHRASE` and `SESSION_SECRET` lazily for exactly that reason, and this
+was verified rather than assumed: `register()` in `src/instrumentation.ts`
+produces no output during `next build`, only at the boot of a real server
+instance. Outside development, a missing or weak secret then fails loudly and
+immediately there — once in the server log, and on every subsequent request as
+a `503` from `src/proxy.ts` — rather than serving anything.
+
+**Development stays open until you choose otherwise.** With `NODE_ENV=development`
+and neither secret set, every route serves with no session at all, and says so
+once on the console. Setting a passphrase locally makes development behave
+exactly like production would.
+
 ## How AI connects without contaminating the domain
 
 Designed as a seam in 0.1, **built in 0.5**, and it went in where it was drawn.
@@ -362,14 +433,17 @@ state its browser suite runs in. See ADRs 026 and 027.
 
 ## Traps this design is built against
 
-| Trap                          | Defence                                                             |
-| ----------------------------- | ------------------------------------------------------------------- |
-| Unrelated CRUD pages          | One Item spine; the inbox is a status                               |
-| AI dependence                 | No AI in the core; every feature works without it                   |
-| AI overwriting the user       | It proposes rows; only acceptance writes, and stale never wins      |
-| A key in browser JavaScript   | Lint forbids UI importing `src/server/ai/*`; verified to fire       |
-| Hard to migrate               | Plain SQL migrations, owned and readable                            |
-| Hard to test                  | Pure domain; `db` passed as an argument                             |
-| Tight coupling                | One-way layering, enforced by lint                                  |
-| Over-engineering              | No API layer, no client store, no auth, no abstraction with one use |
-| Too complex for one developer | Small files, explicit domain concepts over generic utilities        |
+| Trap                              | Defence                                                          |
+| --------------------------------- | ---------------------------------------------------------------- |
+| Unrelated CRUD pages              | One Item spine; the inbox is a status                            |
+| AI dependence                     | No AI in the core; every feature works without it                |
+| AI overwriting the user           | It proposes rows; only acceptance writes, and stale never wins   |
+| A key in browser JavaScript       | Lint forbids UI importing `src/server/ai/*`; verified to fire    |
+| Hard to migrate                   | Plain SQL migrations, owned and readable                         |
+| Hard to test                      | Pure domain; `db` passed as an argument                          |
+| Tight coupling                    | One-way layering, enforced by lint                               |
+| Over-engineering                  | No API layer, no client store, no abstraction with one use       |
+| Too complex for one developer     | Small files, explicit domain concepts over generic utilities     |
+| A route reachable with no session | `src/proxy.ts` + `runAction`, both proven by `src/proxy.test.ts` |
+| A secret in the client bundle     | Server-only modules; verified absent from `.next/static/`        |
+| Auth as an excuse for accounts    | One passphrase, no `user_id`, no provider library — ADR 030      |

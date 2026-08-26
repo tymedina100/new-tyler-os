@@ -28,7 +28,11 @@ degrades.
 - **Actions re-validate everything** with a Zod schema from `src/domain/`, even
   when the only caller is this repo's own client component.
 - **Actions return `ActionResult<T>`; they never throw at the client.** Wrap the
-  body in `runAction` from `src/server/action-result.ts`.
+  body in `runAction` from `src/server/action-result.ts`. This is also the auth
+  gate since ADR 030 — `runAction` rejects an action with no valid session
+  before its body runs, so every action gets that check for free. The one
+  action that must run with no session, signing in, does not call it; see
+  `src/server/actions/auth-actions.ts`.
 - **Never call `redirect()` in an action.** It works by throwing, so `runAction`
   would catch it and log it as an unexpected failure. Navigation belongs to the
   calling component. See ADR 012.

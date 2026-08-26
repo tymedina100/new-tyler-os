@@ -174,17 +174,6 @@ the system responsible for personal context. These files say how to build it.
 Shipped milestones live in `docs/ROADMAP.md`; below is only what a session must
 know before touching this code.
 
-**0.5 — Capture suggestions.** One rule: **AI may propose, the user decides,
-deterministic facts win.** Proposed kind, project and tags land in
-`item_suggestions`, **one row per proposed value**, applied only on acceptance and
-only through the ordinary item service. Each row remembers what its field held
-when proposed, so a stale one **retires rather than undoing a newer manual
-choice**. Precedence is by **omission** — whatever the parser resolved is never in
-the request. `src/server/ai/` is the only provider-aware code, the rules are pure
-in `src/domain/suggestions/`, and the provider is a **function parameter** like
-`db`. Lint forbids UI importing it, or the key ships to the browser. **With no
-`ANTHROPIC_API_KEY` it is inert.** ADRs 026–027.
-
 **0.6 — Universal Search.** One query reaches **items, projects and kitchen
 inventory**, grouped by domain and led by whichever matched best. Each domain owns
 its matching in its own repository; `src/server/search/` composes the three
@@ -195,5 +184,16 @@ Ranking is four tiers, not a score, tied on title then id so the order is total
 and assertable. **No migration was needed.** No AI is involved and none may be:
 the query leaves no process, and pending suggestions are not searchable. ADRs
 028–029.
+
+**0.7 — Daily Access Foundation.** One authorized identity behind a signed
+cookie, checked at `src/proxy.ts` before a page renders and again inside
+`runAction` before any of the 24 actions runs. No accounts, no `user_id`, no
+provider library — **one passphrase**, `node:crypto`, no new dependency.
+`/login` is a second root layout (`src/app/(auth)/`), so an unauthenticated
+visit never triggers the shell's own database query. A route added later is
+covered without anyone remembering to — `src/proxy.test.ts` discovers every
+real route on disk. **Installable, not offline:** a manifest and a generated
+icon, no service worker. The phone bar carries four destinations plus a
+**More** sheet; the sidebar keeps all seven. ADRs 030–032.
 
 **Next: semantic retrieval — but only once a real query defeats lexical search.**

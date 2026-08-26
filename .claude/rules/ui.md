@@ -44,6 +44,11 @@ a recorded decision to _not_ do — see ADRs 004 and 006.
 - **Colour carries meaning.** Only due dates are tinted (overdue, due today).
   Use the semantic tokens in `src/app/globals.css`; do not introduce raw hex values or a
   second accent.
+- **A new top-level destination goes in the sidebar and the More sheet, not the
+  phone's bottom bar.** The bar holds exactly four slots plus More — Today,
+  Inbox, capture, Search — chosen for daily use, and adding a fifth link would
+  need every tab narrower again, which is the problem 0.7 fixed. See
+  `src/components/shell/nav.tsx` and ADR 032.
 
 ## Every list and every page needs three states
 

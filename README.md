@@ -3,22 +3,31 @@
 A private personal-life operating system: one place to capture, organise and
 retrieve information across a life. Single user, self-hosted, no accounts.
 
-**Current state: Milestone 0.1 — the Life Inbox.** Capture anything in one
-keystroke, triage it, and find it again. Everything works without AI.
+**Current state: Milestone 0.7 — Daily Access Foundation.** Capture, triage,
+recurrence, kitchen inventory, universal search, and optional AI-assisted
+capture suggestions — now behind one passphrase, installable to a phone's home
+screen, and reachable from a bottom bar built for a thumb rather than a mouse.
 
 ## What it does today
 
 | Screen       | Purpose                                                                        |
 | ------------ | ------------------------------------------------------------------------------ |
 | **Today**    | Overdue, due today, needs triage, next 7 days. Every item in exactly one place |
+| **Upcoming** | The fortnight ahead, one day at a time: work, repeats and best-by dates        |
 | **Inbox**    | Everything captured but not yet decided about                                  |
 | **Tasks**    | The working list. Defaults to open tasks; browses any type and status          |
 | **Projects** | Collections of related work, with progress                                     |
-| **Search**   | PostgreSQL full-text search across everything ever captured                    |
+| **Kitchen**  | What food is in the house, and the shopping list                               |
+| **Search**   | One query across items, projects and the kitchen, grouped by domain            |
 
-A capture bar sits on every screen. Press `c` to focus it, `Cmd/Ctrl+K` for the
-command palette. Inline `#tags` in captured text are parsed out automatically, so
-"buy paper towels #home" files itself.
+A capture bar sits on every screen. Press `c` to focus it (or tap "Capture" in
+the phone bar), `Cmd/Ctrl+K` for the command palette. Inline `#tags`,
+`@projects`, dates and repeats in captured text are parsed out automatically, so
+"pay the electric bill friday #home" files itself.
+
+On a phone, the bottom bar carries the four things asked for most — Today,
+Inbox, capture, Search — and a **More** button opens the rest in a sheet. The
+sidebar on a wider screen shows every destination at once.
 
 ## Requirements
 
@@ -92,6 +101,63 @@ pnpm dev            # http://localhost:3000
 checks Node, `DATABASE_URL`, connectivity, migration state and whether the
 database has data, and prints the command for whatever is missing.
 
+## Access
+
+TylerOS is single-user, and since 0.7 it can be reached from anywhere, not
+only from the machine it runs on. One passphrase guards it — see
+[docs/DECISIONS.md](docs/DECISIONS.md) ADR 030 for the reasoning and the
+threat model.
+
+**In development,** with neither variable below set, TylerOS is open — every
+screen loads with no sign-in step, and the server console says so once.
+That is the default, and it is fine for working on `localhost`.
+
+**Everywhere else,** set both:
+
+```bash
+SESSION_SECRET="$(openssl rand -base64 32)"   # at least 32 characters
+AUTH_PASSPHRASE="choose something you can type on a phone"  # at least 16
+```
+
+A weak or missing value outside development is a hard failure: the server
+starts, logs the problem once, and every screen except `/login` and the
+installable icons answers `503` until it is fixed. `next build` itself never
+needs these — only the running server does.
+
+Sign in once from `/login`; the session is a signed cookie that renews itself
+for up to 30 days of use. Sign out from the sidebar (desktop) or the **More**
+sheet (phone).
+
+There is no password reset flow, because there is no account to reset —
+losing the passphrase means editing `AUTH_PASSPHRASE` and restarting the
+server. There is also no built-in rate limiting on sign-in attempts; if
+TylerOS is reachable from the open internet, put that at the platform level
+(Vercel's own abuse protection, or a WAF rule in front of it), not in the
+application.
+
+## Deploying
+
+TylerOS has no hosting-provider code in it — `DATABASE_URL` over a standard
+PostgreSQL connection string is the entire integration surface, and that has
+not changed. The one thing 0.7 adds is that `AUTH_PASSPHRASE` and
+`SESSION_SECRET` must be set wherever the app actually runs; see
+[Access](#access) above.
+
+**Vercel** is the documented path, because it is a verified adapter for this
+Next.js version and this project's own development database (Neon) is
+already reached the same way in production as in development — a connection
+string, nothing Vercel-specific. What is platform-specific either way:
+
+- The two environment variables above, plus `DATABASE_URL`, set on whichever
+  host runs the app
+- `NEXT_TELEMETRY_DISABLED=1`, carried over from `.env.example`
+
+Nothing else is. `next build && next start` on any Node.js host works
+identically; see the [`next build`/self-hosting
+guide](https://nextjs.org/docs/app/getting-started/deploying) for other
+options. `ANTHROPIC_API_KEY` stays optional everywhere: absent, TylerOS works
+exactly as it does in this repository today.
+
 ## Commands
 
 | Command              | What it does                                              |
@@ -143,6 +209,9 @@ manual checklist used to close a milestone.
 
 ## What this is not
 
-No authentication, no multi-tenancy, no AI. All three are deliberate for 0.1 and
-explained in `docs/DECISIONS.md`. TylerOS is designed to be useful before it is
-intelligent.
+No multiple users, no accounts, no roles, no OAuth or provider-based auth
+library — one person, one passphrase (ADR 030). No AI dependence: every
+feature works with `ANTHROPIC_API_KEY` unset, which is how this repository
+ships. No offline mode — installable, not offline (ADR 031). All deliberate,
+and explained in `docs/DECISIONS.md`. TylerOS is designed to be useful before
+it is intelligent.
