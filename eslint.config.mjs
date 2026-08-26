@@ -84,6 +84,43 @@ const eslintConfig = defineConfig([
   },
 
   {
+    /**
+     * The AI boundary, guarded from the other side.
+     *
+     * The rule above stops `src/server/` reaching into UI. This stops UI
+     * reaching into `src/server/ai/`, which is a different and far more
+     * expensive mistake: `ai-config.ts` reads ANTHROPIC_API_KEY, and a client
+     * component importing it would bundle that key into browser JavaScript.
+     *
+     * Every other server module is reachable from a component only through a
+     * `"use server"` action, which is a network boundary. `src/server/ai/` has
+     * no action and needs none — suggestions are proposed from `after()` and
+     * accepted through `suggestion-actions.ts`, so nothing in the browser has
+     * any reason to name this directory at all.
+     *
+     * `server-only` would enforce this at build time instead, and was tried:
+     * Next resolves it internally but Vitest does not, so it is a dependency
+     * that only looks free. A lint rule costs nothing, runs in `pnpm check`,
+     * and sits beside the boundaries it belongs with. See ADR 026.
+     */
+    files: ["src/components/**/*.{ts,tsx}", "src/app/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/server/ai", "@/server/ai/*"],
+              message:
+                "UI must never import the AI boundary — it holds the API key. Go through a server action. See docs/DECISIONS.md ADR 026.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
     // CLI tooling and browser tests: printing to the terminal is the point, and
     // the layering restrictions above do not apply outside src/.
     files: ["scripts/**/*.mts", "e2e/**/*.ts", "playwright.config.ts", "vitest.config.mts"],
