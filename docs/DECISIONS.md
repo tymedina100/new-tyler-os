@@ -743,3 +743,111 @@ skip. `addItemTag` deliberately does not triage: a kind says what something is a
 a project says where it lives, but a tag answers neither, and ejecting an
 untriaged item from the inbox over one label would take it off the triage screen
 before its kind was decided.
+
+---
+
+## 028 · Search composes the domains; it does not merge them
+
+**Accepted** · 0.6
+
+A query reaches items, projects and kitchen inventory at once. Each domain owns
+its own matching in its own repository; `src/server/search/search-service.ts`
+runs the three concurrently and hands the rows to a pure projection in
+`src/domain/search/`, which ranks them and groups them by where they came from.
+The UI receives `SearchHit` — domain, id, title, context, href, tier — and
+nothing else.
+
+**Considered:** a universal `entities` table every domain writes into; a single
+SQL `UNION` across the three tables; a `Searchable` interface each domain
+implements; a search registry domains subscribe to; giving kitchen inventory a
+`search_vector` and folding it onto the item spine.
+
+**Why not a shared table or the item spine:** it would make the fridge a to-do
+list. This is ADR 023's argument again, and it holds for the same reason — a
+packet of chicken and "make chicken before the game" are both findable by the
+same word and nothing else about them is alike. ADR 019 kept that separation out
+of the schema; a retrieval layer that merged them would put it back one write
+path at a time.
+
+**Why not a `UNION`:** the domains do not match alike and should not. Items have
+a generated `tsvector` because notes are prose (ADR 009); the kitchen matches
+substrings because "chick" has to find "Chicken breast" and full-text search
+matches whole lexemes (ADR 019); projects now do the same, for the same reason.
+A `UNION` would force one of those shapes onto all three, and every future
+domain would have to be bent to fit it before it could be searched at all.
+
+**Why not an interface or a registry:** three implementations is barely enough to
+generalise from, and a `Searchable` contract would have to be satisfied by every
+domain *before* it could join — the same inversion a plugin system makes. A
+mapping function per domain in `search-sources.ts` inverts it back: search
+depends on the domains, the domains depend on nothing. A projection depends on
+what it projects.
+
+**How a fourth domain joins:** a query in its own repository, a `…Hit` function
+in `search-sources.ts`, and one entry in `SEARCH_DOMAINS`. It touches no other
+domain's internals and no other domain's code.
+
+**Ranking is four tiers, not a score.** Exact name, prefix, word inside, then
+anything the domain matched elsewhere. Ties break on title and then on id — the
+last is never what anyone wants to sort by, and is exactly why the ordering is
+safe to assert: there is no unique constraint on an inventory name (ADR 019), so
+two rows really can read "Chicken breast" and still need one correct order.
+Ranking happens **inside** a group, never across one: `ts_rank` on an item and a
+substring hit in a food name are not the same quantity, and grouping is what
+makes comparing them unnecessary rather than merely unwise. Groups lead with
+their best tier, so "chicken" opens with the freezer and "monitor" with the
+items.
+
+**No migration, and that is the finding.** Everything needed was already there:
+the items `tsvector` and its GIN index from 0.1, and two tables small enough that
+a sequential `ILIKE` scan is not measurable. A generated column for a few dozen
+projects would be maintenance with no reader. Measured on the development
+database: **three SQL statements per search regardless of result count** — 27
+results and 3 results both cost three — at roughly 90ms against a remote
+Postgres, most of which is the network.
+
+**Cost:** result caps are per domain and there is no pagination, so a query
+matching more than fifty items shows fifty. That is deliberate at personal scale:
+needing the fifty-first means the query was too vague, and the fix is a better
+query rather than infinite scroll.
+
+**Revisit when:** a fourth or fifth domain makes the mapping functions tedious, or
+`ILIKE` becomes measurable — `pg_trgm` is the next step there, not a rewrite.
+
+---
+
+## 029 · Deterministic search first; semantic retrieval is deferred
+
+**Accepted** · 0.6
+
+0.6 ships full-text and substring search and **no** `pgvector`, no embeddings, no
+model in the retrieval path. The roadmap had listed semantic search under 0.5.
+
+**Why:** we do not yet know what ordinary search cannot do. Until 0.6, retrieval
+reached one table out of three, so every failure to find something had a
+mundane explanation — it was in the fridge, or it was a project — and no amount
+of semantic similarity would have fixed a query that never ran. Adding
+embeddings on top of that would have bought a plausible-looking answer to a
+question nobody had established.
+
+There is also a cost that only counts once. Embeddings mean an API key on the
+read path, a vector column to backfill and keep current, and a second thing that
+can be stale. Every one of those is a permanent tax on a system whose stated
+rule is that it must work with AI switched off. Search is the flow most likely
+to be used dozens of times a day; making it the first thing to *need* a provider
+would invert the constraint the whole architecture is built on.
+
+**What would justify revisiting:** real, repeated searches that fail because the
+words stored and the words remembered genuinely differ — "that thing about
+the leaky tap" against an item titled "call the plumber". That is a real limit
+of lexical matching and the one semantic retrieval actually solves. Recording a
+few of those is the evidence to gather; until then this is a guess.
+
+**When it comes, it is additive.** A `vector` column beside `search_vector`, a
+fourth strategy inside the same `searchEverything` composition, and the same
+`SearchHit` out the other end. Owning the SQL is what keeps that a migration
+rather than a rewrite — which is the whole reason ADR 002 chose Drizzle.
+
+**Not deferred, refused:** search history, saved searches, search analytics, and
+LLM query rewriting. The first three are data about personal behaviour nobody
+would act on, and the fourth puts a model between the user and their own words.

@@ -89,9 +89,22 @@ back `note` instead of `task`. The classification itself is covered where it can
 be covered honestly: pure rules in `src/domain/suggestions/`, and a substituted
 `Classifier` in `tests/integration/suggestions.test.ts`.
 
+`e2e/search.spec.ts` covers universal retrieval — the ranking is already pinned
+down without a database, so these cover only what a browser can prove:
+
+27. one word comes back from every domain, grouped by where it came from
+28. a result is reached and opened from the keyboard alone
+29. each domain's result opens that domain's own page
+30. Back returns to the results, because the query is the URL
+31. the results are usable on a phone, with nothing spilling sideways
+
+The last two are measurements rather than judgements: `scrollWidth` against
+`clientWidth` at 375px, every row inside the viewport, and a 44px floor on the
+tap target. A screenshot would prove none of it.
+
 They **write to the database they point at**. Everything they create is prefixed
-`smoke-<run>`, `kt-<run>`, `rc-<run>`, `ed-<run>` or `sg-<run>` and deleted
-afterwards, but point `DATABASE_URL` at a development database.
+`smoke-<run>`, `kt-<run>`, `rc-<run>`, `ed-<run>`, `sg-<run>` or `sx<run>` and
+deleted afterwards, but point `DATABASE_URL` at a development database.
 
 This suite is deliberately outside `pnpm check`. A gate that needs a database is
 a gate that gets skipped, and then the fast tests rot with it.
@@ -260,6 +273,27 @@ are skipped otherwise — say so rather than implying they passed.
 - [ ] Break the key deliberately (edit a character) and capture. The capture
       lands normally, no error reaches the screen, and the server log shows one
       line naming a failure category.
+
+**Universal search — if it went in, it comes back out**
+
+- [ ] Search a word that exists in more than one domain. Items, projects and the
+      kitchen each appear under their own heading, and the domain of every
+      result is obvious without reading the row.
+- [ ] The heading order follows the best match: a word that *is* a food name
+      leads with Kitchen, one that starts an item title leads with Items.
+- [ ] A result carries just enough to pick it out — a location and a quantity, a
+      kind and a project — and nothing that belongs on the record's own page.
+- [ ] Open one result from each domain. Each lands on that domain's existing
+      page, not on anything search invented.
+- [ ] Press Back. The results are still there and the query is still in the box.
+- [ ] From the query box press Down. The first result takes focus. Down and Up
+      walk the list across group boundaries; Escape returns to the box.
+- [ ] With a result focused, press Enter. It opens — nothing intercepted it.
+- [ ] Type a word that appears nowhere. The empty state names what was searched
+      and suggests what to do, rather than showing a blank panel.
+- [ ] Clear the query. The page invites a search rather than listing everything.
+- [ ] At 375px: the box is usable, headings and rows are readable, a long name
+      wraps, and nothing scrolls sideways.
 
 **Failure states — the ones nobody checks**
 
@@ -490,3 +524,65 @@ database later. That is the whole argument for that harness, paid back again.
 **Skipped on purpose:** the live-provider checklist items above, and the OS
 colour-scheme pass for the new row (it uses only existing semantic tokens and
 introduces no colour of its own).
+
+---
+
+### 0.6 — Universal Search · 2026-08-26
+
+**Gate:** `pnpm check` green — 26 files, 636 tests, up from 578 at 0.5.
+**Browser:** 31 specs green, five of them new. `pnpm check:env` green against a
+remote PostgreSQL 18.6, 4 of 4 migrations applied — **no migration was added by
+this milestone**, which was the intended outcome rather than a gap.
+
+**Verified with AI switched off, because there is nothing to switch on.** No
+`ANTHROPIC_API_KEY` is set on this machine, so every number above was produced by
+the deterministic application. That is not a separate pass: it is the only state
+this milestone was ever exercised in, and search reaches no AI code by
+construction — a grep of `src/domain/search/`, `src/server/search/`,
+`src/components/search/` and the page finds no provider import, no `fetch`, and
+no reference to suggestions outside a comment explaining their exclusion.
+
+**Measured rather than eyeballed:**
+
+- **Three SQL statements per search, whatever comes back.** Instrumented through
+  Drizzle's query logger against the development database: a query returning 27
+  results and one returning 3 both cost exactly three statements. That is the
+  no-N+1 claim as a number rather than an assurance.
+- **~90ms** for `searchEverything` against a remote Neon instance, most of it
+  network; **~160ms** for the whole page over HTTP. The three domain queries run
+  concurrently, so the cost is the slowest, not the sum.
+- **Zero horizontal overflow at 375px** — `scrollWidth` 375 against `clientWidth`
+  375, asserted in the smoke suite rather than judged from a screenshot. Every
+  result row sits inside the viewport and the first is 44px tall or more, which
+  is the tap-target floor.
+- **Zero console errors and zero warnings** across four page states — no query,
+  a matching query, a query matching nothing, and the tag-filter path — plus a
+  second pass at 375px.
+
+**Keyboard, checked for what it does not do as much as what it does.** Down from
+the query box focuses the first result, Down and Up walk the list across group
+boundaries, Escape returns to the box. Enter is never intercepted — the assertion
+that it opens the focused result is really an assertion that a result is still an
+ordinary link, so open-in-new-tab and Tab order come from the browser rather than
+from this code.
+
+**One regression, caught by the existing suite.** The kitchen spec asserted the
+search group heading read "In the kitchen". It reads "Kitchen" now, because there
+are three parallel headings rather than one exception beside items. The spec's
+point was that a kitchen record is shown as kitchen and never folded into items;
+it now asserts that twice over, including that no Items heading exists for the
+record to have been folded into.
+
+**A false pass caught in the tooling, before any code was written.** The first
+baseline `pnpm check` of this session reported exit 0 without ever running:
+output was redirected to a path that did not exist, so the reported status came
+from the trailing `echo`. Exactly the failure shape commit `46d2c47` documents,
+arriving by a different route than the one it fixed. The lesson is the same and
+worth restating: **a command's exit code is only evidence if nothing stands
+between it and the report.**
+
+**Skipped on purpose:** the in-app browser pane could not composite frames in
+this session, so no screenshots were taken. Every visual claim above was
+converted into a measurement in Chromium instead, which is stronger evidence than
+a screenshot would have been — but "looks right" was not assessed by eye at
+either width, and that is the gap.

@@ -37,7 +37,7 @@ technical grounds but fails one of these, the philosophy wins.
 
 **The inbox is a status, not an entity.** Everything captured is an `Item` with a
 `kind` and a `status`; `status = 'inbox'` means untriaged. One capture path, one
-search query, one spine that modules extend rather than fork.
+retrieval surface, one spine that modules extend rather than fork.
 
 Structured records — kitchen inventory, warranties, receipts — are **not items**
 and get their own tables. Mostly-null columns on `items` are the signal that this
@@ -79,7 +79,7 @@ Read one directly if you are planning work in that area before opening its files
 | `src/domain/`     | Types, Zod schemas, pure rules. Tests sit beside the source                                                          |
 | `src/server/`     | `db/`, repositories, services, `actions/`, `ai/` (provider-only), `env.ts`                                          |
 | `src/app/`        | Routes. `page.tsx` is Today; one folder per screen                                                                   |
-| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`, `agenda/`                                             |
+| `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`, `agenda/`, `search/`                                  |
 | `src/lib/`        | Framework-adjacent helpers only (`cn`, search params). Not a dumping ground — a domain concept goes in `src/domain/` |
 | `tests/`          | Integration tests + the PGlite harness                                                                               |
 | `e2e/`            | Playwright smoke tests. Needs a real database                                                                        |
@@ -171,29 +171,29 @@ the system responsible for personal context. These files say how to build it.
 
 ## Current milestone
 
-**0.4 / 0.4.1 — Recurrence, then daily-use hardening. Shipped.** Items repeat;
-completing one completes **the current occurrence**, anchored to the schedule not
-to when it was done. No occurrence rows — dates are computed from
-`item_recurrence`. A repeat can be typed into capture. The editor owns its submit,
-because React resets a form driven by its `action` prop. ADRs 022–025.
+Shipped milestones live in `docs/ROADMAP.md`; below is only what a session must
+know before touching this code.
 
-**0.5 — AI-assisted capture suggestions. Shipped.** The first AI here, under one
-rule: **AI may propose, the user decides, deterministic facts win.**
+**0.5 — Capture suggestions.** One rule: **AI may propose, the user decides,
+deterministic facts win.** Proposed kind, project and tags land in
+`item_suggestions`, **one row per proposed value**, applied only on acceptance and
+only through the ordinary item service. Each row remembers what its field held
+when proposed, so a stale one **retires rather than undoing a newer manual
+choice**. Precedence is by **omission** — whatever the parser resolved is never in
+the request. `src/server/ai/` is the only provider-aware code, the rules are pure
+in `src/domain/suggestions/`, and the provider is a **function parameter** like
+`db`. Lint forbids UI importing it, or the key ships to the browser. **With no
+`ANTHROPIC_API_KEY` it is inert.** ADRs 026–027.
 
-A fresh capture may get proposed kind, project and tags in `item_suggestions` —
-one row per proposed value, so each is accepted or ignored alone. Nothing applies
-until accepted, through the ordinary item service. Each row stores what its field
-held when proposed, so accepting a stale one **retires it rather than undoing a
-newer manual choice**. Precedence is by **omission**: anything the parser
-resolved is never in the request, so no arbitration step exists for a model to
-win. The vocabulary is closed — kind enum, live project names, existing tags —
-and nothing that fails to ground is repaired. It runs from `after()`, so Enter
-never waits.
+**0.6 — Universal Search.** One query reaches **items, projects and kitchen
+inventory**, grouped by domain and led by whichever matched best. Each domain owns
+its matching in its own repository; `src/server/search/` composes the three
+concurrently and `src/domain/search/` ranks them — the same shape as
+`agenda-service.ts`, for the same reason. No `entities` table, no `Searchable`
+interface, no registry: a fourth domain adds a query and one mapping function.
+Ranking is four tiers, not a score, tied on title then id so the order is total
+and assertable. **No migration was needed.** No AI is involved and none may be:
+the query leaves no process, and pending suggestions are not searchable. ADRs
+028–029.
 
-`src/server/ai/` is the only provider-aware code and the rules are pure in
-`src/domain/suggestions/`. The provider is a **function parameter**, like `db` —
-no interface, no registry. Lint forbids UI importing `src/server/ai/*`: that puts
-the API key in browser JavaScript. **With no `ANTHROPIC_API_KEY` this is inert**,
-which is how the repo ships. ADRs 026–027.
-
-**Next is retrieval** — `pgvector` semantic search. See `docs/ROADMAP.md`.
+**Next: semantic retrieval — but only once a real query defeats lexical search.**

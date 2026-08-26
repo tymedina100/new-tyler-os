@@ -181,16 +181,55 @@ provider, and any cost or evaluation dashboard.
 
 ---
 
-## Next · retrieval
+## 0.6 · Universal Search — shipped
 
-Semantic search via `pgvector` alongside the existing full-text index, and
-natural-language retrieval over captured items — the two halves of 0.5's original
-sketch that were deliberately left out, because classification and retrieval are
-different problems and doing both at once would have meant doing neither
-carefully.
+The promise retrieval has to keep: **if it went into TylerOS, it comes back
+out.** Search had been item-shaped since 0.1 — the kitchen was shown beside the
+results from 0.3, and projects were never searched at all, so "which project was
+that?" had no answer at the one place designed to give one.
+
+- One query reaches items, projects and kitchen inventory at once
+- Results are grouped by domain and led by whichever matched best, so "chicken"
+  opens with the freezer and "monitor" with the items
+- A result carries just enough to tell it apart, like `Task · Meal Prep` or
+  `Freezer · 2 lb`, and opens that domain's own existing page
+- Walkable from the keyboard: Down from the box, Up and Down through the
+  results, Escape back. Enter is never intercepted, because a result is a link
+- The query lives in the URL, so Back and Forward work and a search is a link
+
+**No migration, and that is the result rather than a shortcut.** Everything
+needed was already there: the items `tsvector` from 0.1, and two tables small
+enough that a substring scan is not measurable. Three SQL statements per search,
+whatever the result count.
+
+Architecturally this is ADR 023 a second time. Each domain keeps the query it
+already had for its own reasons, and a service belonging to none of them
+composes the answers into a pure projection. No universal `entities` table, no
+`Searchable` interface, no registry — a fourth domain joins with a query of its
+own and one mapping function. See ADR 028.
+
+**Not included, on purpose:** `pgvector` and semantic search, natural-language
+question answering, search history, saved searches, analytics, autocomplete,
+filters beyond the item-browsing ones that already existed, and pagination —
+needing the fifty-first result means the query was too vague.
+
+---
+
+## Next · semantic retrieval, once something needs it
+
+Deferred from 0.6 deliberately, not skipped. Until now retrieval reached one
+table out of three, so every failure to find something had a mundane
+explanation, and embeddings would have been a sophisticated answer to a question
+nobody had asked yet.
+
+What would justify it: real, repeated searches that fail because the words
+stored and the words remembered genuinely differ — "that thing about the leaky
+tap" against an item titled "call the plumber". Worth writing those down as they
+happen; they are the evidence, and there is currently none. See ADR 029.
 
 Constraints that do not move: the core keeps working with AI switched off, AI
-code stays in `src/server/ai/*`, and the domain never imports it.
+code stays in `src/server/ai/*`, and the domain never imports it. Search is used
+dozens of times a day, so it is the last flow that should ever need a key.
 
 ---
 

@@ -12,7 +12,8 @@ triaged". A task is an item with `kind = 'task'`. A show to watch is an item wit
 This is what stops TylerOS becoming a pile of unrelated CRUD pages:
 
 - Capture is always one code path, so it can be made fast once.
-- Search is always one query, across everything.
+- Retrieval is always one surface, across everything — though not one query; see
+  [Retrieval](#retrieval) for why the spine stopped being the whole of search.
 - A new module extends the spine instead of forking it.
 
 ### What is deliberately _not_ an item
@@ -220,6 +221,60 @@ is **no unique constraint on `name`**: two chicken packages with different dates
 are two truthful records, and merging them would invent a fact. See ADRs 019
 and 020.
 
+## Retrieval
+
+**Universal Search means one surface reaches every domain that holds an answer —
+not one query, and not one table.** Built in 0.6; before that "universal" meant
+the item spine, with the kitchen bolted on beside it and projects unsearchable.
+
+Three domains participate, and each one owns how it is searched:
+
+| Domain   | Fields searched       | How                                              |
+| -------- | --------------------- | ------------------------------------------------ |
+| Items    | `title`, `body`       | generated `tsvector` + `ILIKE` fallback, ADR 009 |
+| Projects | `name`, `description` | per-word `ILIKE`                                 |
+| Kitchen  | `name`, `notes`       | per-word `ILIKE`, ADR 019                        |
+
+Nothing else is indexed. Ids, timestamps, statuses and foreign keys are
+implementation, not things anybody recalls; tags are already a filter axis with
+their own links. Pending `item_suggestions` are **not searchable** — a proposal
+nobody accepted was never filed, so finding it would be finding something that
+is not there.
+
+The composition, one way down as everywhere else:
+
+```
+src/app/search/          the page: a plain GET form, so the query is the URL
+      |
+      v
+src/server/search/       runs the three repository queries concurrently
+      |
+      v
+src/domain/search/       pure: maps each domain's rows to hits, ranks, groups
+```
+
+`search-service.ts` belongs to none of the three domains, exactly as
+`agenda-service.ts` belongs to neither items nor kitchen. It is the same shape as
+that projection and for the same reason — see ADR 023, then ADR 028.
+
+**Ranking is four tiers, not a score,** so the order can be explained: an exact
+name, a prefix, a word inside the name, then anything the domain matched
+elsewhere. Ties break on title and then on id, which makes the ordering total and
+therefore assertable. Ranking happens inside a group, never across one. Groups
+lead with their best tier, so "chicken" opens with the freezer and "monitor" with
+the items.
+
+**Adding a fourth domain** is three things: a search query in its own repository,
+a `…Hit` mapping function in `src/domain/search/search-sources.ts`, and an entry
+in `SEARCH_DOMAINS`. It requires no change to any other domain, and no domain has
+to implement an interface to be eligible. There is no registry and no plugin
+seam — search depends on the domains, and they depend on nothing.
+
+**What the UI receives** is `SearchHit`: domain, id, title, optional context
+line, href, and the match tier. No database rows reach a component, and no domain
+is made to carry a field that means nothing to it. Every `href` is a page that
+already existed — search owns no destinations of its own.
+
 ## Error handling
 
 | Where         | Convention                                                             |
@@ -275,9 +330,11 @@ Designed as a seam in 0.1, **built in 0.5**, and it went in where it was drawn.
    proposed kinds, projects and tags for the user to accept or ignore. Applying
    one goes through the ordinary item service, so there is no second way for an
    item to change and no rule an AI path could skip.
-3. Semantic search is still ahead: a `pgvector` column alongside `search_vector`,
-   with the retrieval service choosing a strategy. Owning the SQL is what makes
-   that a migration rather than a rewrite.
+3. Semantic search is still ahead, and **deliberately so**: 0.6 built universal
+   retrieval with no model in it at all, because nothing yet demonstrates a
+   query that deterministic search cannot answer. When that evidence exists it
+   is a `vector` column beside `search_vector` and a fourth strategy inside the
+   existing composition — a migration, not a rewrite. See ADR 029.
 
 The rules of the boundary, all of them enforced rather than described:
 
