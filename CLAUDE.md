@@ -77,7 +77,7 @@ Read one directly if you are planning work in that area before opening its files
 | Path              | Contents                                                                                                             |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `src/domain/`     | Types, Zod schemas, pure rules. Tests sit beside the source                                                          |
-| `src/server/`     | `db/`, repositories, services, `actions/`, `ai/` (provider-only), `env.ts`                                          |
+| `src/server/`     | `db/`, repositories, services, `actions/`, `ai/` (provider-only), `env.ts`                                           |
 | `src/app/`        | Routes. `page.tsx` is Today; one folder per screen                                                                   |
 | `src/components/` | `ui/` primitives, `shell/`, `items/`, `projects/`, `kitchen/`, `agenda/`, `search/`                                  |
 | `src/lib/`        | Framework-adjacent helpers only (`cn`, search params). Not a dumping ground — a domain concept goes in `src/domain/` |
@@ -90,7 +90,7 @@ Read one directly if you are planning work in that area before opening its files
 
 ```bash
 pnpm dev              # development server (needs a reachable DATABASE_URL)
-pnpm check            # types + lint + tests + context + build — the gate
+pnpm check            # types, lint, format, context, tests, build — the gate
 pnpm check:env        # is this machine ready? node, env, DB, migrations, seed
 pnpm check:context    # are CLAUDE.md, the rules and the docs still true?
 pnpm test             # vitest, once. No database, no network needed

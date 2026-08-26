@@ -1,5 +1,8 @@
 import type { ItemSuggestion, ItemSuggestionView } from "@/domain/suggestions/suggestion";
-import type { SuggestionOutcome, SuggestionVocabulary } from "@/domain/suggestions/suggestion-rules";
+import type {
+  SuggestionOutcome,
+  SuggestionVocabulary,
+} from "@/domain/suggestions/suggestion-rules";
 import {
   groundSuggestion,
   hasAnyGap,

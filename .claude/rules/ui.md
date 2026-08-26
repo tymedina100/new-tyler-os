@@ -31,7 +31,7 @@ a recorded decision to _not_ do — see ADRs 004 and 006.
   `toast.error` or renders a field error. Never ignore the result — a failed
   action must never look like a successful one.
 - **A form that submits through `action={...}` is reset by React when the action
-  resolves** — a raw DOM `form.reset()`, on success *and* on failure. On a slow
+  resolves** — a raw DOM `form.reset()`, on success _and_ on failure. On a slow
   round trip that silently wipes whatever was typed in the meantime, and it
   desyncs controlled fields from their own state. Any form somebody might keep
   editing must own its submit: `event.preventDefault()`, then dispatch inside a

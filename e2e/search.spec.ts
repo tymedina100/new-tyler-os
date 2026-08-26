@@ -102,9 +102,7 @@ test("a result is reached and opened from the keyboard alone", async ({ page }) 
       async () => {
         await box.focus();
         await box.press("ArrowDown");
-        return page.evaluate(
-          () => document.activeElement?.getAttribute("data-search-hit") ?? null,
-        );
+        return page.evaluate(() => document.activeElement?.getAttribute("data-search-hit") ?? null);
       },
       { timeout: 15_000 },
     )
@@ -118,9 +116,9 @@ test("a result is reached and opened from the keyboard alone", async ({ page }) 
   expect(second).not.toBe(first);
 
   await page.keyboard.press("ArrowUp");
-  expect(
-    await page.evaluate(() => document.activeElement?.getAttribute("data-search-hit")),
-  ).toBe(first);
+  expect(await page.evaluate(() => document.activeElement?.getAttribute("data-search-hit"))).toBe(
+    first,
+  );
 
   // Escape gives the query box back, so a wrong search is retyped without reaching
   // for the mouse.

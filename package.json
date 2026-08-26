@@ -17,7 +17,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.mts",
-    "check": "pnpm typecheck && pnpm lint && pnpm check:context && pnpm test && pnpm build",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:context && pnpm test && pnpm build",
     "check:env": "tsx scripts/check-env.mts",
     "check:context": "tsx scripts/check-context.mts",
     "test:e2e": "playwright test"

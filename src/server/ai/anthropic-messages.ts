@@ -39,8 +39,7 @@ export type ProviderFailure =
   | "empty_response";
 
 export type ProviderResult =
-  | { ok: true; text: string; model: string }
-  | { ok: false; failure: ProviderFailure };
+  { ok: true; text: string; model: string } | { ok: false; failure: ProviderFailure };
 
 export interface ProviderRequest {
   system: string;

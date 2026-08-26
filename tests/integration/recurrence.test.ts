@@ -145,11 +145,7 @@ describe("storing a repeat", () => {
     });
 
     it("writes exactly one recurrence row, and none for ordinary captures", async () => {
-      await itemService.captureItem(
-        db(),
-        { text: "water plants daily", projectId: null },
-        TUESDAY,
-      );
+      await itemService.captureItem(db(), { text: "water plants daily", projectId: null }, TUESDAY);
       await itemService.captureItem(
         db(),
         { text: "read Every Day by David Levithan", projectId: null },

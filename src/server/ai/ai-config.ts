@@ -53,8 +53,7 @@ export const AI_REQUEST_TIMEOUT_MS = 12_000;
 export type AiDisabledReason = "no_api_key" | "switched_off";
 
 export type AiConfig =
-  | { enabled: false; reason: AiDisabledReason }
-  | { enabled: true; apiKey: string; model: string };
+  { enabled: false; reason: AiDisabledReason } | { enabled: true; apiKey: string; model: string };
 
 let cached: AiConfig | undefined;
 

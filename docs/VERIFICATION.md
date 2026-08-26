@@ -216,7 +216,7 @@ Run `pnpm db:seed` first so there is realistic content to judge.
 - [ ] `review budget monthly` with no date — it starts today, same as making an
       undated item repeat in the editor does.
 - [ ] One with `@project`, and one with an explicit date (`report every 2 weeks
-  friday`) — the stated date is the one it starts on.
+friday`) — the stated date is the one it starts on.
 - [ ] `read Every Day by David Levithan` keeps every word and gets no preview.
       So do "swim twice a week", "sync biweekly" and "audit every 500 days".
 - [ ] Open a captured repeat in the editor. It is an ordinary repeat: the same
@@ -279,7 +279,7 @@ are skipped otherwise — say so rather than implying they passed.
 - [ ] Search a word that exists in more than one domain. Items, projects and the
       kitchen each appear under their own heading, and the domain of every
       result is obvious without reading the row.
-- [ ] The heading order follows the best match: a word that *is* a food name
+- [ ] The heading order follows the best match: a word that _is_ a food name
       leads with Kitchen, one that starts an item title leads with Items.
 - [ ] A result carries just enough to pick it out — a location and a quantity, a
       kind and a project — and nothing that belongs on the record's own page.

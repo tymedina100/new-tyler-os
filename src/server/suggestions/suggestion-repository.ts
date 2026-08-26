@@ -53,10 +53,7 @@ export async function countSuggestionsForItem(db: Database, itemId: string): Pro
   return row?.count ?? 0;
 }
 
-export async function findSuggestionById(
-  db: Database,
-  id: string,
-): Promise<ItemSuggestion | null> {
+export async function findSuggestionById(db: Database, id: string): Promise<ItemSuggestion | null> {
   const row = await db.query.itemSuggestions.findFirst({ where: eq(itemSuggestions.id, id) });
   return row ?? null;
 }

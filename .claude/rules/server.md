@@ -8,11 +8,11 @@ paths:
 Three roles, kept distinct. Collapsing them is the most likely way this codebase
 degrades.
 
-| File pattern      | Role                                                       |
-| ----------------- | ---------------------------------------------------------- |
-| `*-repository.ts` | Speaks SQL. Returns domain shapes. **No business rules.**  |
-| `*-service.ts`    | Orchestrates: load state → ask the domain → write a patch. |
-| `actions/*.ts`    | `"use server"`. Validates input, calls a service.          |
+| File pattern      | Role                                                        |
+| ----------------- | ----------------------------------------------------------- |
+| `*-repository.ts` | Speaks SQL. Returns domain shapes. **No business rules.**   |
+| `*-service.ts`    | Orchestrates: load state → ask the domain → write a patch.  |
+| `actions/*.ts`    | `"use server"`. Validates input, calls a service.           |
 | `ai/*.ts`         | The only provider-aware code. Called by services, never UI. |
 
 ## Invariants

@@ -656,15 +656,15 @@ The cost is real and accepted: auth headers and the error taxonomy are ours. Bot
 are about fifteen lines, and the taxonomy had to be written anyway, because the
 failure categories are what the log prints.
 
-**No abstraction for a second provider.** `Classifier` is a *function type passed
-as an argument*, exactly as `db: Database` is — not an interface, an adapter, a
+**No abstraction for a second provider.** `Classifier` is a _function type passed
+as an argument_, exactly as `db: Database` is — not an interface, an adapter, a
 strategy or a registry. One implementation calls Anthropic; tests pass a lambda.
 If a second provider ever arrives it will be a second function, and the seam is
 already there. ADR 025 rejected a parser registry for the same reason.
 
 **Considered and rejected:** the SDK; `output_config.format` structured outputs
 (the wire shape could not be verified against a live API from the machine this was
-built on, and a robust parse of a shape that *could* be verified beats guessing —
+built on, and a robust parse of a shape that _could_ be verified beats guessing —
 malformed output is a required-handled case regardless); a tool definition used
 purely as an output schema (tool use is out of scope for this milestone by
 instruction, and using one as a JSON schema is that in all but name); mocking the
@@ -701,7 +701,7 @@ its own. A single row with a per-field status would have meant tracking three
 statuses inside one row — a JSON blob pretending to be a schema.
 
 **Why not a whole-response staleness signature.** That was the first design and it
-is wrong in a way that is easy to miss: accepting a proposal *mutates the item*, so
+is wrong in a way that is easy to miss: accepting a proposal _mutates the item_, so
 a signature over the item would stale every sibling the instant the first one was
 accepted, and partial acceptance would be nominal rather than real. Instead each
 row stores `observed_value` — what its own field held when it was proposed — plus
@@ -732,7 +732,7 @@ reply is a privacy cost with no user-visible return. What survives a run is the
 grounded proposal and the model identifier.
 
 **Considered:** a general `ai_events` table (a universal log for one feature);
-storing tag *ids* rather than names (a proposal must not create a tag before
+storing tag _ids_ rather than names (a proposal must not create a tag before
 anybody accepts it); `on delete set null` for the suggested project, matching
 `items` (an item outlives its project; a proposal into a deleted project does not).
 
@@ -778,7 +778,7 @@ domain would have to be bent to fit it before it could be searched at all.
 
 **Why not an interface or a registry:** three implementations is barely enough to
 generalise from, and a `Searchable` contract would have to be satisfied by every
-domain *before* it could join — the same inversion a plugin system makes. A
+domain _before_ it could join — the same inversion a plugin system makes. A
 mapping function per domain in `search-sources.ts` inverts it back: search
 depends on the domains, the domains depend on nothing. A projection depends on
 what it projects.
@@ -834,7 +834,7 @@ There is also a cost that only counts once. Embeddings mean an API key on the
 read path, a vector column to backfill and keep current, and a second thing that
 can be stale. Every one of those is a permanent tax on a system whose stated
 rule is that it must work with AI switched off. Search is the flow most likely
-to be used dozens of times a day; making it the first thing to *need* a provider
+to be used dozens of times a day; making it the first thing to _need_ a provider
 would invert the constraint the whole architecture is built on.
 
 **What would justify revisiting:** real, repeated searches that fail because the
