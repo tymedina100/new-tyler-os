@@ -19,6 +19,13 @@ import { captureItemAction } from "@/server/actions/item-actions";
 import { isTypingTarget } from "@/lib/keyboard";
 import { cn } from "@/lib/cn";
 
+/** The one input every `c` press, mobile-nav tap, and command-palette
+ * capture focuses — but only the header instance TylerOS renders on every
+ * screen, never the project-scoped one on a project page. Two capture bars can
+ * exist on `/projects/[id]` at once, and a duplicate DOM id would silently
+ * make `document.getElementById` return the wrong one. */
+export const CAPTURE_INPUT_ID = "capture-input";
+
 /**
  * The capture bar.
  *
@@ -113,6 +120,7 @@ export function CaptureBar({
         <Plus aria-hidden className="text-muted-foreground size-4 shrink-0" />
         <input
           ref={inputRef}
+          id={projectId ? undefined : CAPTURE_INPUT_ID}
           name="text"
           type="text"
           autoComplete="off"

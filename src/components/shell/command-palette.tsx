@@ -1,7 +1,17 @@
 "use client";
 
 import { Command } from "cmdk";
-import { CalendarRange, FolderGit2, Inbox, ListChecks, Plus, Search, Sun } from "lucide-react";
+import {
+  CalendarRange,
+  FolderGit2,
+  Inbox,
+  ListChecks,
+  Plus,
+  Refrigerator,
+  Search,
+  ShoppingCart,
+  Sun,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -11,9 +21,9 @@ import { captureItemAction } from "@/server/actions/item-actions";
  * The command palette.
  *
  * Three jobs, in the order they are used: go somewhere, capture something,
- * search for something. It is not an app-wide command registry - there are five
- * destinations and two verbs, and pretending otherwise would be architecture
- * for its own sake.
+ * search for something. It is not an app-wide command registry - it lists the
+ * same destinations the sidebar does and two verbs, and pretending otherwise
+ * would be architecture for its own sake.
  */
 
 const DESTINATIONS = [
@@ -22,6 +32,8 @@ const DESTINATIONS = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
+  { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
+  { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
 ] as const;
 
 export function CommandPalette() {

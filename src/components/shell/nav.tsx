@@ -1,16 +1,22 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import {
   CalendarRange,
   FolderGit2,
   Inbox,
   ListChecks,
+  MoreHorizontal,
+  Plus,
   Refrigerator,
   Search,
+  ShoppingCart,
   Sun,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CAPTURE_INPUT_ID } from "@/components/shell/capture-bar";
+import { SignOutButton } from "@/components/shell/sign-out-button";
 import { cn } from "@/lib/cn";
 
 /**
@@ -18,9 +24,16 @@ import { cn } from "@/lib/cn";
  *
  * A sidebar on desktop, a bottom tab bar on a phone. The tab bar is not a
  * shrunken sidebar: it is where a thumb actually reaches.
+ *
+ * The phone bar stopped being all seven desktop destinations once TylerOS grew
+ * an eighth thing worth reaching (search) with no room left to add it: seven
+ * items at 375px were already each narrower than their own label. Rather than
+ * add an eighth, the bar now carries the four things asked for daily — Today,
+ * Inbox, capture, Search — plus a fifth slot that opens the rest. Desktop
+ * keeps every destination visible, because a sidebar has the width to.
  */
 
-const NAV_ITEMS = [
+const SIDEBAR_ITEMS = [
   { href: "/", label: "Today", icon: Sun },
   { href: "/upcoming", label: "Upcoming", icon: CalendarRange },
   { href: "/inbox", label: "Inbox", icon: Inbox },
@@ -28,6 +41,22 @@ const NAV_ITEMS = [
   { href: "/projects", label: "Projects", icon: FolderGit2 },
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/search", label: "Search", icon: Search },
+] as const;
+
+/** The bar's three real links. Capture and More are buttons, not routes. */
+const PRIMARY_ITEMS = [
+  { href: "/", label: "Today", icon: Sun },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/search", label: "Search", icon: Search },
+] as const;
+
+/** Everything reachable only through the More sheet on a phone. */
+const SECONDARY_ITEMS = [
+  { href: "/upcoming", label: "Upcoming", icon: CalendarRange },
+  { href: "/tasks", label: "Tasks", icon: ListChecks },
+  { href: "/projects", label: "Projects", icon: FolderGit2 },
+  { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
+  { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
 ] as const;
 
 function useIsActive() {
@@ -41,7 +70,7 @@ export function SidebarNav({ inboxCount }: { inboxCount: number }) {
 
   return (
     <nav className="grid gap-0.5">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+      {SIDEBAR_ITEMS.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
@@ -71,14 +100,12 @@ export function MobileNav({ inboxCount }: { inboxCount: number }) {
 
   return (
     <nav className="border-border bg-card/95 fixed inset-x-0 bottom-0 z-40 flex border-t backdrop-blur md:hidden">
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+      {PRIMARY_ITEMS.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
           aria-current={isActive(href) ? "page" : undefined}
           className={cn(
-            // min-w-0 matters: seven tabs at 375px only fit because each one is
-            // allowed to be narrower than its label.
             "relative flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 text-[0.625rem]",
             isActive(href) ? "text-primary" : "text-muted-foreground",
           )}
@@ -94,6 +121,86 @@ export function MobileNav({ inboxCount }: { inboxCount: number }) {
           <span className="w-full truncate text-center">{label}</span>
         </Link>
       ))}
+
+      <CaptureTab />
+      <MoreSheet isActive={isActive} />
     </nav>
+  );
+}
+
+/** Focuses the one capture box every screen already has, rather than opening
+ * a second one. See `src/components/shell/capture-bar.tsx`. */
+function CaptureTab() {
+  function focusCapture() {
+    const input = document.getElementById(CAPTURE_INPUT_ID);
+    input?.focus();
+    input?.scrollIntoView({ block: "center" });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={focusCapture}
+      className="text-muted-foreground relative flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 text-[0.625rem]"
+    >
+      <Plus aria-hidden className="size-5" />
+      <span className="w-full truncate text-center">Capture</span>
+    </button>
+  );
+}
+
+function MoreSheet({ isActive }: { isActive: (href: string) => boolean }) {
+  const isAnyActive = SECONDARY_ITEMS.some((item) => isActive(item.href));
+
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger asChild>
+        <button
+          type="button"
+          aria-label="More destinations"
+          className={cn(
+            "relative flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 text-[0.625rem]",
+            isAnyActive ? "text-primary" : "text-muted-foreground",
+          )}
+        >
+          <MoreHorizontal aria-hidden className="size-5" />
+          <span className="w-full truncate text-center">More</span>
+        </button>
+      </Dialog.Trigger>
+
+      <Dialog.Portal>
+        <Dialog.Overlay className="animate-overlay bg-overlay fixed inset-0 z-50" />
+        <Dialog.Content className="animate-sheet border-border bg-card fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t p-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl">
+          <Dialog.Title className="text-muted-foreground px-3 py-2 text-xs font-medium">
+            More
+          </Dialog.Title>
+
+          <nav className="grid gap-0.5">
+            {SECONDARY_ITEMS.map(({ href, label, icon: Icon }) => (
+              <Dialog.Close asChild key={href}>
+                <Link
+                  href={href}
+                  aria-current={isActive(href) ? "page" : undefined}
+                  className={cn(
+                    // py-3.5 rather than py-2.5: a 40px row measured under the
+                    // 44px tap-target floor at 375px, found by measuring
+                    // rather than by looking. See docs/VERIFICATION.md 0.7.
+                    "flex min-h-11 items-center gap-3 rounded-md px-3 py-3.5 text-sm",
+                    isActive(href) ? "bg-muted text-foreground font-medium" : "text-foreground",
+                  )}
+                >
+                  <Icon aria-hidden className="size-[1.125rem] shrink-0" />
+                  {label}
+                </Link>
+              </Dialog.Close>
+            ))}
+          </nav>
+
+          <div className="border-border mt-1 border-t pt-1">
+            <SignOutButton className="min-h-11 px-3 py-3.5 text-sm" />
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

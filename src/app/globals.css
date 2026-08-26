@@ -139,4 +139,17 @@
   [data-state="open"].animate-panel {
     animation: tyleros-scale-in 140ms ease-out;
   }
+
+  @keyframes tyleros-slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  [data-state="open"].animate-sheet {
+    animation: tyleros-slide-up 160ms ease-out;
+  }
 }
