@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { Project, ProjectRef } from "@/domain/projects/project";
 import type { Database } from "@/server/db/client";
 import { type NewProjectRow, projects } from "@/server/db/schema";
@@ -18,6 +18,27 @@ export async function listProjectRefs(db: Database): Promise<ProjectRef[]> {
     .select({ id: projects.id, name: projects.name })
     .from(projects)
     .orderBy(asc(projects.name));
+}
+
+/**
+ * The projects a suggestion may name.
+ *
+ * Deliberately narrower than `listProjectRefs`, which returns everything so an
+ * `@reference` can resolve against a project the user knows exists. A proposer
+ * gets only what is live: filing a new capture into a finished or archived
+ * project is never the right answer, and a shorter list is both a smaller
+ * request and a smaller surface to be wrong on.
+ */
+export async function listSuggestibleProjectRefs(
+  db: Database,
+  limit: number,
+): Promise<ProjectRef[]> {
+  return db
+    .select({ id: projects.id, name: projects.name })
+    .from(projects)
+    .where(inArray(projects.status, ["active", "paused"]))
+    .orderBy(asc(sql`lower(${projects.name})`))
+    .limit(limit);
 }
 
 /**

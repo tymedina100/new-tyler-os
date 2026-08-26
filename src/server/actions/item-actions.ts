@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import {
   captureItemSchema,
   itemIdSchema,
@@ -14,6 +15,7 @@ import { setItemRecurrenceSchema } from "@/domain/recurrence/recurrence-schema";
 import { type ActionResult, runAction } from "@/server/action-result";
 import { getDb } from "@/server/db/client";
 import * as service from "@/server/items/item-service";
+import { runSuggestionPass } from "@/server/suggestions/suggestion-run";
 
 /**
  * Server actions for items.
@@ -39,6 +41,18 @@ export async function captureItemAction(
 
     const id = await service.captureItem(getDb(), input);
     revalidateEverything();
+
+    // Scheduled, not awaited. `after` runs its callback once the response has
+    // already been sent, so Enter is never waiting on a model — capture stays
+    // exactly as fast with AI configured as without it, which is the whole
+    // reason the suggestion is a later event rather than part of the capture.
+    //
+    // It is deliberately the last thing here: the item is written and committed
+    // before anything AI-shaped exists, so there is no arrangement of failures
+    // in which a capture is lost to a suggestion. `runSuggestionPass` returns
+    // immediately when AI is not configured, and never throws either way.
+    after(() => runSuggestionPass(getDb(), id));
+
     return { id };
   });
 }

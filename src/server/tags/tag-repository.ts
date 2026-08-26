@@ -40,6 +40,27 @@ export async function listTagsWithUsage(db: Database): Promise<TagUsage[]> {
 }
 
 /**
+ * The tags a suggestion may name, most-used first.
+ *
+ * A closed vocabulary is the whole tag safety story: a proposer chooses from
+ * what the user has already established or it proposes nothing. Nothing here
+ * can create a tag — `ensureTags` does that, and only once somebody has
+ * accepted. Ordering by usage means the cap keeps the tags that actually
+ * organise this system rather than an alphabetical slice of it.
+ */
+export async function listTagNamesByUsage(db: Database, limit: number): Promise<string[]> {
+  const rows = await db
+    .select({ name: tags.name, count: sql<number>`count(${itemTags.itemId})`.mapWith(Number) })
+    .from(tags)
+    .leftJoin(itemTags, eq(itemTags.tagId, tags.id))
+    .groupBy(tags.id, tags.name)
+    .orderBy(desc(sql`count(${itemTags.itemId})`), asc(tags.name))
+    .limit(limit);
+
+  return rows.map((row) => row.name);
+}
+
+/**
  * Tags only exist to label items. One left attached to nothing is clutter in
  * every filter list, so it is removed as soon as its last item lets go.
  */

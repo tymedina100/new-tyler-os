@@ -117,6 +117,50 @@ export async function setItemKind(db: Database, id: string, kind: ItemKind): Pro
   });
 }
 
+/**
+ * Filing an item into a project, or out of one.
+ *
+ * The sibling of `setItemKind`, and triages for the same reason: giving
+ * something a home is a decision about it, so it leaves the inbox — exactly as
+ * `setItemDueDate` already does for a date.
+ */
+export async function setItemProject(
+  db: Database,
+  id: string,
+  projectId: string | null,
+): Promise<void> {
+  const lifecycle = await requireLifecycle(db, id);
+
+  await repo.updateItemRow(db, id, {
+    projectId,
+    status:
+      projectId === null ? lifecycle.status : resolveTriagedStatus(lifecycle.status, undefined),
+  });
+}
+
+/**
+ * Adding one tag, leaving the others alone.
+ *
+ * Additive, unlike the editor's `replaceItemTags`: this exists so a single tag
+ * can be added without a caller having to send the whole set back, which is the
+ * only way to add one without racing whatever else changed in the meantime.
+ *
+ * Deliberately does **not** triage. A kind says what something is and a project
+ * says where it lives; a tag is a cross-cutting label and answers neither. If
+ * accepting one ejected an item from the inbox, it would take the untriaged
+ * item off the triage screen before its kind had been decided.
+ */
+export async function addItemTag(db: Database, id: string, name: string): Promise<void> {
+  await requireLifecycle(db, id);
+
+  await db.transaction(async (tx) => {
+    const [tag] = await ensureTags(tx, [name]);
+    if (tag === undefined) throw new DomainError("conflict", "That tag could not be created.");
+
+    await repo.addItemTag(tx, id, tag.id);
+  });
+}
+
 export async function setItemStatus(
   db: Database,
   id: string,

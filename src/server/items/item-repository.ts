@@ -294,6 +294,17 @@ export async function deleteItemRow(db: Database, id: string): Promise<boolean> 
   return rows.length > 0;
 }
 
+/**
+ * Attaching one tag without disturbing the rest.
+ *
+ * `on conflict do nothing` against the composite primary key, so adding a tag
+ * an item already carries is a no-op rather than a unique violation — which is
+ * what makes accepting the same suggestion twice harmless.
+ */
+export async function addItemTag(db: Database, itemId: string, tagId: string): Promise<void> {
+  await db.insert(itemTags).values({ itemId, tagId }).onConflictDoNothing();
+}
+
 export async function replaceItemTags(
   db: Database,
   itemId: string,
