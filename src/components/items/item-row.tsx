@@ -22,6 +22,7 @@ import {
   RepeatBadge,
   TagBadge,
 } from "@/components/items/item-badges";
+import { ItemSuggestions } from "@/components/items/item-suggestions";
 import { useAction } from "@/components/ui/use-action";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,6 +34,7 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 import { ITEM_KIND_LABELS, ITEM_KINDS, type ItemWithRelations } from "@/domain/items/item";
+import type { ItemSuggestionView } from "@/domain/suggestions/suggestion";
 import { RECURRENCE_PRESETS } from "@/domain/recurrence/recurrence";
 import { addDays, formatDueDate, type IsoDate } from "@/domain/shared/date";
 import {
@@ -52,6 +54,12 @@ interface ItemRowProps {
   /** Passed from the server so the client never has to guess the date. */
   today: IsoDate;
   /**
+   * What AI proposed about this item and the user has not decided about yet.
+   * Empty on every row when AI is not configured, which is why nothing else
+   * here has to know whether it is.
+   */
+  suggestions?: readonly ItemSuggestionView[];
+  /**
    * Set by keyboard triage in the inbox. Elsewhere the row has no notion of
    * being "current" and these stay undefined.
    */
@@ -69,7 +77,15 @@ interface ItemRowProps {
  * broken. Everything else runs in a transition and raises a toast if it fails -
  * a failed action must never look like a successful one.
  */
-export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: ItemRowProps) {
+export function ItemRow({
+  item,
+  today,
+  suggestions = [],
+  selected,
+  marked,
+  onSelect,
+  rowRef,
+}: ItemRowProps) {
   const { isPending, run } = useAction();
   const [optimisticDone, setOptimisticDone] = useOptimistic(item.status === "done");
 
@@ -173,6 +189,18 @@ export function ItemRow({ item, today, selected, marked, onSelect, rowRef }: Ite
           {item.status === "someday" ? <Badge>Someday</Badge> : null}
           {isArchived ? <Badge>Archived</Badge> : null}
         </div>
+
+        {/*
+          A line of its own, below the badges rather than among them. Mixing a
+          proposal into the row of things TylerOS actually knows is exactly the
+          confusion the dashed border exists to prevent, and a separate line
+          costs nothing on the overwhelming majority of rows that have none.
+        */}
+        {suggestions.length > 0 ? (
+          <div className="mt-1.5">
+            <ItemSuggestions itemId={item.id} suggestions={suggestions} />
+          </div>
+        ) : null}
       </div>
 
       <Menu>

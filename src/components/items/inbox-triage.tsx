@@ -6,6 +6,7 @@ import { ItemRow } from "@/components/items/item-row";
 import { Key, ShortcutsToggle, TriageLegend } from "@/components/items/triage-legend";
 import { useAction } from "@/components/ui/use-action";
 import { ITEM_KINDS, type ItemWithRelations } from "@/domain/items/item";
+import type { ItemSuggestionView } from "@/domain/suggestions/suggestion";
 import type { IsoDate } from "@/domain/shared/date";
 import type { ActionResult } from "@/server/action-result";
 import {
@@ -34,9 +35,16 @@ import { hasModifier, isTypingTarget } from "@/lib/keyboard";
 export function InboxTriage({
   items,
   today,
+  suggestions,
 }: {
   items: readonly ItemWithRelations[];
   today: IsoDate;
+  /**
+   * Pending proposals, keyed by item. Passed down rather than fetched per row
+   * so a screenful of items costs one query, and empty for everybody who has
+   * not configured AI.
+   */
+  suggestions?: ReadonlyMap<string, readonly ItemSuggestionView[]>;
 }) {
   // The index is remembered alongside the id so that when a triaged item leaves
   // the list, the selection can fall to whatever took its place. Deriving the
@@ -230,6 +238,7 @@ export function InboxTriage({
             key={item.id}
             item={item}
             today={today}
+            suggestions={suggestions?.get(item.id)}
             selected={item.id === selected?.id}
             marked={marked.has(item.id)}
             onSelect={() => select(item, index)}
