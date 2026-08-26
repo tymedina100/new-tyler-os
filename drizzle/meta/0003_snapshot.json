@@ -1,0 +1,879 @@
+{
+  "id": "fd41a7fd-a953-4b22-b5d9-8987468cf0f4",
+  "prevId": "c8f722b8-d1aa-4793-aac2-88bf1286ae7e",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.item_recurrence": {
+      "name": "item_recurrence",
+      "schema": "",
+      "columns": {
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "frequency": {
+          "name": "frequency",
+          "type": "recurrence_frequency",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval": {
+          "name": "interval",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "anchor_on": {
+          "name": "anchor_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_completed_on": {
+          "name": "last_completed_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "item_recurrence_item_id_items_id_fk": {
+          "name": "item_recurrence_item_id_items_id_fk",
+          "tableFrom": "item_recurrence",
+          "tableTo": "items",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "item_recurrence_interval_check": {
+          "name": "item_recurrence_interval_check",
+          "value": "\"item_recurrence\".\"interval\" >= 1 and \"item_recurrence\".\"interval\" <= 99"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.item_suggestions": {
+      "name": "item_suggestions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "field": {
+          "name": "field",
+          "type": "suggestion_field",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "item_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tag_name": {
+          "name": "tag_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "suggestion_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observed_title": {
+          "name": "observed_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observed_value": {
+          "name": "observed_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "item_suggestions_one_per_field_idx": {
+          "name": "item_suggestions_one_per_field_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "field",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"item_suggestions\".\"field\" in ('kind', 'project')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "item_suggestions_unique_tag_idx": {
+          "name": "item_suggestions_unique_tag_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tag_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"item_suggestions\".\"field\" = 'tag'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "item_suggestions_pending_idx": {
+          "name": "item_suggestions_pending_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"item_suggestions\".\"status\" = 'pending'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "item_suggestions_item_id_items_id_fk": {
+          "name": "item_suggestions_item_id_items_id_fk",
+          "tableFrom": "item_suggestions",
+          "tableTo": "items",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "item_suggestions_project_id_projects_id_fk": {
+          "name": "item_suggestions_project_id_projects_id_fk",
+          "tableFrom": "item_suggestions",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "item_suggestions_value_check": {
+          "name": "item_suggestions_value_check",
+          "value": "(\"item_suggestions\".\"field\" = 'kind' and \"item_suggestions\".\"kind\" is not null and \"item_suggestions\".\"project_id\" is null and \"item_suggestions\".\"tag_name\" is null)\n       or (\"item_suggestions\".\"field\" = 'project' and \"item_suggestions\".\"project_id\" is not null and \"item_suggestions\".\"kind\" is null and \"item_suggestions\".\"tag_name\" is null)\n       or (\"item_suggestions\".\"field\" = 'tag' and \"item_suggestions\".\"tag_name\" is not null and \"item_suggestions\".\"kind\" is null and \"item_suggestions\".\"project_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.item_tags": {
+      "name": "item_tags",
+      "schema": "",
+      "columns": {
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag_id": {
+          "name": "tag_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "item_tags_tag_idx": {
+          "name": "item_tags_tag_idx",
+          "columns": [
+            {
+              "expression": "tag_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "item_tags_item_id_items_id_fk": {
+          "name": "item_tags_item_id_items_id_fk",
+          "tableFrom": "item_tags",
+          "tableTo": "items",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "item_tags_tag_id_tags_id_fk": {
+          "name": "item_tags_tag_id_tags_id_fk",
+          "tableFrom": "item_tags",
+          "tableTo": "tags",
+          "columnsFrom": [
+            "tag_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "item_tags_item_id_tag_id_pk": {
+          "name": "item_tags_item_id_tag_id_pk",
+          "columns": [
+            "item_id",
+            "tag_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.items": {
+      "name": "items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "item_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'note'"
+        },
+        "status": {
+          "name": "status",
+          "type": "item_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'inbox'"
+        },
+        "due_on": {
+          "name": "due_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "search_vector": {
+          "name": "search_vector",
+          "type": "tsvector",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "setweight(to_tsvector('english', coalesce(\"items\".\"title\", '')), 'A') || setweight(to_tsvector('english', coalesce(\"items\".\"body\", '')), 'B')",
+            "type": "stored"
+          }
+        }
+      },
+      "indexes": {
+        "items_status_idx": {
+          "name": "items_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "items_kind_idx": {
+          "name": "items_kind_idx",
+          "columns": [
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "items_due_on_idx": {
+          "name": "items_due_on_idx",
+          "columns": [
+            {
+              "expression": "due_on",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "items_project_idx": {
+          "name": "items_project_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "items_created_at_idx": {
+          "name": "items_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "items_search_idx": {
+          "name": "items_search_idx",
+          "columns": [
+            {
+              "expression": "search_vector",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "items_project_id_projects_id_fk": {
+          "name": "items_project_id_projects_id_fk",
+          "tableFrom": "items",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kitchen_inventory": {
+      "name": "kitchen_inventory",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "kitchen_location",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_on": {
+          "name": "expires_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "kitchen_inventory_location_idx": {
+          "name": "kitchen_inventory_location_idx",
+          "columns": [
+            {
+              "expression": "location",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "kitchen_inventory_expires_on_idx": {
+          "name": "kitchen_inventory_expires_on_idx",
+          "columns": [
+            {
+              "expression": "expires_on",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "kitchen_inventory_name_idx": {
+          "name": "kitchen_inventory_name_idx",
+          "columns": [
+            {
+              "expression": "lower(\"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.projects": {
+      "name": "projects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "project_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "projects_name_unique_idx": {
+          "name": "projects_name_unique_idx",
+          "columns": [
+            {
+              "expression": "lower(\"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "projects_status_idx": {
+          "name": "projects_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tags": {
+      "name": "tags",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tags_name_unique_idx": {
+          "name": "tags_name_unique_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.item_kind": {
+      "name": "item_kind",
+      "schema": "public",
+      "values": [
+        "task",
+        "note",
+        "idea",
+        "media",
+        "purchase"
+      ]
+    },
+    "public.item_status": {
+      "name": "item_status",
+      "schema": "public",
+      "values": [
+        "inbox",
+        "active",
+        "someday",
+        "done",
+        "archived"
+      ]
+    },
+    "public.kitchen_location": {
+      "name": "kitchen_location",
+      "schema": "public",
+      "values": [
+        "fridge",
+        "freezer",
+        "pantry"
+      ]
+    },
+    "public.project_status": {
+      "name": "project_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "paused",
+        "done",
+        "archived"
+      ]
+    },
+    "public.recurrence_frequency": {
+      "name": "recurrence_frequency",
+      "schema": "public",
+      "values": [
+        "daily",
+        "weekly",
+        "monthly"
+      ]
+    },
+    "public.suggestion_field": {
+      "name": "suggestion_field",
+      "schema": "public",
+      "values": [
+        "kind",
+        "project",
+        "tag"
+      ]
+    },
+    "public.suggestion_status": {
+      "name": "suggestion_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "accepted",
+        "dismissed"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

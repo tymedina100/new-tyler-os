@@ -18,6 +18,7 @@ import { ITEM_KINDS, ITEM_STATUSES } from "@/domain/items/item";
 import { KITCHEN_LOCATIONS } from "@/domain/kitchen/inventory";
 import { PROJECT_STATUSES } from "@/domain/projects/project";
 import { MAX_RECURRENCE_INTERVAL, RECURRENCE_FREQUENCIES } from "@/domain/recurrence/recurrence";
+import { SUGGESTION_FIELDS, SUGGESTION_STATUSES } from "@/domain/suggestions/suggestion";
 
 /**
  * The TylerOS database schema.
@@ -43,6 +44,8 @@ export const itemStatusEnum = pgEnum("item_status", ITEM_STATUSES);
 export const projectStatusEnum = pgEnum("project_status", PROJECT_STATUSES);
 export const kitchenLocationEnum = pgEnum("kitchen_location", KITCHEN_LOCATIONS);
 export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", RECURRENCE_FREQUENCIES);
+export const suggestionFieldEnum = pgEnum("suggestion_field", SUGGESTION_FIELDS);
+export const suggestionStatusEnum = pgEnum("suggestion_status", SUGGESTION_STATUSES);
 
 export const projects = pgTable(
   "projects",
@@ -171,6 +174,99 @@ export const itemRecurrence = pgTable(
 );
 
 /**
+ * What AI proposed about an item, and what the user did about it.
+ *
+ * Its own table for the reason every table here has its own table: a proposal
+ * is not a property of an item. `items` stays the canonical record, and nothing
+ * a model produced can be read as fact by anything that queries it. This is the
+ * `item_suggestions` seam docs/ARCHITECTURE.md has described since 0.1, built
+ * as described — `items` has now gone three milestones without a new column.
+ *
+ * **One row per proposed value**, not one row per model response. That is what
+ * makes partial acceptance fall out for free: "project: Home" and
+ * "tag: maintenance" resolve independently, and accepting one has no opinion
+ * about the other. Exactly one of `kind`, `project_id` and `tag_name` is set,
+ * decided by `field` and enforced by the check below — a tagged union, not the
+ * mostly-null-columns smell ADR 001 warns about.
+ *
+ * Deliberately not here: the prompt, the raw response, token counts, cost, a
+ * request log. None of them are needed to show a suggestion or to decide
+ * whether it still applies, and retaining the text of personal captures next to
+ * a provider's reply is a privacy cost with no user-visible return. See ADR 027.
+ */
+export const itemSuggestions = pgTable(
+  "item_suggestions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    field: suggestionFieldEnum("field").notNull(),
+    kind: itemKindEnum("kind"),
+    /**
+     * Cascades rather than nulling, unlike `items.project_id`. An item outlives
+     * its project; a proposal to file something into a project that no longer
+     * exists is not worth keeping.
+     */
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    /** A name, not a tag id. Accepting is what creates the row, through `ensureTags`. */
+    tagName: text("tag_name"),
+    status: suggestionStatusEnum("status").notNull().default("pending"),
+    /** Which model said so. For reading a server log, never shown to the user. */
+    model: text("model").notNull(),
+    /**
+     * The title the model was shown. A retitled item is a different capture,
+     * and every proposal about the old words goes stale at once.
+     */
+    observedTitle: text("observed_title").notNull(),
+    /**
+     * What this proposal's own field held at the time, with the empty string
+     * meaning "nothing". Comparing it against the live item at acceptance is
+     * what stops a stale suggestion undoing a newer manual choice. Per field
+     * rather than per response, so accepting one proposal cannot stale its
+     * siblings. See `reconcileSuggestion`.
+     */
+    observedValue: text("observed_value").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "item_suggestions_value_check",
+      sql`(${table.field} = 'kind' and ${table.kind} is not null and ${table.projectId} is null and ${table.tagName} is null)
+       or (${table.field} = 'project' and ${table.projectId} is not null and ${table.kind} is null and ${table.tagName} is null)
+       or (${table.field} = 'tag' and ${table.tagName} is not null and ${table.kind} is null and ${table.projectId} is null)`,
+    ),
+    /**
+     * Duplicate-request safety, in SQL rather than by convention.
+     *
+     * A retried capture, a double-invoked callback or two overlapping requests
+     * all converge on the same rows instead of stacking identical proposals in
+     * front of the user. The service inserts with `on conflict do nothing`, so
+     * a repeat is a no-op rather than an error — and a proposal the user has
+     * already dismissed can never come back to be dismissed again.
+     *
+     * Two partial indexes rather than one over a `coalesce` of all three value
+     * columns. That was the first attempt and Postgres refuses it: casting an
+     * enum to text is only STABLE, not IMMUTABLE, so it cannot appear in an
+     * index expression. Splitting on `field` says the real rule more precisely
+     * anyway — an item has **one** kind proposal and **one** project proposal,
+     * because it has one kind and one project, while tags are a set and are
+     * unique per name.
+     */
+    uniqueIndex("item_suggestions_one_per_field_idx")
+      .on(table.itemId, table.field)
+      .where(sql`${table.field} in ('kind', 'project')`),
+    uniqueIndex("item_suggestions_unique_tag_idx")
+      .on(table.itemId, table.tagName)
+      .where(sql`${table.field} = 'tag'`),
+    index("item_suggestions_pending_idx")
+      .on(table.itemId)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
+
+/**
  * Kitchen inventory.
  *
  * Its own table, on purpose. A jar of olive oil is a fact about the world, not
@@ -217,6 +313,12 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
     references: [itemRecurrence.itemId],
   }),
   itemTags: many(itemTags),
+  suggestions: many(itemSuggestions),
+}));
+
+export const itemSuggestionsRelations = relations(itemSuggestions, ({ one }) => ({
+  item: one(items, { fields: [itemSuggestions.itemId], references: [items.id] }),
+  project: one(projects, { fields: [itemSuggestions.projectId], references: [projects.id] }),
 }));
 
 export const itemRecurrenceRelations = relations(itemRecurrence, ({ one }) => ({
@@ -239,5 +341,7 @@ export type NewProjectRow = typeof projects.$inferInsert;
 export type TagRow = typeof tags.$inferSelect;
 export type ItemRecurrenceRow = typeof itemRecurrence.$inferSelect;
 export type NewItemRecurrenceRow = typeof itemRecurrence.$inferInsert;
+export type ItemSuggestionRow = typeof itemSuggestions.$inferSelect;
+export type NewItemSuggestionRow = typeof itemSuggestions.$inferInsert;
 export type KitchenInventoryRow = typeof kitchenInventory.$inferSelect;
 export type NewKitchenInventoryRow = typeof kitchenInventory.$inferInsert;
