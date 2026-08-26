@@ -28,6 +28,22 @@ command palette. Inline `#tags` in captured text are parsed out automatically, s
 
 Tests need neither PostgreSQL nor a network — see [Tests](#tests).
 
+**`pnpm: command not found`, with Node installed?** Node ships Corepack, which
+resolves the pinned `pnpm`, without putting it on `PATH` by default — and on
+Windows, the directory Corepack shims into by default (next to `node.exe`)
+usually needs administrator rights to write to. No admin required: point
+Corepack at a directory you can already write to and that is already on your
+`PATH` — npm's own global prefix works well and usually needs no setup of its
+own:
+
+```bash
+corepack enable --install-directory "$(npm config get prefix)"
+```
+
+Open a new shell and confirm with `pnpm --version` — it should print the
+version pinned in `package.json`'s `packageManager` field. `pnpm check:env`
+reports this too, and fails if some other install shadows the pinned one.
+
 ## Setup
 
 ```bash

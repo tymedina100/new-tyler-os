@@ -56,12 +56,7 @@ if (required && !satisfies(runningMajorMinor, required)) {
   record("Node.js", "ok", process.versions.node);
 }
 
-const pnpmVersion = process.env.npm_config_user_agent?.match(/pnpm\/(\S+)/)?.[1];
-record(
-  "pnpm",
-  pnpmVersion ? "ok" : "warn",
-  pnpmVersion ?? "not detected (run this through `pnpm check:env`)",
-);
+recordPnpm();
 
 // -------------------------------------------------------------- environment
 
@@ -249,6 +244,60 @@ async function checkSeed(sql: postgres.Sql): Promise<void> {
     }
   } catch {
     // Tables missing is already reported by the migration check.
+  }
+}
+
+/**
+ * Is the pnpm actually running this script the one the repo is pinned to?
+ *
+ * A total absence of pnpm is not this function's job — it fails loudly on its
+ * own, from the shell, before Node even starts (`pnpm: command not found`).
+ * What this catches is quieter and more dangerous: **a** pnpm resolved and ran
+ * this script, but it is not **the** pnpm — some other install shadows the
+ * pinned one earlier on PATH. That runs `pnpm check` to a "successful" exit
+ * while never having been the version anything here was written against.
+ *
+ * `npm_config_user_agent` is unset only when this file is invoked directly
+ * (`node`/`tsx scripts/check-env.mts`, skipping pnpm entirely) rather than
+ * through a script pnpm launched — a real but different situation from a
+ * version mismatch, so it stays a warning rather than a failure.
+ */
+function recordPnpm(): void {
+  const running = process.env.npm_config_user_agent?.match(/pnpm\/(\S+)/)?.[1];
+  const pinned = readPinnedPnpmVersion();
+
+  if (!running) {
+    record(
+      "pnpm",
+      "warn",
+      "not detected — this script was not launched by pnpm",
+      "Run it as `pnpm check:env` rather than directly with node/tsx.",
+    );
+    return;
+  }
+
+  if (pinned && running !== pinned) {
+    record(
+      "pnpm",
+      "fail",
+      `${running} is running, but package.json pins pnpm@${pinned}`,
+      "Something earlier on PATH is shadowing the pinned version. Run `corepack use " +
+        `pnpm@${pinned}\` to re-pin, or find what resolves before it with \`which -a pnpm\`.`,
+    );
+    return;
+  }
+
+  record("pnpm", "ok", running);
+}
+
+function readPinnedPnpmVersion(): string | null {
+  try {
+    const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
+      packageManager?: string;
+    };
+    return pkg.packageManager?.match(/^pnpm@(\S+)$/)?.[1] ?? null;
+  } catch {
+    return null;
   }
 }
 
