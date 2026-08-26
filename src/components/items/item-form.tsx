@@ -2,29 +2,38 @@
 
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState, useTransition } from "react";
-import { toast } from "sonner";
-import { RecurrenceField } from "@/components/items/recurrence-field";
-import { Button } from "@/components/ui/button";
-import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import {
-  ITEM_KIND_LABELS,
-  ITEM_KINDS,
-  ITEM_STATUS_LABELS,
-  ITEM_STATUSES,
-  type ItemWithRelations,
-} from "@/domain/items/item";
-import { MAX_TAGS_PER_ITEM } from "@/domain/items/item-schema";
-import type { RecurrenceFrequency } from "@/domain/recurrence/recurrence";
-import { NO_RECURRENCE } from "@/domain/recurrence/recurrence-schema";
-import type { IsoDate } from "@/domain/shared/date";
+  type FormEvent,
+  startTransition,
+  useActionState,
+  useEffect,
+  useState,
+  useTransition,
+} from "react";
+import { toast } from "sonner";
+import { ItemFields } from "@/components/items/item-fields";
+import { Button } from "@/components/ui/button";
+import type { ItemWithRelations } from "@/domain/items/item";
 import { deleteItemAction, updateItemAction } from "@/server/actions/item-actions";
+import type { IsoDate } from "@/domain/shared/date";
 
 /**
  * The full editor for an item.
  *
  * Creation deliberately has no form: everything is created by capture and given
  * detail afterwards. One creation path means one place for the rules to live.
+ *
+ * Three states are kept apart on purpose, because collapsing them is what made
+ * saved edits disappear (see 0.4.1 in docs/VERIFICATION.md):
+ *
+ *   - the **persisted snapshot** — `snapshot`, the server values the draft was
+ *     seeded from
+ *   - the **local draft** — the fields themselves, owned by `ItemFields`
+ *   - **whether the draft has moved since the last save began** — `dirty`
+ *
+ * A newly persisted snapshot is adopted only when the draft is clean. A dirty
+ * draft always wins, because the user's unsaved keystrokes are the only thing
+ * here that cannot be recovered from the database.
  */
 export function ItemForm({
   item,
@@ -40,20 +49,24 @@ export function ItemForm({
   const [isDeleting, startDeleting] = useTransition();
   const router = useRouter();
 
-  // Mirrored, not controlled: the date input keeps whatever was typed before
-  // hydration, and the repeat description still follows it. See 0.2's recorded
-  // result in docs/VERIFICATION.md for what controlling it costs.
-  const [dueOn, setDueOn] = useState(item.dueOn ?? "");
-  const [frequency, setFrequency] = useState<RecurrenceFrequency | typeof NO_RECURRENCE>(
-    item.recurrence?.frequency ?? NO_RECURRENCE,
-  );
-  const [interval, setInterval] = useState(String(item.recurrence?.interval ?? 1));
+  const [snapshot, setSnapshot] = useState(item);
+  // Remounting `ItemFields` is how a draft is discarded and re-seeded, so this
+  // counter is the identity of "which persisted snapshot the draft came from".
+  const [draftGeneration, setDraftGeneration] = useState(0);
+  const [dirty, setDirty] = useState(false);
 
-  // A repeating item is never finished, only its current occurrence is. Offering
-  // "Done" here would be offering something the server is right to refuse.
-  const statuses = ITEM_STATUSES.filter(
-    (status) => frequency === NO_RECURRENCE || status !== "done",
-  );
+  // A state adjustment during render, not an effect: adopting in an effect would
+  // paint the stale draft once first. The same pattern the capture bar uses to
+  // clear itself after a successful capture.
+  //
+  // Signatures rather than object identity, because every revalidation anywhere
+  // in the app hands this component a brand new `item` object. Comparing values
+  // means an unrelated save elsewhere cannot remount a form somebody is looking
+  // at, and a real change to this item still re-seeds it.
+  if (!dirty && persistedSignature(item) !== persistedSignature(snapshot)) {
+    setSnapshot(item);
+    setDraftGeneration((generation) => generation + 1);
+  }
 
   useEffect(() => {
     if (state?.ok) toast.success("Saved.");
@@ -61,6 +74,25 @@ export function ItemForm({
 
   const fieldErrors = state && !state.ok ? state.fieldErrors : undefined;
   const formError = state && !state.ok && !state.fieldErrors ? state.error : null;
+
+  /**
+   * React 19 resets a form submitted through its `action` prop the moment the
+   * action resolves — `recursivelyResetForms` calls a raw DOM `form.reset()`,
+   * which knows nothing about what has been typed in the second or so the save
+   * took. That wiped in-flight edits and desynced the controlled repeat select
+   * from React's own state.
+   *
+   * Preventing the default is what turns it off: React then dispatches with a
+   * null action and skips `requestFormReset` entirely. The `action` prop stays
+   * on the form so a submit before hydration is still a plain server-action
+   * POST.
+   */
+  function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setDirty(false);
+    startTransition(() => formAction(formData));
+  }
 
   function remove() {
     startDeleting(async () => {
@@ -76,85 +108,25 @@ export function ItemForm({
 
   return (
     <div className="grid gap-6">
-      <form action={formAction} className="grid gap-4">
+      <form
+        action={formAction}
+        onSubmit={save}
+        // One listener for the whole form: any field moving marks the draft
+        // dirty, and nothing downstream has to remember to report it.
+        onChange={() => {
+          if (!dirty) setDirty(true);
+        }}
+        className="grid gap-4"
+      >
         <input type="hidden" name="id" value={item.id} />
 
-        <Field label="Title" htmlFor="title" errors={fieldErrors?.title}>
-          <Input id="title" name="title" defaultValue={item.title} required maxLength={280} />
-        </Field>
-
-        <Field label="Notes" htmlFor="body" errors={fieldErrors?.body}>
-          <Textarea id="body" name="body" defaultValue={item.body ?? ""} rows={5} />
-        </Field>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Type" htmlFor="kind" errors={fieldErrors?.kind}>
-            <Select id="kind" name="kind" defaultValue={item.kind}>
-              {ITEM_KINDS.map((kind) => (
-                <option key={kind} value={kind}>
-                  {ITEM_KIND_LABELS[kind]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Status" htmlFor="status" errors={fieldErrors?.status}>
-            <Select id="status" name="status" defaultValue={item.status}>
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {ITEM_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Due" htmlFor="dueOn" errors={fieldErrors?.dueOn}>
-            <Input
-              id="dueOn"
-              name="dueOn"
-              type="date"
-              defaultValue={item.dueOn ?? ""}
-              onChange={(event) => setDueOn(event.target.value)}
-            />
-          </Field>
-
-          <Field label="Project" htmlFor="projectId" errors={fieldErrors?.projectId}>
-            <Select id="projectId" name="projectId" defaultValue={item.projectId ?? "none"}>
-              <option value="none">No project</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-
-        <RecurrenceField
-          existing={item.recurrence}
-          existingDueOn={item.dueOn}
-          frequency={frequency}
-          interval={interval}
-          dueOn={dueOn}
+        <ItemFields
+          key={draftGeneration}
+          item={snapshot}
+          projects={projects}
           today={today}
-          onFrequencyChange={setFrequency}
-          onIntervalChange={setInterval}
-          errors={fieldErrors?.recurrence}
+          fieldErrors={fieldErrors}
         />
-
-        <Field
-          label="Tags"
-          htmlFor="tags"
-          hint={`Space or comma separated. Up to ${MAX_TAGS_PER_ITEM}.`}
-          errors={fieldErrors?.tags}
-        >
-          <Input
-            id="tags"
-            name="tags"
-            defaultValue={item.tags.map((tag) => tag.name).join(" ")}
-            placeholder="home errand"
-          />
-        </Field>
 
         {formError ? (
           <p role="alert" className="text-destructive text-sm">
@@ -183,4 +155,24 @@ export function ItemForm({
       </div>
     </div>
   );
+}
+
+/**
+ * The editable fields of an item, flattened for comparison.
+ *
+ * Only what this form can change: a `updatedAt` that moved because something
+ * else touched the row is not a reason to throw away what is on screen.
+ */
+function persistedSignature(item: ItemWithRelations): string {
+  return JSON.stringify([
+    item.title,
+    item.body,
+    item.kind,
+    item.status,
+    item.dueOn,
+    item.projectId,
+    item.tags.map((tag) => tag.name),
+    item.recurrence?.frequency ?? null,
+    item.recurrence?.interval ?? null,
+  ]);
 }
