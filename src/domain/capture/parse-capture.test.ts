@@ -26,6 +26,7 @@ describe("parseCapture", () => {
         dueOn: null,
         projectId: null,
         unresolvedProject: null,
+        recurrence: null,
       });
     });
   });
@@ -122,6 +123,7 @@ describe("parseCapture", () => {
         dueOn: null,
         projectId: null,
         unresolvedProject: { ref: "Gardening", reason: "unknown" },
+        recurrence: null,
       });
     });
 
@@ -144,6 +146,7 @@ describe("parseCapture", () => {
         dueOn: null,
         projectId: null,
         unresolvedProject: null,
+        recurrence: null,
       });
     });
 
@@ -201,6 +204,7 @@ describe("parseCapture", () => {
         dueOn: "2026-09-04",
         projectId: "p-kitchen",
         unresolvedProject: null,
+        recurrence: null,
       });
     });
 
@@ -263,9 +267,276 @@ describe("parseCapture", () => {
     });
   });
 
+  describe("recurrence", () => {
+    it("reads a repeat and leaves the responsibility as the title", () => {
+      expect(parse("take trash out every tuesday")).toEqual({
+        title: "take trash out",
+        tags: [],
+        // The coming Tuesday, which on a Tuesday is today.
+        dueOn: TUESDAY,
+        projectId: null,
+        unresolvedProject: null,
+        recurrence: { frequency: "weekly", interval: 1 },
+      });
+    });
+
+    it("always gives a repeat a first occurrence to sit on", () => {
+      // The invariant the editor holds too: a schedule with no current
+      // occurrence is not a schedule. Undated repeats start today.
+      for (const text of [
+        "water plants daily",
+        "review budget weekly",
+        "pay rent monthly",
+        "clean bathroom every 2 weeks",
+        "wash sheets every other week",
+      ]) {
+        const result = parse(text);
+        expect(result.recurrence).not.toBeNull();
+        expect(result.dueOn).toBe(TUESDAY);
+      }
+    });
+
+    describe("with the rest of the capture", () => {
+      it("combines with a tag", () => {
+        expect(parse("clean bathroom every 2 weeks #home")).toMatchObject({
+          title: "clean bathroom",
+          tags: ["home"],
+          dueOn: TUESDAY,
+          recurrence: { frequency: "weekly", interval: 2 },
+        });
+      });
+
+      it("combines with a project", () => {
+        expect(parse("check smoke detector every 6 months @TylerOS")).toMatchObject({
+          title: "check smoke detector",
+          projectId: "p-tyleros",
+          recurrence: { frequency: "monthly", interval: 6 },
+        });
+      });
+
+      it("combines with a project and a tag", () => {
+        expect(parse("order filters monthly @kitchen #home")).toMatchObject({
+          title: "order filters",
+          projectId: "p-kitchen",
+          tags: ["home"],
+          recurrence: { frequency: "monthly", interval: 1 },
+        });
+      });
+
+      it("takes a stated date as the anchor, after the repeat", () => {
+        expect(parse("report every 2 weeks friday")).toMatchObject({
+          title: "report",
+          dueOn: "2026-08-28",
+          recurrence: { frequency: "weekly", interval: 2 },
+        });
+      });
+
+      it("takes a stated date as the anchor, before the repeat", () => {
+        expect(parse("clean fridge tomorrow every month")).toMatchObject({
+          title: "clean fridge",
+          dueOn: "2026-08-26",
+          recurrence: { frequency: "monthly", interval: 1 },
+        });
+      });
+
+      it("reads a spelled-out date through a preposition", () => {
+        expect(parse("pay rent monthly on september 1")).toMatchObject({
+          title: "pay rent",
+          dueOn: "2026-09-01",
+          recurrence: { frequency: "monthly", interval: 1 },
+        });
+      });
+
+      it("combines with a date and a tag", () => {
+        // A stated date is the anchor even when the repeat named a different
+        // day, so this reads as "weekly bins, starting next Friday". The input
+        // contradicts itself; what matters is that it resolves one way every
+        // time, and that the preview says which.
+        expect(parse("bins every tuesday next friday #home")).toMatchObject({
+          title: "bins",
+          tags: ["home"],
+          dueOn: "2026-09-04",
+          recurrence: { frequency: "weekly", interval: 1 },
+        });
+      });
+
+      it("combines a repeat, a date, a project and a tag", () => {
+        expect(parse("deep clean every 3 months friday @kitchen #home")).toEqual({
+          title: "deep clean",
+          tags: ["home"],
+          dueOn: "2026-08-28",
+          projectId: "p-kitchen",
+          unresolvedProject: null,
+          recurrence: { frequency: "monthly", interval: 3 },
+        });
+      });
+
+      it("an explicit date wins over the day a weekday repeat named", () => {
+        // Odd input, but it must resolve one way and stay that way.
+        expect(parse("bins every tuesday tomorrow")).toMatchObject({
+          dueOn: "2026-08-26",
+          recurrence: { frequency: "weekly", interval: 1 },
+        });
+      });
+
+      it("keeps the repeat when the project cannot be resolved", () => {
+        // Losing the whole capture because one reference was wrong is the one
+        // outcome this parser must never produce.
+        expect(parse("clean gutters every 6 months @Nonsense")).toMatchObject({
+          title: "clean gutters every 6 months @Nonsense",
+          projectId: null,
+          unresolvedProject: { ref: "Nonsense", reason: "unknown" },
+          recurrence: null,
+        });
+      });
+
+      it("reads the repeat once an ambiguous reference is out of the way", () => {
+        const projects: ProjectRef[] = [
+          { id: "a", name: "Money" },
+          { id: "b", name: "Monitors" },
+        ];
+        expect(parse("review budget weekly @Mon", { projects })).toMatchObject({
+          unresolvedProject: { ref: "Mon", reason: "ambiguous" },
+          recurrence: null,
+        });
+      });
+
+      it("reads the repeat through a malformed tag or reference", () => {
+        expect(parse("water plants daily #")).toMatchObject({
+          title: "water plants daily #",
+          recurrence: null,
+        });
+        expect(parse("water plants #! daily")).toMatchObject({
+          title: "water plants #!",
+          recurrence: { frequency: "daily", interval: 1 },
+        });
+        expect(parse("water plants @ daily")).toMatchObject({
+          title: "water plants @",
+          recurrence: { frequency: "daily", interval: 1 },
+        });
+      });
+    });
+
+    describe("what it leaves as ordinary text", () => {
+      it("does not turn a book title into a habit", () => {
+        expect(parse("read Every Day by David Levithan")).toMatchObject({
+          title: "read Every Day by David Levithan",
+          dueOn: null,
+          recurrence: null,
+        });
+      });
+
+      const untouched = [
+        "daily standup notes",
+        "write the weekly report",
+        "monthly accounts spreadsheet",
+        "every tuesday is bin day",
+        "the day after the week of the month",
+        "swim twice a week",
+        "review three times per month",
+        "pay the invoice first business day",
+        "bins last friday of the month",
+        "harvest every full moon",
+        "sync biweekly",
+        "renew licence yearly",
+      ];
+
+      for (const text of untouched) {
+        it(`keeps "${text}" whole`, () => {
+          expect(parse(text)).toMatchObject({ title: text, recurrence: null });
+        });
+      }
+
+      it("keeps a weekday used as a title", () => {
+        // Already true of dates — ADR 018 — and it must stay true with repeats
+        // in the picture.
+        expect(parse("monday meeting notes")).toMatchObject({
+          title: "monday meeting notes",
+          dueOn: null,
+          recurrence: null,
+        });
+      });
+
+      it("keeps a bare repeat word as a title rather than an unnamed habit", () => {
+        for (const text of ["daily", "weekly", "monthly", "fortnightly", "every 2 weeks"]) {
+          expect(parse(text)).toMatchObject({ title: text, recurrence: null });
+        }
+      });
+
+      it("still lets the date parser have a lone trailing weekday", () => {
+        // "every tuesday" with nothing in front of it cannot become a repeat
+        // without leaving an unnamed item, so the repeat is refused — and then
+        // the date parser claims the Tuesday, exactly as it always has for any
+        // text ending in a weekday. Pre-existing, and the ADR 018 trade-off:
+        // a visible odd title beats a silent wrong schedule.
+        expect(parse("every tuesday")).toMatchObject({
+          title: "every",
+          dueOn: TUESDAY,
+          recurrence: null,
+        });
+      });
+
+      it("refuses an interval the domain would not accept", () => {
+        for (const text of [
+          "stretch every 0 days",
+          "stretch every -2 weeks",
+          "audit every 100 months",
+          "audit every 500 days",
+          "stretch every 2.5 weeks",
+          "stretch every two weeks",
+        ]) {
+          expect(parse(text)).toMatchObject({ title: text, recurrence: null });
+        }
+      });
+
+      it("accepts an interval of exactly one", () => {
+        expect(parse("bins every 1 week")).toMatchObject({
+          title: "bins",
+          recurrence: { frequency: "weekly", interval: 1 },
+        });
+      });
+    });
+
+    describe("boundaries", () => {
+      it("anchors a weekday repeat across a month end", () => {
+        // Monday 2026-08-31; the coming Tuesday is in September.
+        expect(parse("bins every tuesday", { today: "2026-08-31" })).toMatchObject({
+          dueOn: "2026-09-01",
+        });
+      });
+
+      it("anchors a weekday repeat across a year end", () => {
+        expect(parse("bins every friday", { today: "2026-12-28" })).toMatchObject({
+          dueOn: "2027-01-01",
+        });
+      });
+
+      it("starts an undated monthly repeat on a 31st when that is today", () => {
+        // The anchor is simply today. What the schedule then does with a short
+        // February is `occurrenceOn`'s job, and it is tested there.
+        expect(parse("pay rent monthly", { today: "2026-08-31" })).toMatchObject({
+          dueOn: "2026-08-31",
+          recurrence: { frequency: "monthly", interval: 1 },
+        });
+      });
+
+      it("starts an undated repeat on a leap day when that is today", () => {
+        expect(parse("water plants every other day", { today: "2028-02-29" })).toMatchObject({
+          dueOn: "2028-02-29",
+          recurrence: { frequency: "daily", interval: 2 },
+        });
+      });
+    });
+  });
+
   describe("determinism", () => {
     it("returns the same result for the same input and context", () => {
       const text = "order the worktop @kitchen #home next friday";
+      expect(parse(text)).toEqual(parse(text));
+    });
+
+    it("returns the same result for a repeat, too", () => {
+      const text = "clean bathroom every 2 weeks @kitchen #home";
       expect(parse(text)).toEqual(parse(text));
     });
   });

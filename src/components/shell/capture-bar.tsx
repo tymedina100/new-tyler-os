@@ -1,9 +1,19 @@
 "use client";
 
-import { CalendarDays, CornerDownLeft, FolderGit2, Hash, Plus, TriangleAlert } from "lucide-react";
+import {
+  CalendarDays,
+  CornerDownLeft,
+  FolderGit2,
+  Hash,
+  Plus,
+  Repeat,
+  TriangleAlert,
+} from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { parseCapture } from "@/domain/capture/parse-capture";
 import type { ProjectRef } from "@/domain/projects/project";
+import type { RecurrenceRule } from "@/domain/recurrence/recurrence";
+import { describeRecurrence } from "@/domain/recurrence/recurrence";
 import { formatDueDate, type IsoDate } from "@/domain/shared/date";
 import { captureItemAction } from "@/server/actions/item-actions";
 import { isTypingTarget } from "@/lib/keyboard";
@@ -17,7 +27,8 @@ import { cn } from "@/lib/cn";
  * that would slow a capture down - choosing a type, picking a date - belongs to
  * triage, not to this box.
  *
- * `#tag`, `@project` and a trailing date are parsed out of the text, and the
+ * `#tag`, `@project`, a trailing date and a trailing repeat are parsed out of
+ * the text, and the
  * result is previewed below the field as you type. The preview is not a
  * confirmation step: Enter still captures immediately. It exists because a box
  * that quietly rewrites what you typed is worse than one that never tried.
@@ -87,7 +98,8 @@ export function CaptureBar({
     (parsed.dueOn !== null ||
       project !== null ||
       parsed.tags.length > 0 ||
-      parsed.unresolvedProject !== null);
+      parsed.unresolvedProject !== null ||
+      parsed.recurrence !== null);
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-1.5">
@@ -141,6 +153,7 @@ export function CaptureBar({
           project={project}
           tags={parsed.tags}
           unresolved={parsed.unresolvedProject}
+          recurrence={parsed.recurrence}
         />
       ) : (
         <p className="text-muted-foreground hidden px-1 text-xs sm:block">
@@ -163,6 +176,7 @@ function CapturePreview({
   project,
   tags,
   unresolved,
+  recurrence,
 }: {
   title: string;
   dueOn: IsoDate | null;
@@ -170,6 +184,7 @@ function CapturePreview({
   project: ProjectRef | null;
   tags: readonly string[];
   unresolved: { ref: string; reason: "unknown" | "ambiguous" } | null;
+  recurrence: RecurrenceRule | null;
 }) {
   return (
     <div
@@ -183,6 +198,19 @@ function CapturePreview({
         <Chip>
           <CalendarDays aria-hidden className="size-3" />
           {formatDueDate(dueOn, today)}
+        </Chip>
+      ) : null}
+
+      {/*
+        Spelled out rather than summarised: "Every Tuesday" is what makes a
+        repeat trustworthy before Enter, where a bare "Weekly" leaves the
+        reader wondering which day it landed on. The date chip beside it says
+        when the first one is.
+      */}
+      {recurrence && dueOn ? (
+        <Chip>
+          <Repeat aria-hidden className="size-3" />
+          {describeRecurrence({ ...recurrence, anchorOn: dueOn, lastCompletedOn: null })}
         </Chip>
       ) : null}
 

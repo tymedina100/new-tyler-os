@@ -45,6 +45,10 @@ import { deleteOrphanedTags, ensureTags } from "@/server/tags/tag-repository";
  * A parsed due date does **not** take the item out of the inbox. Its kind is
  * still undecided, and `buildTodayView` already files a dated inbox item under
  * its date rather than under "needs triage", so nothing is hidden by waiting.
+ *
+ * A parsed repeat is written through the same `writeRecurrence` the editor uses,
+ * so a responsibility captured as "bins every tuesday" is indistinguishable
+ * from one set up by hand — same anchor rule, same row, same everything after.
  */
 export async function captureItem(
   db: Database,
@@ -63,6 +67,16 @@ export async function captureItem(
       projectId,
     });
 
+    // Nothing is stored yet, so there is no prior anchor to preserve: the
+    // parsed due date becomes the anchor, which is what `resolveAnchor` returns
+    // for an item with no existing recurrence.
+    await writeRecurrence(
+      tx,
+      id,
+      { dueOn: null, recurrence: null },
+      parsed.recurrence,
+      parsed.dueOn,
+    );
     await attachTags(tx, id, parsed.tags);
     return id;
   });
@@ -340,7 +354,12 @@ async function settleOccurrence(
 async function writeRecurrence(
   db: Database,
   id: string,
-  schedule: repo.ItemSchedule,
+  /**
+   * What is already stored. Narrowed to the two fields the anchor rule needs so
+   * a freshly captured item — which has neither — can use this same path rather
+   * than growing a second place that decides anchors.
+   */
+  schedule: { dueOn: IsoDate | null; recurrence: ItemRecurrence | null },
   rule: RecurrenceRule | null,
   dueOn: IsoDate | null,
 ): Promise<ItemRecurrence | null> {

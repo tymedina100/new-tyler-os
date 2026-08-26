@@ -185,7 +185,11 @@ function buildDate(year: number, month: number, day: number): IsoDate | null {
   return toIsoDate(date);
 }
 
-function weekdayIndex(word: string): number | null {
+/**
+ * Exported for `recurrence-phrase.ts`, so "every tuesday" and a bare "tuesday"
+ * cannot come to disagree about which Tuesday they mean. Monday = 0.
+ */
+export function weekdayIndex(word: string): number | null {
   const index = WEEKDAYS.findIndex(({ full, short }) => word === full || word === short);
   return index === -1 ? null : index;
 }
@@ -204,7 +208,7 @@ function mondayBasedDay(iso: IsoDate): number {
  * The next occurrence of a weekday, counting today as valid. Saying "friday" on
  * a Friday means today, not a week away.
  */
-function comingWeekday(weekday: number, today: IsoDate): IsoDate {
+export function comingWeekday(weekday: number, today: IsoDate): IsoDate {
   const offset = (weekday - mondayBasedDay(today) + 7) % 7;
   return addDays(today, offset);
 }

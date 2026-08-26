@@ -75,6 +75,111 @@ describe("storing a repeat", () => {
     expect(item.status).toBe("active");
   });
 
+  /**
+   * The point of these is not that the parser works — that has 90-odd fast
+   * tests of its own. It is that a repeat typed into the capture bar lands in
+   * the same row, with the same anchor, as one set up by hand. Two ways in, one
+   * meaning, or the rest of the recurrence behaviour only half works.
+   */
+  describe("captured as text", () => {
+    it("stores what the editor would have stored", async () => {
+      const captured = await itemService.captureItem(
+        db(),
+        { text: "take the bins out every tuesday", projectId: null },
+        TUESDAY,
+      );
+      const byHand = await recurringItem("take the bins out", "2026-08-25", {
+        frequency: "weekly",
+        interval: 1,
+      });
+
+      const [fromCapture, fromEditor] = [await load(captured), await load(byHand)];
+
+      expect(fromCapture.title).toBe("take the bins out");
+      expect(fromCapture.dueOn).toBe(fromEditor.dueOn);
+      expect(fromCapture.recurrence).toEqual(fromEditor.recurrence);
+    });
+
+    it("anchors an undated repeat on today, exactly as the editor does", async () => {
+      const id = await itemService.captureItem(
+        db(),
+        { text: "pay rent monthly", projectId: null },
+        TUESDAY,
+      );
+
+      const item = await load(id);
+      expect(item.title).toBe("pay rent");
+      expect(item.dueOn).toBe("2026-08-25");
+      expect(item.recurrence).toEqual({
+        frequency: "monthly",
+        interval: 1,
+        anchorOn: "2026-08-25",
+        lastCompletedOn: null,
+      });
+    });
+
+    it("takes a stated date as the anchor, alongside a project and a tag", async () => {
+      const { createProject } = await import("@/server/projects/project-service");
+      const projectId = await createProject(db(), {
+        name: "Home",
+        description: null,
+        status: "active",
+      });
+
+      const id = await itemService.captureItem(
+        db(),
+        { text: "deep clean every 3 months friday @Home #chores", projectId: null },
+        TUESDAY,
+      );
+
+      const item = await load(id);
+      expect(item.title).toBe("deep clean");
+      expect(item.dueOn).toBe("2026-08-28");
+      expect(item.projectId).toBe(projectId);
+      expect(item.tags.map((tag) => tag.name)).toEqual(["chores"]);
+      expect(item.recurrence).toMatchObject({
+        frequency: "monthly",
+        interval: 3,
+        anchorOn: "2026-08-28",
+      });
+    });
+
+    it("writes exactly one recurrence row, and none for ordinary captures", async () => {
+      await itemService.captureItem(
+        db(),
+        { text: "water plants daily", projectId: null },
+        TUESDAY,
+      );
+      await itemService.captureItem(
+        db(),
+        { text: "read Every Day by David Levithan", projectId: null },
+        TUESDAY,
+      );
+
+      const rows = await db().select().from(itemRecurrence);
+      expect(rows).toHaveLength(1);
+    });
+
+    it("hands a captured repeat straight into the completion behaviour", async () => {
+      // Nothing special is done for captured repeats afterwards, and this is
+      // what proves it: completing one rolls forward by the schedule.
+      const id = await itemService.captureItem(
+        db(),
+        { text: "take the bins out every tuesday", projectId: null },
+        TUESDAY,
+      );
+
+      // Done two days late; bin day stays Tuesday rather than moving to Thursday.
+      const outcome = await itemService.toggleItemCompletionById(db(), id, THURSDAY);
+
+      expect(outcome.nextDueOn).toBe("2026-09-01");
+      const item = await load(id);
+      expect(item.dueOn).toBe("2026-09-01");
+      expect(item.status).not.toBe("done");
+      expect(item.recurrence?.lastCompletedOn).toBe("2026-08-27");
+    });
+  });
+
   it("replaces a rule rather than accumulating rules", async () => {
     const id = await recurringItem("water the plants", "2026-08-25", {
       frequency: "daily",
