@@ -55,15 +55,25 @@ async function save(page: Page) {
   await expect(page.getByRole("button", { name: "Save changes" })).toBeEnabled();
 }
 
-/** Captures an item and opens its editor. */
+/**
+ * Captures an item and opens its editor.
+ *
+ * The box clearing is the signal that the capture was written — navigating
+ * before it does cancels the write, which 0.2 recorded and this suite has to
+ * keep respecting. The generous timeout on the editor is for the dev server's
+ * first compile of `/items/[id]`, which is slow enough to fail a 5s assertion
+ * when this happens to be the first spec of a cold run.
+ */
 async function openEditor(page: Page, title: string) {
   await page.goto("/");
-  await page.getByLabel("Capture").fill(title);
-  await page.getByLabel("Capture").press("Enter");
-  await expect(page.getByRole("link", { name: title })).toBeVisible();
+  const box = page.getByLabel("Capture");
+  await box.fill(title);
+  await box.press("Enter");
+  await expect(box).toHaveValue("");
 
   await page.getByRole("link", { name: title }).click();
-  await expect(page.getByLabel("Title")).toHaveValue(title);
+  await page.waitForURL(/\/items\//);
+  await expect(page.getByLabel("Title")).toHaveValue(title, { timeout: 20_000 });
 }
 
 test("an edit made while a save is still in flight is not wiped when it lands", async ({

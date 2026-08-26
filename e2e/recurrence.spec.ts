@@ -54,15 +54,85 @@ function rowFor(page: Page, title: string) {
 }
 
 /**
- * Saving revalidates the layout, which re-renders the editor from the server.
- * Reloading afterwards is not belt and braces: it is what makes the next edit
- * start from the saved state rather than racing the revalidation.
+ * Reloading after a save is belt and braces now rather than a necessity: since
+ * 0.4.1 the editor keeps its own draft and adopts the server's values
+ * deliberately, so the next edit no longer races a revalidation. It stays
+ * because asserting against a fresh page proves the write actually landed.
+ * `editor-draft.spec.ts` is what covers the racing itself.
  */
 async function save(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Saved.")).toBeVisible();
   await page.reload();
 }
+
+test("a repeat typed into the capture bar is previewed, then filed", async ({ page }) => {
+  const title = named("water the plants");
+
+  await page.goto("/");
+  const box = page.getByLabel("Capture");
+  await box.fill(`${title} every wednesday`);
+
+  // The preview names the day before Enter is pressed. That is what makes the
+  // guess acceptable: the box says what it is about to do while it can still be
+  // corrected.
+  await expect(page.getByText("Every Wednesday", { exact: true })).toBeVisible();
+  // And it shows the title it will actually store, without the repeat words.
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+
+  await box.press("Enter");
+  await expect(box).toHaveValue("");
+
+  // Filed as a repeat, with the badge every other repeating item gets.
+  const row = rowFor(page, title);
+  await expect(row.getByText("Weekly", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: `Complete this occurrence of ${title}` }),
+  ).toBeVisible();
+
+  // And the editor agrees, because capture writes the same row the editor does.
+  await page.getByRole("link", { name: title }).click();
+  await expect(page.getByLabel("Repeats")).toHaveValue("weekly");
+  await expect(page.getByLabel("Every", { exact: true })).toHaveValue("1");
+  await expect(page.getByText(/Every Wednesday/)).toBeVisible();
+  await expect(page.getByLabel("Due")).not.toHaveValue("");
+});
+
+test("a captured repeat carries a project and a tag with it", async ({ page }) => {
+  const title = named("clean the bathroom");
+
+  await page.goto("/");
+  await capture(page, `${title} every 2 weeks #chores`);
+
+  const row = rowFor(page, title);
+  await expect(row.getByText("Every 2 weeks", { exact: true })).toBeVisible();
+  await expect(row.getByRole("link", { name: "chores" })).toBeVisible();
+
+  // The title kept none of the metadata, and none of the metadata was lost.
+  await expect(row.getByRole("link", { name: title })).toBeVisible();
+});
+
+test("a captured repeat advances by its schedule, not by when it was done", async ({ page }) => {
+  const title = named("take the recycling out");
+
+  await page.goto("/");
+  // Anchored on today, so the next occurrence is a week from today whatever day
+  // this suite happens to run on.
+  await capture(page, `${title} weekly`);
+
+  const dueToday = rowFor(page, title).getByText("Today", { exact: true });
+  await expect(dueToday).toBeVisible();
+
+  await page.getByRole("button", { name: `Complete this occurrence of ${title}` }).click();
+  await expect(page.getByText(/Done\. Next:/)).toBeVisible();
+
+  // Still open, still repeating, and no longer due today — the same behaviour a
+  // repeat built in the editor gets, which is the point of sharing one path.
+  await page.goto("/tasks?kind=all&status=open");
+  const afterwards = rowFor(page, title);
+  await expect(afterwards.getByText("Weekly", { exact: true })).toBeVisible();
+  await expect(afterwards.getByText("Today", { exact: true })).toHaveCount(0);
+});
 
 test("a repeating item is completed one occurrence at a time", async ({ page }) => {
   const title = named("take the bins out");

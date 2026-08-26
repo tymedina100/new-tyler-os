@@ -109,8 +109,36 @@ events table.
 
 **Not included, on purpose:** times of day, reminders and notifications,
 external calendar sync, a month grid, recurrence exceptions, habit streaks and
-completion history beyond "when was this last done", and natural-language
-recurrence in the capture bar.
+completion history beyond "when was this last done".
+
+---
+
+## 0.4.1 · Daily-use hardening — shipped
+
+Not a feature milestone. Two things stood between 0.4 and actually living in
+this system every day, and both were cheap to close before any AI work starts.
+
+- **A save could eat the edit that followed it.** A form submitted through
+  React's `action` prop is reset when the action resolves — a raw DOM
+  `form.reset()`, on failure as well as success. On a remote database that
+  lands a second or more after the click, which is long enough to have started
+  typing again. The editor now owns its submit and adopts the server's values
+  only when the draft is clean.
+- **Recurrence had to be set up after capture.** "take trash out every tuesday"
+  now files itself, the way "pay bill friday" has since 0.2 — same closed
+  grammar approach, same trailing-phrase safety rule, and the same anchor and
+  persistence path the editor uses, so a captured repeat is not a second kind of
+  repeat.
+
+The grammar is deliberately small and refuses to guess: daily/weekly/monthly,
+every N of them, every other one, every `<weekday>`, fortnightly. Everything
+else stays as ordinary title text, including "biweekly", which means two
+opposite things depending on who says it. See ADRs 024 and 025.
+
+**Not included, on purpose:** natural-language _editing_ of an existing repeat,
+recurrence phrases anywhere but the end of a capture, "first business day" and
+"last friday of the month" style rules, and yearly — which the domain has no
+frequency for and which `every 12 months` already covers.
 
 ---
 

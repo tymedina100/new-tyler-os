@@ -523,3 +523,113 @@ that has not arrived would complete the wrong occurrence.
 **Revisit when:** a fourth domain gains dates, or something needs to interleave
 them in one ordered stream rather than group them. Either would be the point to
 generalise, with three real implementations to generalise from.
+
+---
+
+## 024 · The editor owns its draft; the server's values are adopted, not imposed
+
+**Accepted** · 0.4.1
+
+`ItemForm` intercepts its own submit — `event.preventDefault()` and then
+dispatching inside a transition — rather than letting React drive the submission
+through the `action` prop. It keeps three things apart: the persisted snapshot,
+the local draft (`ItemFields`, which is remounted to re-seed it), and whether the
+draft has moved since the last save began. A clean draft adopts the server's
+values; a dirty one wins.
+
+**The problem, precisely:** React 19 resets a form submitted through its `action`
+prop as soon as the action resolves. `startHostTransition` schedules
+`requestFormReset`, and at commit `recursivelyResetForms` calls a raw DOM
+`form.reset()`. Against a remote database that lands a second or more after the
+click — long enough to have started the next edit, which was silently thrown
+away.
+
+It was worse than lost keystrokes. `reset()` knows nothing about React, so the
+controlled repeat `<select>` snapped back to "Does not repeat" while state still
+said weekly and the sentence beneath it still read "Every 2 weeks". Saving from
+there would have deleted the schedule the screen was promising to keep. And
+because the reset is scheduled on submit rather than on success, a _rejected_
+save wiped edits too.
+
+**Considered:**
+
+- **Controlling every field.** React's own documentation points here, and it is
+  wrong for this form twice over: `reset()` still mutates the DOM and React only
+  re-asserts a controlled value when its prop changes, which is exactly how the
+  `<select>` desynced. It would also give up the pre-hydration typing that 0.2
+  paid for — see that milestone's recorded result.
+- **Narrowing `revalidatePath("/", "layout")`.** It was not the cause. The reset
+  fires whether or not anything revalidates, so this would have changed nothing
+  while giving up the coarse revalidation that removed a class of stale-badge
+  bugs.
+- **Re-seeding whenever the `item` prop changes.** That is the trap, not the fix:
+  every revalidation anywhere in the app hands this component a new object, so it
+  would destroy a dirty draft on somebody else's save. Hence comparing the
+  editable fields by value rather than by identity.
+- **Debouncing or delaying the adoption.** A timer would have hidden the race
+  rather than removed it, and races hidden by timers come back on a slower
+  network.
+
+**Why remounting to re-seed:** uncontrolled fields read their value from
+`defaultValue`, so the only honest way to discard a draft is to build the fields
+again. Making that a remount of one component means there is exactly one place
+that decides a draft may be thrown away, instead of seven fields each having to
+remember how to reset themselves.
+
+**Cost:** the editor no longer submits through the `action` prop when JavaScript
+is running, so React's pending-state bookkeeping for that form is ours to keep.
+The prop stays on the form, so a submit before hydration is still a plain
+server-action POST.
+
+**Revisit when:** a second form in this codebase needs the same treatment. Two
+would be enough to earn a shared hook; one is not.
+
+---
+
+## 025 · A repeat is read from the end of a capture, before the date
+
+**Accepted** · 0.4.1
+
+`matchTrailingRecurrencePhrase` in `src/domain/capture/` reads a small, closed
+grammar — daily/weekly/monthly, every N of them, every other one, every
+`<weekday>`, and fortnightly — from the **end** of what is left after tags and
+`@project` are removed. It runs **before** the date matcher.
+
+**Why before:** a repeat can end in a date-shaped word. Read the other way round,
+"take trash out every tuesday" loses its Tuesday to `matchTrailingDatePhrase` and
+becomes an item called "take trash out every". The tests caught this; the order is
+not arbitrary and should not be flipped back.
+
+A date and a repeat still arrive in either order, so there is one extra pass: if
+the first look found no repeat and the date pass consumed something, the repeat is
+looked for again. Deliberately **not a loop** — repeatedly stripping dates would
+change what "meeting friday tomorrow" has always meant.
+
+**Considered:** an RRULE subset; a general natural-language date/recurrence
+library; scanning the whole string rather than the tail; a parser registry that a
+future AI proposer could register into.
+
+**Why so small:** the grammar covers what the milestone was actually about — bins,
+rent, sheets, air filters — and nothing else. Everything outside it stays in the
+title untouched: "every full moon", "twice a week", "last friday of the month",
+"every 0 weeks" and an interval above what the domain accepts. An out-of-range
+interval is **refused, not clamped**; clamping "every 500 days" to 99 would invent
+a schedule nobody asked for.
+
+"biweekly" is excluded on purpose. It means both twice a week and every two weeks
+depending on who is saying it, and a schedule nobody can predict is worse than one
+word of title.
+
+**Why no registry:** ADR 017 already answered this. There is one parser, and an AI
+proposer would produce the same `ParsedCapture` shape from the server layer.
+
+**Where the anchor comes from:** `startingOccurrence`, the same rule the editor
+applies — a stated date wins, then the day a phrase like "every tuesday" named,
+then today. Persistence goes through the same `writeRecurrence` as the editor, so a
+captured repeat and a hand-built one are the same row with the same anchor. That is
+what makes completion, skipping, Upcoming and the badges work with no new code.
+
+**Cost:** a title that genuinely ends in a schedule word — "cancel my daily" —
+loses it. That is ADR 018's trade-off applied to repeats, and the preview is the
+mitigation: it spells the schedule out as "Every Tuesday" before Enter, where a
+bare "Weekly" would leave the reader unsure which day it landed on.

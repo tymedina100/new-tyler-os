@@ -59,13 +59,25 @@ TylerOS unusable:
 
 `e2e/recurrence.spec.ts` covers the one thing recurrence must never get wrong:
 
-14. a repeating item is completed one occurrence at a time
-15. recurrence is created, changed and removed from the item editor
-16. Upcoming shows the days ahead, including repeats that have no row yet
+14. a repeat typed into the capture bar is previewed, then filed
+15. a captured repeat carries a project and a tag with it
+16. a captured repeat advances by its schedule, not by when it was done
+17. a repeating item is completed one occurrence at a time
+18. recurrence is created, changed and removed from the item editor
+19. Upcoming shows the days ahead, including repeats that have no row yet
+
+`e2e/editor-draft.spec.ts` covers the item editor's draft, which is the only
+place in TylerOS where unsaved keystrokes exist and so the only place they can be
+lost:
+
+20. an edit made while a save is still in flight is not wiped when it lands
+21. a clean save adopts what the server actually stored
+22. a failed save keeps the draft and says what was wrong
+23. several saves in one sitting each land
 
 They **write to the database they point at**. Everything they create is prefixed
-`smoke-<run>`, `kt-<run>` or `rc-<run>` and deleted afterwards, but point
-`DATABASE_URL` at a development database.
+`smoke-<run>`, `kt-<run>`, `rc-<run>` or `ed-<run>` and deleted afterwards,
+but point `DATABASE_URL` at a development database.
 
 This suite is deliberately outside `pnpm check`. A gate that needs a database is
 a gate that gets skipped, and then the fast tests rot with it.
@@ -166,6 +178,31 @@ Run `pnpm db:seed` first so there is realistic content to judge.
 - [ ] "Skip this one" moves it on without claiming it was done.
 - [ ] "Stop repeating" leaves the date alone and brings back "Clear due date".
 - [ ] Clearing the date of a repeating item is refused, not silently obeyed.
+
+**Captured repeats — read the preview before trusting it**
+
+- [ ] Type `take trash out every tuesday`. Before Enter, the preview reads the
+      title without the repeat words, the coming Tuesday, and "Every Tuesday".
+- [ ] Enter. The row carries a Weekly badge and the button says "complete this
+      occurrence".
+- [ ] `clean bathroom every 2 weeks #home` — repeat and tag, both taken.
+- [ ] `review budget monthly` with no date — it starts today, same as making an
+      undated item repeat in the editor does.
+- [ ] One with `@project`, and one with an explicit date (`report every 2 weeks
+  friday`) — the stated date is the one it starts on.
+- [ ] `read Every Day by David Levithan` keeps every word and gets no preview.
+      So do "swim twice a week", "sync biweekly" and "audit every 500 days".
+- [ ] Open a captured repeat in the editor. It is an ordinary repeat: the same
+      controls, the same sentence, nothing frozen by how it was created.
+
+**The editor draft — the one place keystrokes can be lost**
+
+- [ ] Edit a field, Save, and immediately start editing something else. Wait a
+      few seconds. The second edit is still there, and the repeat select still
+      agrees with the sentence beneath it.
+- [ ] Save that second edit and reopen the item. It persisted.
+- [ ] Make a save fail (nine tags). The error shows and nothing you typed is lost.
+- [ ] Save three times in one sitting. Each one lands.
 
 **Upcoming — the near future, without becoming a calendar**
 
@@ -295,3 +332,59 @@ skeleton. React reveals streamed Suspense content from a `requestAnimationFrame`
 callback, and a pane that is not compositing never fires one. The server is fine
 — `fetch()` returns the whole document. Playwright is the authoritative
 interactive run for that reason.
+
+### 0.4.1 — Daily-use hardening · 2026-08-26
+
+All three tiers run against the same remote PostgreSQL 18. No migration: this
+milestone added no schema. `pnpm check` green at 479 tests in 21 files, the
+browser suite green at 23 specs on two consecutive full runs, and both product
+goals driven by hand in Chromium at 1280px and 375px.
+
+The manual pass was the point rather than a formality, and it covered what the
+brief asked for: thirteen representative captures previewed before Enter —
+including the five that must stay ordinary text — then one captured repeat filed,
+completed (advancing 1 September to 8 September, still weekly, still open), and
+finally the editor race walked end to end: edit, Save, immediately retype, wait,
+draft intact, save it, reopen, persisted. No console errors at either width and no
+horizontal overflow.
+
+Three things worth remembering, all found by running it rather than reading it:
+
+- **The handoff's description of the editor bug was wrong in a way that would have
+  produced the wrong fix.** It read as "revalidation re-renders the editor and
+  resets its local state", which points at syncing props into state. It is not
+  that. React 19 schedules `requestFormReset` for any form submitted through its
+  `action` prop, and at commit `recursivelyResetForms` calls a raw DOM
+  `form.reset()`. Nothing remounts and nothing syncs — the DOM is simply reset
+  underneath React. Proved with a throwaway spec that marked the live nodes with
+  an expando: the marks survived, so there was no remount, while the values
+  reverted. Worth doing that before choosing a fix rather than after.
+- **The bug was bigger than reported.** A _rejected_ save wiped edits too, because
+  the reset is scheduled on submit rather than on success. And the controlled
+  repeat select desynced from its own state, leaving "Does not repeat" on screen
+  beside a sentence reading "Every 2 weeks" — saving from there would have deleted
+  the schedule the screen was promising to keep. The regression spec fails on all
+  four of its cases with the fix removed, which is the only way to know it is a
+  regression spec at all.
+- **`pnpm check` was broken for anybody who had run the browser suite first.**
+  ESLint does not read `.gitignore`, so it linted the Playwright report left
+  behind by `pnpm test:e2e`; a trace bundle carries multi-megabyte vendor
+  JavaScript, and the stylish formatter dies on it with `RangeError: Invalid
+string length`. The gate failed naming neither cause nor fix. Fixed by ignoring
+  the generated directories.
+
+And two notes for whoever writes the next browser spec here:
+
+- **The "Saved." toast is not a synchronisation signal.** It lingers after one
+  save and expires during the next, so asserting on it passes against a stale
+  toast — and then a `page.reload()` aborts the save still in flight. Two of the
+  four new specs failed this way before switching to `waitForResponse`. This is
+  the same trap 0.2 recorded for capture, in a new costume.
+- **The first spec of a cold run races Next's first compile of a route.** A 5s
+  `toHaveValue` on `/items/[id]` is not always enough. Passing in isolation and
+  failing as spec number one is that, not flakiness in the product.
+
+The parser's own edges are covered by fast tests rather than by hand: 56 in
+`recurrence-phrase.test.ts` and 37 more in `parse-capture.test.ts`, including
+every phrase in the grammar, every alias, the false positives above, out-of-range
+intervals, and month, week and year boundaries.

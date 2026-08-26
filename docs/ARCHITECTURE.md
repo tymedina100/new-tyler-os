@@ -61,21 +61,21 @@ src/domain/     Pure TypeScript and Zod. No React, no Next, no database.
 Types, Zod schemas, and pure functions. It imports nothing from the framework or
 the database, which is why its tests run in milliseconds with no setup.
 
-| Module                  | Holds                                                    |
-| ----------------------- | -------------------------------------------------------- |
-| `items/item.ts`         | The Item type, kinds, statuses, labels                   |
-| `items/item-rules.ts`   | Lifecycle transitions, returned as patches               |
-| `items/item-schema.ts`  | Validation for everything entering the system            |
-| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate  |
-| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date |
-| `kitchen/`              | Food in the house: locations, quantities, expiry buckets |
-| `recurrence/`           | How something repeats, and when it is next due           |
-| `today/`                | Bucketing open items for the Today view                  |
-| `agenda/`               | The days ahead, one list per domain that has dates       |
-| `projects/`             | Projects and progress                                    |
-| `tags/`                 | Tag name normalisation                                   |
-| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly    |
-| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken        |
+| Module                  | Holds                                                               |
+| ----------------------- | ------------------------------------------------------------------- |
+| `items/item.ts`         | The Item type, kinds, statuses, labels                              |
+| `items/item-rules.ts`   | Lifecycle transitions, returned as patches                          |
+| `items/item-schema.ts`  | Validation for everything entering the system                       |
+| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate             |
+| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat |
+| `kitchen/`              | Food in the house: locations, quantities, expiry buckets            |
+| `recurrence/`           | How something repeats, and when it is next due                      |
+| `today/`                | Bucketing open items for the Today view                             |
+| `agenda/`               | The days ahead, one list per domain that has dates                  |
+| `projects/`             | Projects and progress                                               |
+| `tags/`                 | Tag name normalisation                                              |
+| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly               |
+| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                   |
 
 Rules return a **patch**, not a mutated object. `completeItem(item, now)` returns
 `{ status, completedAt, archivedAt }` and the caller persists it. This keeps
@@ -151,6 +151,13 @@ single-user app buys nothing and costs a permanent synchronisation problem.
 Revalidation is deliberately coarse: any mutation invalidates the whole layout,
 because item counts appear in the sidebar on every page. At personal scale this
 is free and removes a category of stale-badge bugs.
+
+The one place that needs more than this is a form somebody may keep editing while
+it saves. React resets a form submitted through its `action` prop as soon as the
+action resolves, so the item editor owns its own submit and keeps three things
+apart: the persisted snapshot, the local draft, and whether the draft has moved
+since the save began. A clean draft adopts the server values; a dirty draft wins.
+That is a rule about drafts, not a client store — see ADR 024.
 
 ## Data model
 

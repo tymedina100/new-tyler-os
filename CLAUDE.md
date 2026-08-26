@@ -184,11 +184,16 @@ describe how to build it.
 
 **0.4 — Recurrence and time. Shipped.** Items can repeat; completing one
 completes **the current occurrence** and moves it to the next, anchored to the
-schedule rather than to when it was done. No occurrence rows exist — future
-dates are computed from `item_recurrence`, a 1:1 extension table, so `items`
-still has no new columns. `/upcoming` shows the next fortnight with each dated
-domain keeping its own list. Built on 0.1–0.3. Still no AI, and still no times
-of day.
+schedule rather than to when it was done. No occurrence rows exist — future dates
+are computed from `item_recurrence`, a 1:1 extension table, so `items` still has
+no new columns. `/upcoming` shows the next fortnight, each dated domain keeping
+its own list. ADRs 022–023.
 
-**0.5 is not started**; it adds AI strictly as a proposer. See
-`docs/ROADMAP.md` and ADRs 022–023.
+**0.4.1 — Daily-use hardening. Shipped.** A repeat can be typed into the capture
+bar ("take trash out every tuesday"), using the same anchor and persistence path
+as the editor; anything outside a small closed grammar stays as title text. The
+editor now owns its own submit, because a form driven by React's `action` prop is
+reset when the action resolves — which was wiping edits made during a save. ADRs
+024–025.
+
+**0.5 is not started**; it adds AI strictly as a proposer. See `docs/ROADMAP.md`.
