@@ -20,6 +20,7 @@ test.describe("with no session", () => {
       "/upcoming",
       "/tasks",
       "/projects",
+      "/notes",
       "/kitchen",
       "/search",
     ]) {
