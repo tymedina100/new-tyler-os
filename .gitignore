@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# neon CLI (org id, no secrets, but machine-local)
+.neon
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
