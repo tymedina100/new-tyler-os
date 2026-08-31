@@ -174,26 +174,25 @@ the system responsible for personal context. These files say how to build it.
 Shipped milestones live in `docs/ROADMAP.md`; below is only what a session must
 know before touching this code.
 
-**0.6 — Universal Search.** One query reaches **items, projects and kitchen
-inventory**, grouped by domain and led by whichever matched best. Each domain owns
-its matching in its own repository; `src/server/search/` composes the three
-concurrently and `src/domain/search/` ranks them — the same shape as
-`agenda-service.ts`, for the same reason. No `entities` table, no `Searchable`
-interface, no registry: a fourth domain adds a query and one mapping function.
-Ranking is four tiers, not a score, tied on title then id so the order is total
-and assertable. **No migration was needed.** No AI is involved and none may be:
-the query leaves no process, and pending suggestions are not searchable. ADRs
-028–029.
+**0.6 — Universal Search.** Items, projects and kitchen inventory in one ranked
+query, each domain owning its own matching; `src/server/search/` composes,
+`src/domain/search/` ranks. No `entities` table, no registry. ADRs 028–029.
 
 **0.7 — Daily Access Foundation.** One authorized identity behind a signed
-cookie, checked at `src/proxy.ts` before a page renders and again inside
-`runAction` before any of the 24 actions runs. No accounts, no `user_id`, no
-provider library — **one passphrase**, `node:crypto`, no new dependency.
-`/login` is a second root layout (`src/app/(auth)/`), so an unauthenticated
-visit never triggers the shell's own database query. A route added later is
-covered without anyone remembering to — `src/proxy.test.ts` discovers every
-real route on disk. **Installable, not offline:** a manifest and a generated
-icon, no service worker. The phone bar carries four destinations plus a
-**More** sheet; the sidebar keeps all seven. ADRs 030–032.
+cookie, checked at `src/proxy.ts` and again inside `runAction`. No accounts,
+no `user_id` — one passphrase, `node:crypto`. Installable (manifest + a
+generated icon), no service worker. Phone bar: four destinations + **More**;
+sidebar keeps all seven. ADRs 030–032.
+
+**0.8 — Notes & Knowledge.** A standalone `notes` table, not an item kind:
+`items.body` is supporting context for something actionable, a `Note` is the
+knowledge itself — no status, no due date, nothing that can be Done or
+Archived. Markdown stored as plain text; `NoteMarkdown` (`react-markdown` +
+`remark-gfm`, no `rehype-raw`) renders it so raw HTML in a note is always
+inert text, never executed. Notes are search's fourth domain — `tsvector`
+like items, since notes are prose — with **no change to `search-ranking.ts`**.
+A reserved `note:` prefix in the one capture box routes to
+`noteService.captureNote` instead of an item; a bare `note:` still falls
+through to an ordinary capture. Never reaches AI. ADRs 033–034.
 
 **Next: semantic retrieval — but only once a real query defeats lexical search.**

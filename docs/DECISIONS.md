@@ -1066,3 +1066,178 @@ command palette gained the two destinations it had never carried — Kitchen and
 the shopping list — so every destination is reachable from a keyboard exactly
 as it is from a tap, and neither surface has to be treated as the complete
 list.
+
+---
+
+## 033 · Notes are a standalone domain, not an item kind
+
+**Accepted** · 0.8
+
+A `Note` is a new, persisted entity — its own `notes` table, own repository,
+service, actions and pages — not `kind = 'note'` on `items`, and not a longer
+`items.body`.
+
+**The distinction, precisely.** An item's `body` is supporting context for
+something actionable: "part number is X, check the glovebox manual" beside
+"replace the cabin air filter," and it dies with that item's own lifecycle. A
+`Note`'s primary identity is the information itself: "Mazda6 maintenance &
+parts." It has no `status` and no `due_on` — it cannot be Done, Someday,
+Archived, or overdue, and nothing in this milestone gave it a path to become
+any of those. Item kind `note` (a quick captured thought that is still a
+task-shaped item) is untouched and unreinterpreted; it coexists with the new
+domain exactly as `purchase` items already coexist with `kitchen_inventory`
+(ADR 021) — two things that can both be true about "food" or "a note" without
+one having to become the other.
+
+**Considered:** an item kind `note` with a longer `body` and no lifecycle
+fields required; a `notebook` JSON blob on `items`. Both were rejected for the
+reason ADR 001 and ADR 019 already gave the kitchen: a structured concept that
+does not share `items`' actual shape does not belong on `items`, and
+`items.body`'s 10 000-character cap and its role as "notes about a task" is
+already a meaning worth keeping separate from "the note itself, unbounded."
+Giving `items` a `pinned` flag and a nullable `project_id` it uses for nothing
+else on a task would be exactly the mostly-null-columns smell both ADRs warn
+against.
+
+**Schema.** `notes` mirrors `items` in shape (`title`, `body`, `created_at`,
+`updated_at`, a generated `search_vector`) plus `pinned boolean` and
+`project_id`, nullable, `on delete set null` — the same relationship an item
+already has with a project, because a note belongs to a project the same
+informal way an item does, not a distinguishable relationship type. A second
+join table, `note_tags`, reuses the existing `tags` table rather than
+inventing "note tags" or a polymorphic `taggable_type` column — two
+many-to-many joins against one vocabulary table is the smallest relational
+model that still lets a tag mean the same thing whichever domain applies it.
+
+**The one real risk a fourth tag-bearing domain introduces, and how it is
+closed.** `deleteOrphanedTags` used to delete any tag not referenced by
+`item_tags`. Once notes can hold tags too, that function would delete a tag
+still attached to a note the moment an unrelated item let go of it. The fix is
+one `NOT EXISTS` clause added for `note_tags` — see
+`src/server/tags/tag-repository.ts` — verified by an integration test that
+specifically creates a tag shared by an item and a note and asserts it
+survives the item alone dropping it.
+
+**No lifecycle, so no archive.** Delete is immediate, and — the one deliberate
+departure from every other row menu in this codebase — gated behind
+`window.confirm`. Item and kitchen rows delete on a single click; a note is
+judged to hold higher-value, harder-to-recreate content ("things I learned")
+than a mistyped kitchen record, which is worth one extra click and nothing
+more elaborate. Archiving a note is not built: nothing about "no longer
+wanted" needs a second state the way a repeating item's occurrences do
+(ADR 022), and adding one now would be speculative.
+
+**Title is never required.** `deriveNoteTitle` (`src/domain/notes/`) takes an
+explicit title if given one, otherwise the first non-blank line of the body,
+otherwise "Untitled note." The fastest way to capture a fact is to just start
+writing, the same instinct behind items needing only text (ADR 013) — a note
+should not need a decision made about it before it can exist.
+
+**The `note:` capture prefix, and where the decision lives.** The one global
+capture box can produce an item or a note, decided by a single reserved,
+case-insensitive prefix — `src/domain/capture/note-prefix.ts`'s
+`matchNotePrefix` — checked **before** either service is called, in a new
+`src/server/actions/capture-actions.ts` that both the header capture bar and
+the command palette now call instead of the old `captureItemAction`. Nothing
+about `parseCapture` changed: routing to a different domain is not
+"interpreting a capture," and folding it in would mean the item parser has to
+know Notes exist, which is exactly the coupling this ADR exists to avoid. A
+bare `note:` with nothing after it is treated as "not a note capture" and
+falls through to an ordinary item titled "note:", the same "stripping must
+leave something" rule ADR 018 and ADR 025 already established for a date or a
+repeat phrase that would otherwise swallow the whole capture.
+
+**The bridge back to action is capture, not a new concept.** "Create task from
+this note" is a text box seeded with the note's title, posted through the
+same, unmodified `captureAction` — no schema linking a note to the item it
+produced, no stored relationship, and the note is never touched, deleted or
+converted. ADR 013 still holds: this is still just capture, from a different
+starting point.
+
+**Notes never reach AI, on purpose.** `captureNote` has no `after()` call and
+nothing schedules a suggestion pass for it; the 0.5 classifier is item-only
+and stays that way. Trustworthy canonical information has to exist before any
+future AI reasoning can be pointed at it — see docs/ROADMAP.md.
+
+**Validated, not assumed: the fourth-domain search seam still holds.** Adding
+notes to Universal Search needed a query in `note-repository.ts` and one
+mapping function in `search-sources.ts` — nothing in `search-ranking.ts`
+changed, because `matchTierFor` already operated on any `(query, title)` pair.
+A note found only through its body (title never mentions the query) lands in
+the `secondary` tier automatically, the same way an item body-only match
+already did; pinned down by an integration test rather than asserted from the
+type signature alone. See ADR 028.
+
+---
+
+## 034 · Markdown, stored as plain text and rendered without raw HTML
+
+**Accepted** · 0.8
+
+A note's `body` is markdown source, stored as plain `text` — nothing else.
+Rendering is `react-markdown` plus `remark-gfm`, two new dependencies, with
+`rehype-raw` deliberately never added.
+
+**Why markdown, stored as text.** It is portable, `grep`-able, inspectable in
+the database, easy to export later, and not dependent on any one editor. A
+block-editor document model (Notion's own JSON schema, or similar) was
+considered and rejected outright: the instruction for this milestone was
+explicit that TylerOS is not building a block editor, and a document schema
+is exactly the kind of thing this codebase's own rules already forbid — a
+generic, speculative structure built before three real uses of it exist.
+
+**Why these two dependencies, and why now.** Nothing in `package.json`
+rendered markdown before 0.8. `react-markdown` was chosen over hand-rolling a
+renderer or reaching for `marked` + `dompurify` for one reason that matters
+more than library popularity: it compiles markdown straight to React
+elements and never calls `dangerouslySetInnerHTML` for what it parses, so
+safety is the library's default behaviour rather than a sanitisation step
+this codebase has to get right and keep right. `remark-gfm` adds exactly the
+feature set the milestone asked for — tables, strikethrough, autolinks, and
+`- [ ]`/`- [x]` task lists rendered as disabled checkboxes — and nothing this
+codebase would otherwise have to hand-write. No `@tailwindcss/typography`: a
+third dependency was not justified when a roughly 40-line hand-written
+`.note-content` block in `src/app/globals.css`, using the tokens every other
+component already uses, covers the same ground.
+
+**The safety property, stated precisely, and how it is checked.** Without
+`rehype-raw`, a raw HTML node in markdown source (a literal `<script>...`) is
+never turned into a DOM element — it renders as inert, escaped text.
+Link and image URLs pass through `react-markdown`'s own `defaultUrlTransform`,
+which neutralises non-http(s)/mailto schemes such as `javascript:`. Both are
+verified at two levels: a unit test
+(`src/components/notes/note-markdown-safety.test.ts`) imports
+`defaultUrlTransform` directly and asserts its behaviour on hostile inputs —
+a deliberate, narrow exception to "no component tests"
+(`.claude/rules/testing.md`), justified because it pins down library
+behaviour this codebase's safety story depends on rather than asserting
+anything about rendering; and an end-to-end Playwright test
+(`e2e/notes.spec.ts`) that actually writes `<script>`, an `onerror` handler
+and a `javascript:` link into a real note and asserts, in a real browser,
+that nothing executes.
+
+**One real bug this verification found and fixed.** The first version of the
+custom link renderer spread every prop `react-markdown` hands a custom
+component — including `node`, the underlying hast node — onto the DOM
+element, rendering a literal, invalid `node="[object Object]"` attribute on
+every link. Caught by inspecting the actual rendered `innerHTML` in a running
+dev server, not by reading the type signature; fixed by destructuring `node`
+out and dropping it. Recorded here because it is exactly the class of defect
+"the types compiled" would not have caught.
+
+**`NoteMarkdown` is a shared, framework-boundary-agnostic renderer.**
+`src/components/notes/note-markdown.tsx` has no server-only import and no
+`"use client"` directive of its own, so the identical component renders the
+persisted body as part of a Server Component (the note page's read view) and
+the editor's live client draft (the "Preview" tab in `NoteFields`) — one
+implementation of "markdown in, safe React out," not two.
+
+**Considered and rejected:** `dompurify` (needs a DOM; would have meant either
+a client-only renderer or a server-side DOM shim for no benefit over a library
+that has no injection surface to sanitise in the first place); permitting
+`rehype-raw` behind an allowlist of "safe" tags (an allowlist is a promise to
+keep maintaining it correctly forever, for a feature — arbitrary embedded
+HTML in a personal note — nobody asked for); a hand-rolled regex-based
+renderer (markdown's own grammar, including nested lists and fenced code, is
+exactly the kind of parsing problem this codebase's own rules say not to
+reinvent).

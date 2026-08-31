@@ -42,6 +42,14 @@ fields no other item uses, which ADR 001 says belongs in a 1:1 extension table
 rather than on `items`. So recurrence lives in `item_recurrence`, and `items`
 has now gone two milestones without gaining a column. See ADR 022.
 
+0.8 drew a line the earlier tests did not need to: knowledge worth keeping is
+not always about something to do. An item's `body` is supporting context for
+something actionable — "part number is X" beside "replace the filter" — and
+it dies with that item's own lifecycle. A **Note** is durable information
+whose primary identity is the information itself, with no `status` and no
+`due_on`: it cannot be Done, Someday, Archived, or overdue. It gets its own
+table, `notes`, for the same reason the kitchen did — see ADR 033.
+
 ## Layers
 
 Dependencies run one way only. ESLint enforces this (`eslint.config.mjs`), so a
@@ -70,6 +78,7 @@ the database, which is why its tests run in milliseconds with no setup.
 | `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate             |
 | `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat |
 | `kitchen/`              | Food in the house: locations, quantities, expiry buckets            |
+| `notes/`                | Durable knowledge: title derivation, excerpts, display order        |
 | `recurrence/`           | How something repeats, and when it is next due                      |
 | `today/`                | Bucketing open items for the Today view                             |
 | `agenda/`               | The days ahead, one list per domain that has dates                  |
@@ -165,14 +174,19 @@ That is a rule about drafts, not a client store — see ADR 024.
 
 ```
 projects ──1:N── items ──N:M── tags
-   |               |
-   |               |    kind, status, due_on
-   |               |
+   |               |              |
+   |               |    kind,     |
+   |               |    status,   |
+   |               |    due_on    |
+   |               |              |
    |               ├──1:1── item_recurrence
    |               |          frequency, interval, anchor_on, last_completed_on
    |               |
-   └──────────────1:N── item_suggestions
-                              field, kind | project_id | tag_name, status
+   |               └──────1:N── item_suggestions
+   |                                field, kind | project_id | tag_name, status
+   |
+   └──1:N── notes ──N:M── tags (shared with items, via note_tags)
+                title, body, pinned
 
 kitchen_inventory        stands alone, on purpose
   name, location, quantity, unit, expires_on
@@ -213,6 +227,15 @@ value its own field held when it was proposed, so accepting a stale suggestion
 retires it instead of undoing a newer manual choice. The prompt and the raw
 response are **not** stored. See ADR 027.
 
+**notes** — durable knowledge, not a responsibility (0.8). No `status`, no
+`due_on`: it cannot be Done, Someday, Archived, or overdue. `project_id` is
+nullable and `on delete set null`, the same relationship an item has with its
+project. Tags are shared with items through a second join table, `note_tags`,
+against the one `tags` vocabulary — not a "note tag" concept of its own.
+`search_vector` mirrors `items`' exactly, title weighted above body, because
+notes are prose the same way items are (ADR 009), not short names like the
+kitchen's. See ADR 033.
+
 **kitchen_inventory** — the first structured domain, and deliberately unrelated
 to everything above: no foreign keys, no tags, no project. `quantity` is nullable
 because "some rice" is a true answer, and `unit` is free text because no enum
@@ -227,11 +250,12 @@ and 020.
 not one query, and not one table.** Built in 0.6; before that "universal" meant
 the item spine, with the kitchen bolted on beside it and projects unsearchable.
 
-Three domains participate, and each one owns how it is searched:
+Four domains participate, and each one owns how it is searched:
 
 | Domain   | Fields searched       | How                                              |
 | -------- | --------------------- | ------------------------------------------------ |
 | Items    | `title`, `body`       | generated `tsvector` + `ILIKE` fallback, ADR 009 |
+| Notes    | `title`, `body`       | generated `tsvector` + `ILIKE` fallback, ADR 009 |
 | Projects | `name`, `description` | per-word `ILIKE`                                 |
 | Kitchen  | `name`, `notes`       | per-word `ILIKE`, ADR 019                        |
 
@@ -247,15 +271,18 @@ The composition, one way down as everywhere else:
 src/app/search/          the page: a plain GET form, so the query is the URL
       |
       v
-src/server/search/       runs the three repository queries concurrently
+src/server/search/       runs the four repository queries concurrently
       |
       v
 src/domain/search/       pure: maps each domain's rows to hits, ranks, groups
 ```
 
-`search-service.ts` belongs to none of the three domains, exactly as
+`search-service.ts` belongs to none of the domains, exactly as
 `agenda-service.ts` belongs to neither items nor kitchen. It is the same shape as
-that projection and for the same reason — see ADR 023, then ADR 028.
+that projection and for the same reason — see ADR 023, then ADR 028. Notes
+(0.8) joined this composition as the fourth domain ADR 028 already described:
+a query in `note-repository.ts` and a mapping function in
+`search-sources.ts`, with **no change to the ranking code** — see ADR 033.
 
 **Ranking is four tiers, not a score,** so the order can be explained: an exact
 name, a prefix, a word inside the name, then anything the domain matched
@@ -264,11 +291,13 @@ therefore assertable. Ranking happens inside a group, never across one. Groups
 lead with their best tier, so "chicken" opens with the freezer and "monitor" with
 the items.
 
-**Adding a fourth domain** is three things: a search query in its own repository,
-a `…Hit` mapping function in `src/domain/search/search-sources.ts`, and an entry
+**Adding a domain** is three things: a search query in its own repository, a
+`…Hit` mapping function in `src/domain/search/search-sources.ts`, and an entry
 in `SEARCH_DOMAINS`. It requires no change to any other domain, and no domain has
 to implement an interface to be eligible. There is no registry and no plugin
-seam — search depends on the domains, and they depend on nothing.
+seam — search depends on the domains, and they depend on nothing. Notes (0.8)
+is the proof: it joined exactly this way, and `search-ranking.ts` did not
+change at all.
 
 **What the UI receives** is `SearchHit`: domain, id, title, optional context
 line, href, and the match tier. No database rows reach a component, and no domain

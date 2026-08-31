@@ -250,9 +250,54 @@ flow is exactly as it was. See ADRs 030, 031 and 032.
 auth library, push notifications, offline mutation, a rate-limiting service
 (recorded instead as a deployment-time hardening note), and a public
 deployment — this milestone stopped at a verified local production build and
-asked before anything became reachable on the internet. **Item bodies and
-attachment-free notes**, once suggested for this slot, moved to "Later" below
-instead of being dropped.
+asked before anything became reachable on the internet. **Notes and
+knowledge**, once suggested for this slot, moved to 0.8 below instead of
+being dropped.
+
+---
+
+## 0.8 · Notes & Knowledge — shipped
+
+TASKS answers "what should I do," UPCOMING "what is happening," KITCHEN "what
+do I have," SEARCH "where did I put it." Nothing answered "what do I know" —
+car maintenance facts, apartment measurements, interview notes, reference
+material, a plan that is not a task yet. This milestone gave TylerOS that
+fourth answer, as a real domain rather than a nicer textarea.
+
+- **Notes are a standalone domain, not an item kind.** An item's `body`
+  remains supporting context for something actionable, exactly as before; a
+  `Note` is durable knowledge with no lifecycle at all — it cannot be Done,
+  Someday, Archived, or overdue. Item kind `note` (a quick captured thought
+  that is still a task-shaped item) is untouched
+- **Markdown, stored as plain text.** Headings, lists, checklists, bold,
+  italic, code, blockquotes, links — rendered by `react-markdown` +
+  `remark-gfm`, with raw HTML in a note always inert, escaped text, never a
+  DOM node. No block editor, no document JSON schema
+- **A pin, a project link and tags — reusing what already exists.** A boolean
+  for "notes I keep needing"; the same `projects` table an item already
+  links to; a second join against the existing `tags` table rather than a
+  polymorphic relation. No folders, no notebooks
+- **A deterministic `note:` prefix** in the one global capture box routes to
+  a note instead of an item — explicit, never AI-guessed, and a bare `note:`
+  with nothing after it still falls through to an ordinary capture
+- **The fourth domain in Universal Search**, found by title or body text,
+  needing zero changes to how results are ranked — the seam ADR 028 built
+  for a fourth domain held exactly as designed
+- **"Create task from this note"** — the smallest possible bridge back to
+  action: a text box seeded with the note's title, posted through the
+  existing capture path. No stored link between the note and the task it
+  produced
+
+Deliberately thin, on purpose: no attachments, no rich-text block editor, no
+backlinks or wiki graph, no folders, no version history, no AI anywhere near
+a note's content. Trustworthy canonical information has to exist before any
+future AI reasoning can be pointed at it. See ADRs 033 and 034.
+
+**Not included, on purpose:** everything the milestone's own scope exclusions
+named — image/file attachments, OCR, collaborative editing, sharing,
+multi-user, backlinks, a graph view, templates, autosave (an explicit Save
+proved simpler to make correct than a live-saving draft), and any AI
+summarisation, tagging or embedding of note content.
 
 ---
 
@@ -276,15 +321,9 @@ dozens of times a day, so it is the last flow that should ever need a key.
 
 ## Later, and only if wanted
 
-Meal planning and recipes, media tracking, wishlists, notes and memories,
-household management, routines, external integrations, specialised agents.
-
-**Item bodies and attachment-free notes** — a longer body on an item, with no
-rich-text editor and no file attachments — sat in 0.7's slot at one point and
-was moved here rather than dropped. It is a real gap: an item today is a
-title and nothing else. It waited because 0.7 turned out to be about whether
-TylerOS could be reached at all, which mattered more once daily use started
-meaning "from a phone, away from the desk."
+Meal planning and recipes, media tracking, wishlists, household management,
+routines, external integrations, specialised agents. Notes and knowledge,
+once on this list, shipped in 0.8.
 
 Meal planning is the one 0.3 unlocked, and the one most likely to be asked for
 next. It should still wait: it needs comparable quantities, which ADR 020

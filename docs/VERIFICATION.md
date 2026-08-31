@@ -118,19 +118,44 @@ costs a real destination:
 
 38. Today, Inbox and Search are one tap away from the bottom bar
 39. capture is one tap away and focuses the box every screen already has
-40. the More sheet reaches Upcoming, Tasks, Projects, Kitchen and the shopping list
+40. the More sheet reaches Upcoming, Tasks, Projects, Notes, Kitchen and the
+    shopping list
 41. the More sheet can sign out
 42. the bottom bar's tap targets meet the 44px floor
 43. nothing spills sideways at 375px, on the page or with the sheet open
 44. the desktop sidebar still shows every destination, and hides the phone-only
     More button
 
+`e2e/notes.spec.ts` covers Notes & Knowledge (0.8) — the rules and the SQL are
+already pinned down without a database or a browser; this proves markdown
+actually renders and cannot execute anything, the ADR-024-style draft race
+does not exist for notes either, and the `note:` capture prefix really routes
+away from the inbox:
+
+45. a note is written, saved, reopened, and reads back with its markdown
+    structure intact — headings, lists, a checked and an unchecked checklist
+    item, bold and italic
+46. an edit made while a save is still in flight is not wiped when it lands
+47. pinning moves a note to the top of the list
+48. a tag and a project link both stick, and the note appears on the
+    project's own page
+49. a body-only search term finds the note, and opens it from the results
+50. the `note:` prefix in the global capture box creates a note, never an
+    item, and it never reaches the inbox
+51. deleting a note asks first, and a cancelled confirmation keeps it
+52. "Create task from this note" adds an ordinary item to the inbox and
+    leaves the note itself untouched
+53. hostile markdown — a `<script>` tag, an `onerror` handler, a
+    `javascript:` link — never executes, in a real browser
+54. the command palette's "New note" never submits a bare `note: ` when the
+    query is empty; an empty query routes to the Notes index instead
+
 They **write to the database they point at**. Everything they create is prefixed
-`smoke-<run>`, `kt-<run>`, `rc-<run>`, `ed-<run>`, `sg-<run>` or `sx<run>` and
-deleted afterwards, but point `DATABASE_URL` at a development database.
-`auth.spec.ts` and `mobile-nav.spec.ts` create nothing — they sign in through
-the real form (once, in `global-setup.ts`, reused by every other spec) and
-otherwise only navigate.
+`smoke-<run>`, `kt-<run>`, `rc-<run>`, `ed-<run>`, `sg-<run>`, `sx<run>` or
+`nt-<run>` and deleted afterwards, but point `DATABASE_URL` at a development
+database. `auth.spec.ts` and `mobile-nav.spec.ts` create nothing — they sign in
+through the real form (once, in `global-setup.ts`, reused by every other spec)
+and otherwise only navigate.
 
 This suite is deliberately outside `pnpm check`. A gate that needs a database is
 a gate that gets skipped, and then the fast tests rot with it.
@@ -330,11 +355,42 @@ are skipped otherwise — say so rather than implying they passed.
       lands normally, no error reaches the screen, and the server log shows one
       line naming a failure category.
 
+**Notes — does TylerOS now feel like the obvious place to put it?**
+
+- [ ] Write a note with nothing but a first line — no title typed. The title
+      shown everywhere afterwards is that first line.
+- [ ] Write a substantial note: headings, a bulleted and a numbered list, a
+      checklist with one item ticked, **bold**, _italic_, `inline code`, a
+      fenced code block, a link. Switch to Preview. Every element renders as
+      itself; the checklist items are visibly checked/unchecked and cannot be
+      clicked into a different state.
+- [ ] Save, reload the page, and the markdown source is exactly what was typed
+      — nothing was reformatted or lost in the round trip.
+- [ ] Pin a note from its row menu. It moves to the top of `/notes`, ahead of
+      more recently edited notes. Unpin it; it drops back to its place by
+      recency.
+- [ ] Give a note tags and a project. Open the project's own page — the note
+      appears in its own "Notes" section, separate from the item lists.
+- [ ] Type `note: <something>` into the global capture box and press Enter.
+      It appears on `/notes`, never in the Inbox. A bare `note:` with nothing
+      after it captures as an ordinary item titled "note:" instead — the
+      deliberate edge case, not a bug.
+- [ ] From an open note, "Create task from this note" adds an ordinary item to
+      the inbox; the note itself is unchanged and not deleted.
+- [ ] Delete a note. It asks first; cancelling leaves it exactly as it was.
+- [ ] At 375px: the quick-capture box, the editor's Write/Preview toggle, and
+      a long fenced code block all stay inside the viewport — a code block
+      scrolls sideways inside its own box, the page itself never does.
+- [ ] Open the command palette with an empty query. "New note" is offered
+      without needing to type anything first, alongside "Notes" in "Go to".
+
 **Universal search — if it went in, it comes back out**
 
-- [ ] Search a word that exists in more than one domain. Items, projects and the
-      kitchen each appear under their own heading, and the domain of every
-      result is obvious without reading the row.
+- [ ] Search a word that exists in more than one domain. Items, notes,
+      projects and the kitchen each appear under their own heading, and the
+      domain of every result is obvious without reading the row.
+- [ ] Search a word that appears only in a note's body, never its title. The
+      note is still found, under "Notes".
 - [ ] The heading order follows the best match: a word that _is_ a food name
       leads with Kitchen, one that starts an item title leads with Items.
 - [ ] A result carries just enough to pick it out — a location and a quantity, a
@@ -745,3 +801,81 @@ standing in for the other: Playwright is the authoritative record of the
 gesture actually working; this session is the authoritative record of what
 the signed-in application actually looks like on the wire and in the DOM at
 that width.
+
+### 0.8 — Notes & Knowledge · 2026-08-31
+
+**Gate:** `pnpm check` green — 34 files, 761 tests, up from 29 files / 691
+tests at 0.7. **Browser:** all 54 specs green (44 pre-existing — two of them,
+`auth.spec.ts` and `mobile-nav.spec.ts`, extended with `/notes` and "Notes"
+rather than added — plus 10 new in `notes.spec.ts`), against the same
+development database used throughout this project, migration 5 of 5 applied.
+`next build` succeeded with the new `notes`/`note_tags` tables and the two new
+dependencies (`react-markdown`, `remark-gfm`) in the bundle.
+
+**The migration.** Additive only: `notes` and `note_tags`, mirroring `items`'
+generated `tsvector` column syntax exactly (hand-compared against the 0.1
+migration before committing). Applied to this session's own development
+Neon branch — never to production, which was never touched, deployed to, or
+even queried. `deleteOrphanedTags` gained a second `NOT EXISTS` clause for
+`note_tags`; the integration suite added a test that specifically proves a
+tag shared by an item and a note survives the item alone letting go of it,
+which is exactly the regression a fourth tag-bearing domain could introduce
+silently.
+
+**The command-palette/keyboard-navigation quirk worth recording — a testing
+artifact, not a product bug.** Early manual verification through this
+session's own `computer` browser tool made "New note" and even a pre-existing
+"Notes" link appear to do nothing on click, and `ArrowDown`/`Enter` appeared
+not to move the palette's selection at all. Both traced to this tool's own
+key-name handling: `"Down"` and `"Return"` are not the key names this
+environment's synthetic keyboard events recognise — `"ArrowDown"` and
+`"Enter"` are, confirmed by reading `aria-selected` off the live DOM after
+each press. Once corrected, keyboard navigation and selection worked
+perfectly, and a real Playwright `.click()` (which dispatches a proper event
+sequence) was never in question — `notes.spec.ts`'s own command-palette test
+passed on the first correctly-written attempt. Recorded so a future session
+does not re-diagnose the same tool quirk as an application defect.
+
+**One real bug this session's manual verification found and fixed, that no
+test had caught:** the custom link renderer in `NoteMarkdown` spread
+`react-markdown`'s internal `node` prop onto the DOM, producing a literal
+`node="[object Object]"` attribute on every rendered link. Found by
+inspecting `innerHTML` of a live rendered note in the running dev server, not
+by reading the component's types (which compiled cleanly either way). Fixed
+by destructuring `node` out and dropping it; re-verified live before writing
+the `e2e/notes.spec.ts` assertions that now pin the correct output down.
+
+**A real Chromium session, driven interactively, signed in as itself,** at
+1280px and at 375px (via `resize_window`, not device emulation guesswork):
+
+- Created a note through the quick-capture box, opened it, wrote hostile
+  markdown (`<script>`, an `onerror` handler, a `javascript:` link, a fenced
+  code block containing another `<script>` tag), saved, switched to Preview,
+  and read the actual rendered `innerHTML` directly: every hostile fragment
+  rendered as inert escaped text or a neutralised empty `href`, and
+  `window.__xss` — a sentinel set to `false` before any of it was typed —
+  never became `true`.
+- The same note, with real content this time (`# Mazda6 maintenance`, a
+  bulleted and a numbered list, one checked and one unchecked GFM checklist
+  item, **bold**/_italic_): the rendered DOM showed real `<h1>`/`<h2>`,
+  `<li>` elements, and two `<input type="checkbox" disabled>` — one of them
+  `checked` — confirming the exact structure `notes.spec.ts` asserts.
+- A project-scoped quick-capture (`projectId` carried as a hidden field) on
+  `Kitchen Refresh`'s own page produced a note that showed up in that
+  project's new "Notes" section immediately, and was found by Universal
+  Search on a **body-only** word (`stonemason`, never in the title), grouped
+  under its own "Notes" heading with a `Project · excerpt` context line.
+- The mobile More sheet (375px) listed "Notes" alongside the pre-existing
+  destinations; the desktop sidebar showed "Notes" as an always-visible
+  seventh-now-eighth entry.
+- Deleting a note through the UI required and respected a real
+  `window.confirm` dialog, both cancelled and accepted.
+- Every manually-created note and project used for this pass was deleted
+  again through the running application afterwards; the development database
+  was left exactly as it was found (`0 notes`, the same items/projects
+  `pnpm check:env` reported before this session began).
+
+**Not verified in this pass:** iOS Safari's "Add to Home Screen" behaviour
+specifically with Notes open (covered generally at 0.7 and unaffected by this
+milestone); a from-scratch install on a second physical device. Both are
+pre-existing gaps in this project's verification, not new ones.
