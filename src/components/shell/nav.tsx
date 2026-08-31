@@ -7,6 +7,7 @@ import {
   Inbox,
   ListChecks,
   MoreHorizontal,
+  NotebookText,
   Plus,
   Refrigerator,
   Search,
@@ -39,6 +40,7 @@ const SIDEBAR_ITEMS = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
+  { href: "/notes", label: "Notes", icon: NotebookText },
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/search", label: "Search", icon: Search },
 ] as const;
@@ -55,6 +57,7 @@ const SECONDARY_ITEMS = [
   { href: "/upcoming", label: "Upcoming", icon: CalendarRange },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
+  { href: "/notes", label: "Notes", icon: NotebookText },
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
 ] as const;

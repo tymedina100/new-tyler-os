@@ -6,6 +6,7 @@ import {
   FolderGit2,
   Inbox,
   ListChecks,
+  NotebookText,
   Plus,
   Refrigerator,
   Search,
@@ -15,7 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { captureItemAction } from "@/server/actions/item-actions";
+import { captureAction } from "@/server/actions/capture-actions";
 
 /**
  * The command palette.
@@ -32,6 +33,7 @@ const DESTINATIONS = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/tasks", label: "Tasks", icon: ListChecks },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
+  { href: "/notes", label: "Notes", icon: NotebookText },
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
 ] as const;
@@ -72,9 +74,40 @@ export function CommandPalette() {
       const formData = new FormData();
       formData.set("text", text);
 
-      const result = await captureItemAction(null, formData);
+      const result = await captureAction(null, formData);
       if (result.ok) {
         toast.success("Captured to your inbox.");
+        close();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  /**
+   * "New note," with and without something already typed.
+   *
+   * `note:` with nothing after it deliberately falls through to an ordinary
+   * item capture (`matchNotePrefix` returns `null`) — so an empty query here
+   * must never submit a bare `note: `, which would silently create an item
+   * titled "note:" instead of doing anything note-shaped. Routing to `/notes`
+   * — where the quick-capture box sits at the very top of the page — is the
+   * empty-query answer instead of pretending there is text to capture.
+   */
+  function newNote() {
+    const text = query.trim();
+    if (text.length === 0) {
+      go("/notes");
+      return;
+    }
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("text", `note: ${text}`);
+
+      const result = await captureAction(null, formData);
+      if (result.ok) {
+        toast.success("Note created.");
         close();
       } else {
         toast.error(result.error);
@@ -118,25 +151,39 @@ export function CommandPalette() {
           ))}
         </Command.Group>
 
-        {trimmed.length > 0 ? (
-          <Command.Group
-            heading="Actions"
-            className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[0.6875rem] [&_[cmdk-group-heading]]:font-medium"
-          >
-            <PaletteItem onSelect={capture} disabled={isPending}>
-              <Plus aria-hidden className="text-muted-foreground size-4" />
-              <span className="truncate">
-                Capture <span className="text-muted-foreground">“{trimmed}”</span>
-              </span>
-            </PaletteItem>
-            <PaletteItem onSelect={() => go(`/search?q=${encodeURIComponent(trimmed)}`)}>
-              <Search aria-hidden className="text-muted-foreground size-4" />
-              <span className="truncate">
-                Search for <span className="text-muted-foreground">“{trimmed}”</span>
-              </span>
-            </PaletteItem>
-          </Command.Group>
-        ) : null}
+        <Command.Group
+          heading="Actions"
+          className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[0.6875rem] [&_[cmdk-group-heading]]:font-medium"
+        >
+          {trimmed.length > 0 ? (
+            <>
+              <PaletteItem onSelect={capture} disabled={isPending}>
+                <Plus aria-hidden className="text-muted-foreground size-4" />
+                <span className="truncate">
+                  Capture <span className="text-muted-foreground">“{trimmed}”</span>
+                </span>
+              </PaletteItem>
+              <PaletteItem onSelect={() => go(`/search?q=${encodeURIComponent(trimmed)}`)}>
+                <Search aria-hidden className="text-muted-foreground size-4" />
+                <span className="truncate">
+                  Search for <span className="text-muted-foreground">“{trimmed}”</span>
+                </span>
+              </PaletteItem>
+            </>
+          ) : null}
+          <PaletteItem onSelect={newNote} disabled={isPending}>
+            <NotebookText aria-hidden className="text-muted-foreground size-4" />
+            <span className="truncate">
+              {trimmed.length > 0 ? (
+                <>
+                  New note <span className="text-muted-foreground">“{trimmed}”</span>
+                </>
+              ) : (
+                "New note"
+              )}
+            </span>
+          </PaletteItem>
+        </Command.Group>
 
         <Command.Empty className="text-muted-foreground px-3 py-6 text-center text-sm">
           Type to capture or search.

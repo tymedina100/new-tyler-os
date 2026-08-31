@@ -19,11 +19,12 @@
  */
 
 /** The domains that participate in search, in the order ties are broken. */
-export const SEARCH_DOMAINS = ["item", "project", "kitchen"] as const;
+export const SEARCH_DOMAINS = ["item", "note", "project", "kitchen"] as const;
 export type SearchDomain = (typeof SEARCH_DOMAINS)[number];
 
 export const SEARCH_DOMAIN_LABELS: Record<SearchDomain, string> = {
   item: "Items",
+  note: "Notes",
   project: "Projects",
   kitchen: "Kitchen",
 };
@@ -98,6 +99,7 @@ export const EMPTY_SEARCH_RESULTS: SearchResults = { query: "", groups: [], tota
  */
 export const SEARCH_LIMITS: Record<SearchDomain, number> = {
   item: 50,
+  note: 50,
   project: 20,
   kitchen: 20,
 };

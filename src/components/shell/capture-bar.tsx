@@ -5,17 +5,19 @@ import {
   CornerDownLeft,
   FolderGit2,
   Hash,
+  NotebookText,
   Plus,
   Repeat,
   TriangleAlert,
 } from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { matchNotePrefix } from "@/domain/capture/note-prefix";
 import { parseCapture } from "@/domain/capture/parse-capture";
 import type { ProjectRef } from "@/domain/projects/project";
 import type { RecurrenceRule } from "@/domain/recurrence/recurrence";
 import { describeRecurrence } from "@/domain/recurrence/recurrence";
 import { formatDueDate, type IsoDate } from "@/domain/shared/date";
-import { captureItemAction } from "@/server/actions/item-actions";
+import { captureAction } from "@/server/actions/capture-actions";
 import { isTypingTarget } from "@/lib/keyboard";
 import { cn } from "@/lib/cn";
 
@@ -54,7 +56,7 @@ export function CaptureBar({
   today: IsoDate;
   projects: readonly ProjectRef[];
 }) {
-  const [state, formAction, isPending] = useActionState(captureItemAction, null);
+  const [state, formAction, isPending] = useActionState(captureAction, null);
   const [text, setText] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -90,9 +92,17 @@ export function CaptureBar({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // Checked before anything item-shaped: a `note:` capture never reaches
+  // `parseCapture` at all, the same "decide the domain first" split the
+  // server action makes. See src/domain/capture/note-prefix.ts and ADR 033.
+  const noteBody = matchNotePrefix(text);
+
   const parsed = useMemo(
-    () => (text.trim().length === 0 ? null : parseCapture(text, { today, projects })),
-    [text, today, projects],
+    () =>
+      noteBody !== null || text.trim().length === 0
+        ? null
+        : parseCapture(text, { today, projects }),
+    [text, today, projects, noteBody],
   );
 
   const project = parsed?.projectId
@@ -101,12 +111,13 @@ export function CaptureBar({
 
   const error = state && !state.ok ? state.error : null;
   const hasPreview =
-    parsed !== null &&
-    (parsed.dueOn !== null ||
-      project !== null ||
-      parsed.tags.length > 0 ||
-      parsed.unresolvedProject !== null ||
-      parsed.recurrence !== null);
+    noteBody !== null ||
+    (parsed !== null &&
+      (parsed.dueOn !== null ||
+        project !== null ||
+        parsed.tags.length > 0 ||
+        parsed.unresolvedProject !== null ||
+        parsed.recurrence !== null));
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-1.5">
@@ -153,6 +164,8 @@ export function CaptureBar({
         <p role="alert" className="text-destructive px-1 text-xs">
           {error}
         </p>
+      ) : noteBody !== null ? (
+        <NotePreview body={noteBody} />
       ) : hasPreview && parsed !== null ? (
         <CapturePreview
           title={parsed.title}
@@ -167,6 +180,7 @@ export function CaptureBar({
         <p className="text-muted-foreground hidden px-1 text-xs sm:block">
           Press <Key>c</Key> to capture, <Key>⌘</Key>
           <Key>K</Key> for commands. Add <Key>#tags</Key>, <Key>@project</Key> or a date inline.
+          Start with <Key>note:</Key> to write a note instead.
         </p>
       )}
     </form>
@@ -245,6 +259,28 @@ function CapturePreview({
           <span className="text-muted-foreground">— kept in the title</span>
         </span>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * What a `note:` capture will become. A different shape from the item
+ * preview on purpose — there is nothing to parse out of it, so showing empty
+ * date/project/tag chips would just be noise where "this is a note" is the
+ * entire story.
+ */
+function NotePreview({ body }: { body: string }) {
+  return (
+    <div
+      id="capture-preview"
+      aria-live="polite"
+      className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs"
+    >
+      <Chip>
+        <NotebookText aria-hidden className="size-3" />
+        New note
+      </Chip>
+      <span className="text-foreground max-w-full truncate font-medium">{body}</span>
     </div>
   );
 }

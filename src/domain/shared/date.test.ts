@@ -7,6 +7,7 @@ import {
   daysInMonth,
   formatDueDate,
   formatLongDate,
+  formatPastDate,
   isIsoDate,
   monthsBetween,
   ordinalDayOfMonth,
@@ -80,6 +81,29 @@ describe("formatDueDate", () => {
   it("falls back to a calendar date further out", () => {
     expect(formatDueDate("2026-12-01", today)).toBe("Dec 1");
     expect(formatDueDate("2027-01-05", today)).toBe("Jan 5, 2027");
+  });
+});
+
+describe("formatPastDate", () => {
+  const today = "2026-08-24";
+
+  it("never says Tomorrow or names a weekday for the future", () => {
+    expect(formatPastDate("2026-08-24", today)).toBe("Today");
+    expect(formatPastDate("2026-08-23", today)).toBe("Yesterday");
+    // The days-just-ahead branch formatDueDate has does not exist here — a
+    // note's updatedAt is never in the future, so "Thursday" alone, which
+    // formatDueDate would print for a date three days from now, is never
+    // ambiguous with three days ago the way reusing that function would be.
+    expect(formatPastDate("2026-08-21", today)).toBe("3 days ago");
+  });
+
+  it("falls back to a calendar date beyond the recent past", () => {
+    expect(formatPastDate("2026-06-01", today)).toBe("Jun 1");
+    expect(formatPastDate("2025-01-05", today)).toBe("Jan 5, 2025");
+  });
+
+  it("treats a date after today as Today rather than inventing a future tense", () => {
+    expect(formatPastDate("2026-08-25", today)).toBe("Today");
   });
 });
 

@@ -1,11 +1,12 @@
 import { buildSearchGroups } from "@/domain/search/search-ranking";
 import type { SearchResults } from "@/domain/search/search-result";
 import { EMPTY_SEARCH_RESULTS, SEARCH_LIMITS } from "@/domain/search/search-result";
-import { itemHit, kitchenHit, projectHit } from "@/domain/search/search-sources";
+import { itemHit, kitchenHit, noteHit, projectHit } from "@/domain/search/search-sources";
 import { todayIsoDate } from "@/domain/shared/date";
 import type { Database } from "@/server/db/client";
 import { searchItems } from "@/server/items/item-repository";
 import { searchInventory } from "@/server/kitchen/inventory-repository";
+import { searchNotes } from "@/server/notes/note-repository";
 import { searchProjects } from "@/server/projects/project-repository";
 
 /**
@@ -13,19 +14,21 @@ import { searchProjects } from "@/server/projects/project-repository";
  *
  * Its own service rather than a method on any one domain, for the same reason
  * `agenda-service.ts` is its own: it belongs to none of them. It reads from the
- * item, project and kitchen repositories and hands all three to a pure
+ * item, note, project and kitchen repositories and hands all four to a pure
  * projection. Putting it in `item-service` would make the item spine
  * responsible for knowing what is in the fridge, which is exactly the coupling
  * ADR 019 kept out of the schema and ADR 023 kept out of the agenda.
  *
- * **Each domain still owns how it is searched.** Items match a generated
- * `tsvector` with an `ILIKE` fallback (ADR 009); the kitchen and projects match
- * substrings, because short names and half-remembered words are what those
- * tables actually hold. There is no shared query and no universal table — three
- * queries that already existed for their own reasons, composed at the read
- * layer. A fourth domain joins by adding a query in its own repository and a
- * mapping in `src/domain/search/search-sources.ts`, and changes nothing here
- * beyond one more entry. See ADR 028.
+ * **Each domain still owns how it is searched.** Items and notes match a
+ * generated `tsvector` with an `ILIKE` fallback (ADR 009) — both are prose;
+ * the kitchen and projects match substrings, because short names and
+ * half-remembered words are what those tables actually hold. There is no
+ * shared query and no universal table. Notes (0.8) is the fourth domain ADR
+ * 028 described joining: a query in its own repository and a mapping in
+ * `src/domain/search/search-sources.ts`, with no change to
+ * `search-ranking.ts` — its tier logic already operated on any
+ * `(query, title)` pair, so a note found only through its body correctly
+ * lands in `secondary` with no note-specific code at all.
  *
  * Nothing AI-shaped is involved. The query is never sent anywhere, and pending
  * `item_suggestions` are not searched: a proposal nobody has accepted is not
@@ -41,7 +44,7 @@ export async function searchEverything(
 ): Promise<SearchResults> {
   const query = rawQuery.trim();
 
-  // Asking three tables for everything they have is not a search, it is a
+  // Asking every table for everything they have is not a search, it is a
   // table scan with a heading on it.
   if (query.length === 0) return EMPTY_SEARCH_RESULTS;
 
@@ -49,14 +52,16 @@ export async function searchEverything(
 
   // Concurrent because they are genuinely independent: no domain's query needs
   // another's answer, so paying for them in sequence would buy nothing.
-  const [items, projects, food] = await Promise.all([
+  const [items, notes, projects, food] = await Promise.all([
     searchItems(db, query, SEARCH_LIMITS.item),
+    searchNotes(db, query, SEARCH_LIMITS.note),
     searchProjects(db, query, SEARCH_LIMITS.project),
     searchInventory(db, query, SEARCH_LIMITS.kitchen),
   ]);
 
   const groups = buildSearchGroups({
     item: items.map((item) => itemHit(item, today, query)),
+    note: notes.map((note) => noteHit(note, query)),
     project: projects.map((project) => projectHit(project, query)),
     kitchen: food.map((entry) => kitchenHit(entry, today, query)),
   });

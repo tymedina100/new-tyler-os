@@ -31,6 +31,7 @@ function hit(overrides: Partial<SearchHit> & Pick<SearchHit, "id" | "title">): S
 function byDomain(groups: Partial<Record<SearchDomain, readonly SearchHit[]>>) {
   return {
     item: groups.item ?? [],
+    note: groups.note ?? [],
     project: groups.project ?? [],
     kitchen: groups.kitchen ?? [],
   };

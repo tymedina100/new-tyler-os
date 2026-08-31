@@ -106,6 +106,31 @@ export function formatDueDate(dueOn: IsoDate, today: IsoDate): string {
     : `${label}, ${date.getFullYear()}`;
 }
 
+/**
+ * A neutral, past-only counterpart to `formatDueDate`.
+ *
+ * `formatDueDate` exists to answer "when is this due," and it reads that way
+ * on purpose — "Tomorrow," a bare weekday name for the days just ahead. A
+ * note's `updatedAt` is never in the future, and borrowing that vocabulary
+ * for it would make "Tuesday" ambiguous between "coming up" and "three days
+ * ago." `dateOn` is expected to be on or before `today`; a caller with a
+ * genuinely future date has a different question to ask.
+ */
+export function formatPastDate(dateOn: IsoDate, today: IsoDate): string {
+  const daysAgo = daysBetween(dateOn, today);
+
+  if (daysAgo <= 0) return "Today";
+  if (daysAgo === 1) return "Yesterday";
+  if (daysAgo <= 6) return `${daysAgo} days ago`;
+
+  const date = fromIsoDate(dateOn);
+  const month = MONTH_NAMES[date.getMonth()] ?? "";
+  const label = `${month} ${date.getDate()}`;
+  return date.getFullYear() === fromIsoDate(today).getFullYear()
+    ? label
+    : `${label}, ${date.getFullYear()}`;
+}
+
 const MONTH_FULL_NAMES = [
   "January",
   "February",

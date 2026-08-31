@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ItemList } from "@/components/items/item-list";
 import { ItemSection } from "@/components/items/item-section";
+import { NoteList } from "@/components/notes/note-list";
+import { NoteQuickCapture } from "@/components/notes/note-quick-capture";
 import { ProgressBar } from "@/components/projects/project-card";
 import { ProjectForm } from "@/components/projects/project-form";
 import { CaptureBar } from "@/components/shell/capture-bar";
@@ -13,6 +15,7 @@ import { computeProjectProgress, PROJECT_STATUS_LABELS } from "@/domain/projects
 import { todayIsoDate } from "@/domain/shared/date";
 import { getDb } from "@/server/db/client";
 import { listItemsForView } from "@/server/items/item-service";
+import { listNotes } from "@/server/notes/note-service";
 import { listProjectRefs } from "@/server/projects/project-repository";
 import { getProject } from "@/server/projects/project-service";
 
@@ -29,10 +32,11 @@ export default async function ProjectPage(props: PageProps<"/projects/[id]">) {
   const project = await getProject(db, id);
   if (!project) notFound();
 
-  const [openItems, doneItems, projectRefs] = await Promise.all([
+  const [openItems, doneItems, projectRefs, notes] = await Promise.all([
     listItemsForView(db, { projectId: id, statuses: OPEN_ITEM_STATUSES }),
     listItemsForView(db, { projectId: id, statuses: ["done"] }),
     listProjectRefs(db),
+    listNotes(db, { projectId: id }),
   ]);
 
   const progress = computeProjectProgress(openItems.length, doneItems.length);
@@ -92,6 +96,23 @@ export default async function ProjectPage(props: PageProps<"/projects/[id]">) {
             </div>
           </details>
         ) : null}
+
+        {/*
+          Notes, kept as their own section rather than folded into the item
+          lists above: a note links to a project, it does not become an item
+          to appear inside one. See docs/DECISIONS.md ADR 033.
+        */}
+        <ItemSection title="Notes" count={notes.length}>
+          <NoteQuickCapture projectId={project.id} />
+          {notes.length === 0 ? (
+            <EmptyState
+              title="No notes yet"
+              description="Reference material, research, plans that aren't tasks yet — write one above."
+            />
+          ) : (
+            <NoteList notes={notes} today={today} />
+          )}
+        </ItemSection>
 
         <details className="border-border bg-card rounded-xl border">
           <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium select-none">

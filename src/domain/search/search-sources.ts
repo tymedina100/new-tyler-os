@@ -2,6 +2,8 @@ import { ITEM_KIND_LABELS, type ItemWithRelations } from "@/domain/items/item";
 import type { InventoryItem } from "@/domain/kitchen/inventory";
 import { KITCHEN_LOCATION_LABELS } from "@/domain/kitchen/inventory";
 import { formatQuantity } from "@/domain/kitchen/inventory-rules";
+import type { NoteWithRelations } from "@/domain/notes/note";
+import { buildNoteExcerpt } from "@/domain/notes/note-rules";
 import type { Project } from "@/domain/projects/project";
 import { PROJECT_STATUS_LABELS } from "@/domain/projects/project";
 import { matchTierFor } from "@/domain/search/search-ranking";
@@ -77,6 +79,39 @@ function projectContext(project: Project): string | null {
   if (description) parts.push(description);
 
   return parts.join(" · ");
+}
+
+export function noteHit(note: NoteWithRelations, query: string): SearchHit {
+  return {
+    domain: "note",
+    id: note.id,
+    title: note.title,
+    context: noteContext(note),
+    href: `/notes/${note.id}`,
+    // A note reaches here because its own SQL already matched it (title,
+    // *or* body, via `searchNotes`'s tsvector). `matchTierFor` only looks at
+    // the title, so a note found solely through its body correctly falls to
+    // `secondary` — exactly how an item body-only match already works via
+    // the identical call in `itemHit`. Pinned by
+    // `tests/integration/search.test.ts`.
+    tier: matchTierFor(query, note.title),
+  };
+}
+
+/**
+ * The project it lives in, then a taste of what it actually says — the pair
+ * that tells two notes titled the same thing apart, the way an inventory
+ * result is told apart by location and quantity rather than by name alone.
+ */
+function noteContext(note: NoteWithRelations): string | null {
+  const parts: string[] = [];
+
+  if (note.project) parts.push(note.project.name);
+
+  const excerpt = buildNoteExcerpt(note.body);
+  if (excerpt) parts.push(excerpt);
+
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export function kitchenHit(food: InventoryItem, today: IsoDate, query: string): SearchHit {

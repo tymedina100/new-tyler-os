@@ -1,9 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import {
-  captureItemSchema,
   itemIdSchema,
   setItemDueDateSchema,
   setItemKindSchema,
@@ -15,7 +13,6 @@ import { setItemRecurrenceSchema } from "@/domain/recurrence/recurrence-schema";
 import { type ActionResult, runAction } from "@/server/action-result";
 import { getDb } from "@/server/db/client";
 import * as service from "@/server/items/item-service";
-import { runSuggestionPass } from "@/server/suggestions/suggestion-run";
 
 /**
  * Server actions for items.
@@ -27,35 +24,11 @@ import { runSuggestionPass } from "@/server/suggestions/suggestion-run";
  * Deliberately no `redirect()` in here. Redirects work by throwing, and the
  * error handling in runAction would swallow them. Navigation belongs to the
  * component that knows where the user should end up.
+ *
+ * Capturing a new item is not here — the one capture box can produce an item
+ * or a note, decided before either service runs, so it lives in its own
+ * `src/server/actions/capture-actions.ts`. See docs/DECISIONS.md ADR 033.
  */
-
-export async function captureItemAction(
-  _previous: ActionResult<{ id: string }> | null,
-  formData: FormData,
-): Promise<ActionResult<{ id: string }>> {
-  return runAction("captureItem", async () => {
-    const input = captureItemSchema.parse({
-      text: formData.get("text"),
-      projectId: formData.get("projectId"),
-    });
-
-    const id = await service.captureItem(getDb(), input);
-    revalidateEverything();
-
-    // Scheduled, not awaited. `after` runs its callback once the response has
-    // already been sent, so Enter is never waiting on a model — capture stays
-    // exactly as fast with AI configured as without it, which is the whole
-    // reason the suggestion is a later event rather than part of the capture.
-    //
-    // It is deliberately the last thing here: the item is written and committed
-    // before anything AI-shaped exists, so there is no arrangement of failures
-    // in which a capture is lost to a suggestion. `runSuggestionPass` returns
-    // immediately when AI is not configured, and never throws either way.
-    after(() => runSuggestionPass(getDb(), id));
-
-    return { id };
-  });
-}
 
 export async function updateItemAction(
   _previous: ActionResult<{ id: string }> | null,

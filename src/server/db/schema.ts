@@ -1,5 +1,6 @@
 import { relations, sql, type SQL } from "drizzle-orm";
 import {
+  boolean,
   check,
   customType,
   date,
@@ -267,6 +268,65 @@ export const itemSuggestions = pgTable(
 );
 
 /**
+ * Notes: durable, retrievable knowledge — not a responsibility.
+ *
+ * Its own table, for the reason `kitchen_inventory` got one: this is not an
+ * Item. An item's `body` is supporting context for something actionable and
+ * dies with that item's own lifecycle; a note's primary identity is the
+ * information itself, with no `status` and no `due_on` — it cannot be Done,
+ * Someday, Archived, or overdue. See docs/DECISIONS.md ADR 033.
+ *
+ * `search_vector` mirrors `items` exactly, title weighted above body, because
+ * notes are prose the same way items are (ADR 009) — this is `tsvector`, not
+ * the kitchen's substring match, which exists for short product names.
+ *
+ * There is deliberately no unique constraint on `title`: "Mazda6 maintenance"
+ * can exist twice, the same way two kitchen records can share a name
+ * (ADR 019) — nothing here invents uniqueness the user did not ask for.
+ */
+export const notes = pgTable(
+  "notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    /** Markdown source. Never rendered as raw HTML — see ADR 034. */
+    body: text("body").notNull().default(""),
+    pinned: boolean("pinned").notNull().default(false),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      (): SQL =>
+        sql`setweight(to_tsvector('english', coalesce(${notes.title}, '')), 'A') || setweight(to_tsvector('english', coalesce(${notes.body}, '')), 'B')`,
+    ),
+  },
+  (table) => [
+    index("notes_updated_at_idx").on(table.updatedAt.desc()),
+    index("notes_project_idx").on(table.projectId),
+    index("notes_search_idx").using("gin", table.searchVector),
+  ],
+);
+
+export const noteTags = pgTable(
+  "note_tags",
+  {
+    noteId: uuid("note_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.noteId, table.tagId] }),
+    index("note_tags_tag_idx").on(table.tagId),
+  ],
+);
+
+/**
  * Kitchen inventory.
  *
  * Its own table, on purpose. A jar of olive oil is a fact about the world, not
@@ -304,6 +364,7 @@ export const kitchenInventory = pgTable(
 
 export const projectsRelations = relations(projects, ({ many }) => ({
   items: many(items),
+  notes: many(notes),
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
@@ -327,6 +388,7 @@ export const itemRecurrenceRelations = relations(itemRecurrence, ({ one }) => ({
 
 export const tagsRelations = relations(tags, ({ many }) => ({
   itemTags: many(itemTags),
+  noteTags: many(noteTags),
 }));
 
 export const itemTagsRelations = relations(itemTags, ({ one }) => ({
@@ -334,10 +396,22 @@ export const itemTagsRelations = relations(itemTags, ({ one }) => ({
   tag: one(tags, { fields: [itemTags.tagId], references: [tags.id] }),
 }));
 
+export const notesRelations = relations(notes, ({ one, many }) => ({
+  project: one(projects, { fields: [notes.projectId], references: [projects.id] }),
+  noteTags: many(noteTags),
+}));
+
+export const noteTagsRelations = relations(noteTags, ({ one }) => ({
+  note: one(notes, { fields: [noteTags.noteId], references: [notes.id] }),
+  tag: one(tags, { fields: [noteTags.tagId], references: [tags.id] }),
+}));
+
 export type ItemRow = typeof items.$inferSelect;
 export type NewItemRow = typeof items.$inferInsert;
 export type ProjectRow = typeof projects.$inferSelect;
 export type NewProjectRow = typeof projects.$inferInsert;
+export type NoteRow = typeof notes.$inferSelect;
+export type NewNoteRow = typeof notes.$inferInsert;
 export type TagRow = typeof tags.$inferSelect;
 export type ItemRecurrenceRow = typeof itemRecurrence.$inferSelect;
 export type NewItemRecurrenceRow = typeof itemRecurrence.$inferInsert;

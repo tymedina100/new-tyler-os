@@ -3,6 +3,7 @@ import type { SearchDomain, SearchHit, SearchResults } from "@/domain/search/sea
 import { SEARCH_LIMITS } from "@/domain/search/search-result";
 import * as itemService from "@/server/items/item-service";
 import * as kitchen from "@/server/kitchen/inventory-service";
+import * as noteService from "@/server/notes/note-service";
 import * as projectService from "@/server/projects/project-service";
 import * as suggestions from "@/server/suggestions/suggestion-service";
 import { searchEverything } from "@/server/search/search-service";
@@ -65,6 +66,12 @@ async function food(
 
 async function project(name: string, description: string | null = null) {
   return projectService.createProject(db(), { name, description, status: "active" });
+}
+
+async function note(title: string, body = "placeholder") {
+  const id = await noteService.captureNote(db(), { body: "placeholder", projectId: null });
+  await noteService.updateNote(db(), { id, title, body, tags: [], projectId: null });
+  return id;
 }
 
 describe("searching across every domain", () => {
@@ -275,6 +282,96 @@ describe("ordering and caps", () => {
 
     const results = await searchEverything(db(), "chicken", NOW);
     expect(group(results, "kitchen")).toHaveLength(SEARCH_LIMITS.kitchen);
+  });
+});
+
+/**
+ * Notes joining Universal Search (0.8) — kept as its own fixture set rather
+ * than folded into "searching across every domain" above, so the many
+ * precise counts and orderings already pinned down there stay exactly as
+ * they were.
+ */
+describe("notes in universal search", () => {
+  it("reaches all four domains from one query at once", async () => {
+    await food("Chicken thighs", { location: "fridge" });
+    const meals = await project("Meal Prep", "Batch cooking chicken on Sundays");
+    await itemService.captureItem(db(), { text: "Make chicken before game", projectId: meals });
+    await note("Chicken stock recipe", "Roast chicken bones for an hour before simmering.");
+
+    const results = await searchEverything(db(), "chicken", NOW);
+
+    expect(titles(results, "kitchen")).toEqual(["Chicken thighs"]);
+    expect(titles(results, "item")).toEqual(["Make chicken before game"]);
+    expect(titles(results, "project")).toEqual(["Meal Prep"]);
+    expect(titles(results, "note")).toEqual(["Chicken stock recipe"]);
+    expect(results.total).toBe(4);
+  });
+
+  it("opens the note's own page, not a second page search invents", async () => {
+    const noteId = await note("Apartment measurements");
+    const results = await searchEverything(db(), "apartment", NOW);
+
+    expect(group(results, "note")[0]?.href).toBe(`/notes/${noteId}`);
+  });
+
+  it("shows the project and an excerpt of the body as context", async () => {
+    const projectId = await project("HomeQuest");
+    const id = await noteService.captureNote(db(), { body: "placeholder", projectId: null });
+    await noteService.updateNote(db(), {
+      id,
+      title: "Apartment measurements",
+      body: "Kitchen is roughly 10 by 12 feet.",
+      tags: [],
+      projectId,
+    });
+
+    const [hit] = group(await searchEverything(db(), "apartment", NOW), "note");
+    expect(hit?.context).toBe("HomeQuest · Kitchen is roughly 10 by 12 feet.");
+  });
+
+  it(
+    "ranks a note found only through its body in the secondary tier — " +
+      "the ranking seam needed nothing note-specific to express this",
+    async () => {
+      await note("Car reference", "The tire pressure should be kept at 35 psi.");
+      await note("Tire pressure"); // the title *is* the query — an exact match
+
+      const hits = group(await searchEverything(db(), "tire pressure", NOW), "note");
+      const byBody = hits.find((hit) => hit.title === "Car reference");
+      const byTitle = hits.find((hit) => hit.title === "Tire pressure");
+
+      expect(byBody?.tier).toBe("secondary");
+      expect(byTitle?.tier).toBe("exact");
+      // And the title match is what leads the group — ranking still works
+      // for notes with zero note-specific ranking code.
+      expect(hits[0]?.title).toBe("Tire pressure");
+    },
+  );
+
+  it("keeps two notes with the same title as two separate, findable results", async () => {
+    await note("Ideas", "first idea");
+    await note("Ideas", "second idea");
+
+    const hits = group(await searchEverything(db(), "ideas", NOW), "note");
+    expect(hits).toHaveLength(2);
+    expect(new Set(hits.map((hit) => hit.href)).size).toBe(2);
+  });
+
+  it("caps notes at their own limit, the same as items", async () => {
+    for (let index = 0; index < SEARCH_LIMITS.note + 5; index += 1) {
+      await note(`Chicken note ${index}`);
+    }
+
+    const results = await searchEverything(db(), "chicken", NOW);
+    expect(group(results, "note")).toHaveLength(SEARCH_LIMITS.note);
+  });
+
+  it("finds a pinned note the same as any other — pin state has no bearing on search", async () => {
+    const id = await note("Pinned reference");
+    await noteService.setNotePinned(db(), id, true);
+
+    const results = await searchEverything(db(), "pinned reference", NOW);
+    expect(titles(results, "note")).toEqual(["Pinned reference"]);
   });
 });
 
