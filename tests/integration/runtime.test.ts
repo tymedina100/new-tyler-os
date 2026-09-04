@@ -39,6 +39,7 @@ describe("enqueue and claim", () => {
     expect(claimed?.job.id).toBe(job.id);
     expect(claimed?.job.status).toBe("running");
     expect(claimed?.run.role).toBe("miles");
+    expect(claimed?.run.trigger).toBe("manual");
   });
 
   it("lets a Grok runtime claim the same unpinned Miles job", async () => {

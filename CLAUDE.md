@@ -183,9 +183,9 @@ no `entities` table. ADRs 028–029.
 **0.8 — Notes & Knowledge.** Standalone `notes`, markdown without raw HTML,
 `note:` capture prefix, search's fourth domain. Never reaches AI. ADRs 033–034.
 
-**Now — runtime observe slice.** Roles (Miles CoS, specialists) are not
-runtimes (Python, Grok, …). A job is an execution, not an inbox item and not
-a Notion task. `/api/runtime` is bearer-authed; completing a run proposes, and
-accepting calls `noteService.captureNote`. ADR 035.
+**Shipped — runtime observe slice.** Roles are not runtimes. `/api/runtime`
+proposes; accepting calls `noteService.captureNote`. ADR 035.
 
-**Next: semantic retrieval — but only once a real query defeats lexical search.**
+**Now — autonomous wake-up.** A typed Miles weekday schedule (06:20 Phoenix,
+catch-up until noon), unique per local date, observe-only stale recovery.
+Empty Today is quiet. ADR 036.

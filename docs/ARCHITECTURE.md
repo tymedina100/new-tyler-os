@@ -74,24 +74,24 @@ src/domain/     Pure TypeScript and Zod. No React, no Next, no database.
 Types, Zod schemas, and pure functions. It imports nothing from the framework or
 the database, which is why its tests run in milliseconds with no setup.
 
-| Module                  | Holds                                                               |
-| ----------------------- | ------------------------------------------------------------------- |
-| `items/item.ts`         | The Item type, kinds, statuses, labels                              |
-| `items/item-rules.ts`   | Lifecycle transitions, returned as patches                          |
-| `items/item-schema.ts`  | Validation for everything entering the system                       |
-| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate             |
-| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat |
-| `kitchen/`              | Food in the house: locations, quantities, expiry buckets            |
-| `notes/`                | Durable knowledge: title derivation, excerpts, display order        |
-| `recurrence/`           | How something repeats, and when it is next due                      |
-| `today/`                | Bucketing open items for the Today view                             |
-| `agenda/`               | The days ahead, one list per domain that has dates                  |
-| `projects/`             | Projects and progress                                               |
-| `tags/`                 | Tag name normalisation                                              |
-| `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds   |
-| `runtime/`              | Org roles vs execution runtimes; job/run/approval transitions       |
-| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly               |
-| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                   |
+| Module                  | Holds                                                                 |
+| ----------------------- | --------------------------------------------------------------------- |
+| `items/item.ts`         | The Item type, kinds, statuses, labels                                |
+| `items/item-rules.ts`   | Lifecycle transitions, returned as patches                            |
+| `items/item-schema.ts`  | Validation for everything entering the system                         |
+| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate               |
+| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat   |
+| `kitchen/`              | Food in the house: locations, quantities, expiry buckets              |
+| `notes/`                | Durable knowledge: title derivation, excerpts, display order          |
+| `recurrence/`           | How something repeats, and when it is next due                        |
+| `today/`                | Bucketing open items for the Today view                               |
+| `agenda/`               | The days ahead, one list per domain that has dates                    |
+| `projects/`             | Projects and progress                                                 |
+| `tags/`                 | Tag name normalisation                                                |
+| `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds     |
+| `runtime/`              | Roles vs runtimes; jobs, runs, approvals, weekday schedules (ADR 036) |
+| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly                 |
+| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                     |
 
 Rules return a **patch**, not a mutated object. `completeItem(item, now)` returns
 `{ status, completedAt, archivedAt }` and the caller persists it. This keeps

@@ -301,19 +301,17 @@ summarisation, tagging or embedding of note content.
 
 ---
 
-## Now · runtime observe slice
+## Now · autonomous wake-up
 
-Infrastructure for the north star — a highly autonomous personal OS — proven
-one vertical at a time, not by building a framework first.
+Miles weekday morning briefing, owned by the control plane.
 
-Miles remains Chief of Staff. Specialist roles own domains. Providers are
-interchangeable under those roles. This slice adds a Postgres job/run/approval
-plane and a bearer-authed `/api/runtime` so a Python worker can act as Miles,
-read Today, and _propose_ a note. Accepting uses the existing note service.
-The Notion Work Board stays in Notion.
+A typed `schedules` row (not a worker clock, not an agent) enqueues at most one
+`today_briefing` per local date for Miles, unpinned to Python. Empty Today
+completes quietly. Stale observe runs recover, three attempts then fail.
+See ADR 036.
 
-Deliberately not in this slice: schedulers, standing authority, connectors,
-quota routing, device nodes, embeddings, or a specialist framework. See ADR 035.
+Deliberately not in this slice: email, calendar, provider routing, standing
+authority, Telegram, embeddings, or a specialist framework.
 
 ---
 

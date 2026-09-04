@@ -1,5 +1,6 @@
 import type { Approval, Job, Run, Runtime } from "@/domain/runtime/runtime";
-import type { ApprovalRow, JobRow, RunRow, RuntimeRow } from "@/server/db/schema";
+import type { Schedule } from "@/domain/runtime/schedule";
+import type { ApprovalRow, JobRow, RunRow, RuntimeRow, ScheduleRow } from "@/server/db/schema";
 
 /** Row → domain. Kept beside the repository so mapping cannot drift into SQL. */
 
@@ -24,6 +25,9 @@ export function toJob(row: JobRow): Job {
     authorization: row.authorization,
     assignedRole: row.assignedRole,
     requestedRuntimeKind: row.requestedRuntimeKind,
+    scheduleId: row.scheduleId,
+    scheduledForDate: row.scheduledForDate,
+    attemptCount: row.attemptCount,
     claimedByRuntimeId: row.claimedByRuntimeId,
     claimedAt: row.claimedAt,
     createdAt: row.createdAt,
@@ -64,5 +68,23 @@ export function toApproval(row: ApprovalRow): Approval {
     acceptedNoteId: row.acceptedNoteId,
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
+  };
+}
+
+export function toSchedule(row: ScheduleRow): Schedule {
+  return {
+    id: row.id,
+    key: row.key,
+    jobKind: row.jobKind,
+    assignedRole: row.assignedRole,
+    authorization: row.authorization,
+    requestedRuntimeKind: row.requestedRuntimeKind,
+    enabled: row.enabled,
+    localTime: row.localTime,
+    timezone: row.timezone,
+    weekdaysOnly: row.weekdaysOnly,
+    catchUpUntilLocalTime: row.catchUpUntilLocalTime,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
