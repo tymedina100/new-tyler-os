@@ -186,6 +186,10 @@ no `entities` table. ADRs 028–029.
 **Shipped — runtime observe slice.** Roles are not runtimes. `/api/runtime`
 proposes; accepting calls `noteService.captureNote`. ADR 035.
 
-**Now — autonomous wake-up.** A typed Miles weekday schedule (06:20 Phoenix,
+**Shipped — autonomous wake-up.** A typed Miles weekday schedule (06:20 Phoenix,
 catch-up until noon), unique per local date, observe-only stale recovery.
 Empty Today is quiet. ADR 036.
+
+**Now — runtime fleet + capacity.** Instances (not one row per kind), hashed
+credentials, capabilities, usage ledger, example quota pools. No routing.
+ADR 037.

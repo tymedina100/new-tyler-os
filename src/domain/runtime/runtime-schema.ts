@@ -28,6 +28,23 @@ export const jobKindSchema = z.enum(JOB_KINDS);
 export const approvalKindSchema = z.enum(APPROVAL_KINDS);
 export const runTriggerSchema = z.enum(RUN_TRIGGERS);
 
+/** Role the worker is asking to act as. Runtime identity comes from the credential. */
+export const roleClaimSchema = z.object({
+  role: roleSchema,
+});
+export type RoleClaim = z.infer<typeof roleClaimSchema>;
+
+/**
+ * Legacy shared-token identity. New workers authenticate as an instance;
+ * this remains so a local RUNTIME_TOKEN + kind header still maps to the
+ * migrated singleton row for that kind.
+ */
+export const claimIdentitySchema = z.object({
+  runtimeKind: runtimeKindSchema,
+  role: roleSchema,
+});
+export type ClaimIdentity = z.infer<typeof claimIdentitySchema>;
+
 export const runtimeIdSchema = z.object({ id: z.uuid() });
 
 const optionalBoundedText = (max: number) =>
@@ -58,9 +75,8 @@ const optionalCost = z
 /**
  * Optional usage telemetry on a completed run.
  *
- * Present so a later per-role, per-provider capacity ledger can be filled
- * without changing the job protocol. Slice 1 stores the fields and does
- * nothing else with them — no reservations, no routing.
+ * Copied onto the run as a summary and appended to `usage_entries`.
+ * This slice does not reserve, route, or budget from these fields.
  */
 export const runUsageSchema = z.object({
   provider: optionalBoundedText(80),
@@ -86,12 +102,6 @@ export const completeRunSchema = z.object({
   usage: runUsageSchema.optional(),
 });
 export type CompleteRunInput = z.infer<typeof completeRunSchema>;
-
-export const claimIdentitySchema = z.object({
-  runtimeKind: runtimeKindSchema,
-  role: roleSchema,
-});
-export type ClaimIdentity = z.infer<typeof claimIdentitySchema>;
 
 export const enqueueTodayBriefingSchema = z.object({
   kind: z.literal("today_briefing" satisfies JobKind).optional(),

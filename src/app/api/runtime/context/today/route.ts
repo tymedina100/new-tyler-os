@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/server/db/client";
 import { authenticateRuntime, isAuthed, machineError } from "@/server/runtime/runtime-http";
-import { getTodayContext } from "@/server/runtime/runtime-service";
+import { getTodayContext, markRuntimeSeen } from "@/server/runtime/runtime-service";
 
 /**
  * Observe Today's open work and food that is expiring soon.
@@ -11,11 +11,13 @@ import { getTodayContext } from "@/server/runtime/runtime-service";
  */
 
 export async function GET(request: Request) {
-  const auth = authenticateRuntime(request);
+  const db = getDb();
+  const auth = await authenticateRuntime(db, request);
   if (!isAuthed(auth)) return auth;
 
   try {
-    const context = await getTodayContext(getDb());
+    await markRuntimeSeen(db, auth.runtime);
+    const context = await getTodayContext(db);
     return NextResponse.json(context);
   } catch (error) {
     return machineError(error);

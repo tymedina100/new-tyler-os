@@ -32,6 +32,12 @@ import {
   RUNTIME_KINDS,
   RUNTIME_STATUSES,
 } from "@/domain/runtime/runtime";
+import { RUNTIME_CAPABILITIES } from "@/domain/runtime/fleet";
+import {
+  CAPACITY_CONFIDENCE,
+  CAPACITY_RESET_TYPES,
+  CAPACITY_UNITS,
+} from "@/domain/runtime/capacity";
 import { SUGGESTION_FIELDS, SUGGESTION_STATUSES } from "@/domain/suggestions/suggestion";
 
 /**
@@ -70,6 +76,10 @@ export const runStatusEnum = pgEnum("run_status", RUN_STATUSES);
 export const runTriggerEnum = pgEnum("run_trigger", RUN_TRIGGERS);
 export const approvalKindEnum = pgEnum("approval_kind", APPROVAL_KINDS);
 export const approvalStatusEnum = pgEnum("approval_status", APPROVAL_STATUSES);
+export const runtimeCapabilityEnum = pgEnum("runtime_capability", RUNTIME_CAPABILITIES);
+export const capacityUnitEnum = pgEnum("capacity_unit", CAPACITY_UNITS);
+export const capacityConfidenceEnum = pgEnum("capacity_confidence", CAPACITY_CONFIDENCE);
+export const capacityResetTypeEnum = pgEnum("capacity_reset_type", CAPACITY_RESET_TYPES);
 
 export const projects = pgTable(
   "projects",
@@ -350,22 +360,26 @@ export const noteTags = pgTable(
 );
 
 /**
- * Execution backends that may claim jobs. One row per runtime kind — Python,
- * Grok Bot, Cursor, and the rest share this table. The org role that owns
- * the work lives on the job, not here; swapping Grok for Python is a
- * different runtime row acting as the same Miles. See ADR 035.
+ * Execution instances that may claim jobs. Many rows may share a kind —
+ * home-desktop-python and backup-python are both `python`. The org role
+ * that owns the work lives on the job, not here. See ADR 037.
  */
 export const runtimes = pgTable(
   "runtimes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    instanceKey: text("instance_key").notNull(),
     name: text("name").notNull(),
     kind: runtimeKindEnum("kind").notNull(),
     status: runtimeStatusEnum("status").notNull().default("enabled"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    deviceId: text("device_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex("runtimes_kind_unique_idx").on(table.kind)],
+  (table) => [
+    uniqueIndex("runtimes_instance_key_unique_idx").on(table.instanceKey),
+    index("runtimes_kind_idx").on(table.kind),
+  ],
 );
 
 /**
@@ -440,9 +454,9 @@ export const jobs = pgTable(
 );
 
 /**
- * One attempt at a job. Usage columns are stored so a later per-role,
- * per-provider capacity ledger can be filled without changing the job
- * protocol; slice 1 does not sum, reserve, or route from them.
+ * One attempt at a job. Usage columns remain a convenient per-run summary.
+ * Durable history lives on `usage_entries` (ADR 037). This slice still does
+ * not route from them.
  */
 export const runs = pgTable(
   "runs",
@@ -509,6 +523,137 @@ export const approvals = pgTable(
       .on(table.jobId)
       .where(sql`${table.status} = 'pending'`),
   ],
+);
+
+/**
+ * Per-instance bearer credential. Only the SHA-256 hash is stored.
+ * The plaintext token is returned once at bootstrap and never again.
+ */
+export const runtimeCredentials = pgTable(
+  "runtime_credentials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runtimeId: uuid("runtime_id")
+      .notNull()
+      .references(() => runtimes.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("runtime_credentials_hash_unique_idx").on(table.tokenHash),
+    index("runtime_credentials_runtime_idx").on(table.runtimeId),
+  ],
+);
+
+export const runtimeCapabilities = pgTable(
+  "runtime_capabilities",
+  {
+    runtimeId: uuid("runtime_id")
+      .notNull()
+      .references(() => runtimes.id, { onDelete: "cascade" }),
+    capability: runtimeCapabilityEnum("capability").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.runtimeId, table.capability] })],
+);
+
+export const runtimeRoleGrants = pgTable(
+  "runtime_role_grants",
+  {
+    runtimeId: uuid("runtime_id")
+      .notNull()
+      .references(() => runtimes.id, { onDelete: "cascade" }),
+    role: orgRoleEnum("role").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.runtimeId, table.role] })],
+);
+
+/**
+ * Append-only AI usage. Deterministic work writes explicit zeros rather
+ * than pretending a model ran.
+ */
+export const usageEntries = pgTable(
+  "usage_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    runtimeId: uuid("runtime_id")
+      .notNull()
+      .references(() => runtimes.id, { onDelete: "restrict" }),
+    provider: text("provider"),
+    product: text("product"),
+    poolKey: text("pool_key"),
+    model: text("model"),
+    inputTokens: integer("input_tokens"),
+    cachedInputTokens: integer("cached_input_tokens"),
+    outputTokens: integer("output_tokens"),
+    estimatedCostUsd: numeric("estimated_cost_usd", { precision: 12, scale: 6, mode: "number" }),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("usage_entries_run_idx").on(table.runId),
+    index("usage_entries_runtime_idx").on(table.runtimeId),
+    index("usage_entries_recorded_idx").on(table.recordedAt.desc()),
+  ],
+);
+
+/**
+ * Quota pools, not providers. Cursor Pro coding and a PAYG API budget are
+ * two pools even when they share a vendor. Precise limits live in data.
+ */
+export const capacityPools = pgTable(
+  "capacity_pools",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    product: text("product").notNull(),
+    poolKey: text("pool_key").notNull(),
+    displayName: text("display_name").notNull(),
+    remaining: numeric("remaining", { precision: 14, scale: 6, mode: "number" }),
+    remainingUnit: capacityUnitEnum("remaining_unit").notNull().default("unknown"),
+    estimateConfidence: capacityConfidenceEnum("estimate_confidence").notNull().default("unknown"),
+    resetType: capacityResetTypeEnum("reset_type").notNull().default("unknown"),
+    resetAt: timestamp("reset_at", { withTimezone: true }),
+    resetTimezone: text("reset_timezone"),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    hardDollarLimit: numeric("hard_dollar_limit", { precision: 12, scale: 2, mode: "number" }),
+    sourceNote: text("source_note"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("capacity_pools_key_unique_idx").on(table.poolKey),
+    check(
+      "capacity_pools_remaining_nonnegative",
+      sql`${table.remaining} is null or ${table.remaining} >= 0`,
+    ),
+    check(
+      "capacity_pools_percent_range",
+      sql`${table.remainingUnit} <> 'percent' or ${table.remaining} is null or (${table.remaining} >= 0 and ${table.remaining} <= 100)`,
+    ),
+  ],
+);
+
+export const capacityUpdates = pgTable(
+  "capacity_updates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    poolId: uuid("pool_id")
+      .notNull()
+      .references(() => capacityPools.id, { onDelete: "cascade" }),
+    previousRemaining: numeric("previous_remaining", { precision: 14, scale: 6, mode: "number" }),
+    newRemaining: numeric("new_remaining", { precision: 14, scale: 6, mode: "number" }),
+    note: text("note"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("capacity_updates_pool_idx").on(table.poolId, table.recordedAt.desc())],
 );
 
 /**
@@ -595,6 +740,10 @@ export const noteTagsRelations = relations(noteTags, ({ one }) => ({
 export const runtimesRelations = relations(runtimes, ({ many }) => ({
   jobs: many(jobs),
   runs: many(runs),
+  credentials: many(runtimeCredentials),
+  capabilities: many(runtimeCapabilities),
+  roleGrants: many(runtimeRoleGrants),
+  usageEntries: many(usageEntries),
 }));
 
 export const schedulesRelations = relations(schedules, ({ many }) => ({
@@ -618,12 +767,38 @@ export const runsRelations = relations(runs, ({ one, many }) => ({
   job: one(jobs, { fields: [runs.jobId], references: [jobs.id] }),
   runtime: one(runtimes, { fields: [runs.runtimeId], references: [runtimes.id] }),
   approvals: many(approvals),
+  usageEntries: many(usageEntries),
 }));
 
 export const approvalsRelations = relations(approvals, ({ one }) => ({
   run: one(runs, { fields: [approvals.runId], references: [runs.id] }),
   job: one(jobs, { fields: [approvals.jobId], references: [jobs.id] }),
   acceptedNote: one(notes, { fields: [approvals.acceptedNoteId], references: [notes.id] }),
+}));
+
+export const runtimeCredentialsRelations = relations(runtimeCredentials, ({ one }) => ({
+  runtime: one(runtimes, { fields: [runtimeCredentials.runtimeId], references: [runtimes.id] }),
+}));
+
+export const runtimeCapabilitiesRelations = relations(runtimeCapabilities, ({ one }) => ({
+  runtime: one(runtimes, { fields: [runtimeCapabilities.runtimeId], references: [runtimes.id] }),
+}));
+
+export const runtimeRoleGrantsRelations = relations(runtimeRoleGrants, ({ one }) => ({
+  runtime: one(runtimes, { fields: [runtimeRoleGrants.runtimeId], references: [runtimes.id] }),
+}));
+
+export const usageEntriesRelations = relations(usageEntries, ({ one }) => ({
+  run: one(runs, { fields: [usageEntries.runId], references: [runs.id] }),
+  runtime: one(runtimes, { fields: [usageEntries.runtimeId], references: [runtimes.id] }),
+}));
+
+export const capacityPoolsRelations = relations(capacityPools, ({ many }) => ({
+  updates: many(capacityUpdates),
+}));
+
+export const capacityUpdatesRelations = relations(capacityUpdates, ({ one }) => ({
+  pool: one(capacityPools, { fields: [capacityUpdates.poolId], references: [capacityPools.id] }),
 }));
 
 export type ItemRow = typeof items.$inferSelect;
@@ -644,3 +819,7 @@ export type ScheduleRow = typeof schedules.$inferSelect;
 export type JobRow = typeof jobs.$inferSelect;
 export type RunRow = typeof runs.$inferSelect;
 export type ApprovalRow = typeof approvals.$inferSelect;
+export type RuntimeCredentialRow = typeof runtimeCredentials.$inferSelect;
+export type UsageEntryRow = typeof usageEntries.$inferSelect;
+export type CapacityPoolRow = typeof capacityPools.$inferSelect;
+export type CapacityUpdateRow = typeof capacityUpdates.$inferSelect;

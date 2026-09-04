@@ -206,9 +206,10 @@ manual checklist used to close a milestone.
 A separate Python poller (`tyleros_worker.py` in the assistant repository) can
 act as Miles: it ticks schedules, claims Today briefing jobs, and proposes a
 note only when Today has material. Empty mornings complete quietly. Set
-`RUNTIME_TOKEN` here (`openssl rand -base64 32`), apply migrations, then point
-that worker at this app with the same token. The 06:20 Phoenix weekday schedule
-lives in TylerOS, not in the worker.
+`RUNTIME_TOKEN` here (`openssl rand -base64 32`), apply migrations, then
+bootstrap an instance (`pnpm runtime:bootstrap -- --key home-desktop-python`)
+and point the worker at this app with `TYLEROS_RUNTIME_CREDENTIAL`. The 06:20
+Phoenix weekday schedule lives in TylerOS, not in the worker.
 
 ## Documentation
 

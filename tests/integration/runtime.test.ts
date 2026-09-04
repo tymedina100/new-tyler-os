@@ -3,7 +3,7 @@ import * as itemService from "@/server/items/item-service";
 import * as noteService from "@/server/notes/note-service";
 import * as runtimeService from "@/server/runtime/runtime-service";
 import { insertJob } from "@/server/runtime/runtime-repository";
-import { runtimes } from "@/server/db/schema";
+import { registerMilesRuntime } from "../support/runtime-fixtures";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 
 let harness: TestDatabase;
@@ -31,36 +31,39 @@ describe("enqueue and claim", () => {
     expect(job.authorization).toBe("observe");
     expect(job.requestedRuntimeKind).toBeNull();
 
+    const python = await registerMilesRuntime(db(), "test-python");
     const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
 
     expect(claimed?.job.id).toBe(job.id);
     expect(claimed?.job.status).toBe("running");
     expect(claimed?.run.role).toBe("miles");
+    expect(claimed?.run.runtimeId).toBe(python.id);
     expect(claimed?.run.trigger).toBe("manual");
   });
 
   it("lets a Grok runtime claim the same unpinned Miles job", async () => {
     await runtimeService.enqueueTodayBriefing(db());
+    const grok = await registerMilesRuntime(db(), "test-grok", "grok_bot");
     const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "grok_bot",
+      runtimeId: grok.id,
       role: "miles",
     });
     expect(claimed?.run.role).toBe("miles");
+    expect(claimed?.run.runtimeId).toBe(grok.id);
   });
 
   it("does not let Scout claim a Miles job", async () => {
     const job = await runtimeService.enqueueTodayBriefing(db());
-    const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
-      role: "scout",
-    });
+    const python = await registerMilesRuntime(db(), "test-python");
+    await expect(
+      runtimeService.claimNextJob(db(), { runtimeId: python.id, role: "scout" }),
+    ).rejects.toThrow(/not allowed to act as scout/);
 
-    expect(claimed).toBeNull();
     const stillQueued = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     expect(stillQueued?.job.id).toBe(job.id);
@@ -76,8 +79,9 @@ describe("enqueue and claim", () => {
       requestedRuntimeKind: "grok_bot",
     });
 
+    const python = await registerMilesRuntime(db(), "test-python");
     const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     expect(claimed).toBeNull();
@@ -85,10 +89,12 @@ describe("enqueue and claim", () => {
 
   it("gives a queued job to only one of two concurrent claimants", async () => {
     await runtimeService.enqueueTodayBriefing(db());
+    const python = await registerMilesRuntime(db(), "home-desktop-python");
+    const grok = await registerMilesRuntime(db(), "test-grok", "grok_bot");
 
     const [first, second] = await Promise.all([
-      runtimeService.claimNextJob(db(), { runtimeKind: "python", role: "miles" }),
-      runtimeService.claimNextJob(db(), { runtimeKind: "grok_bot", role: "miles" }),
+      runtimeService.claimNextJob(db(), { runtimeId: python.id, role: "miles" }),
+      runtimeService.claimNextJob(db(), { runtimeId: grok.id, role: "miles" }),
     ]);
 
     const wins = [first, second].filter((value) => value !== null);
@@ -98,14 +104,9 @@ describe("enqueue and claim", () => {
 
 describe("complete, accept and dismiss", () => {
   it("does not create a note when a run completes with a proposal", async () => {
-    await runtimeService.enqueueTodayBriefing(db());
-    const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
-      role: "miles",
-    });
-    if (!claimed) throw new Error("expected a claim");
+    const { claimed, runtime } = await claimBriefing();
 
-    await runtimeService.completeRun(db(), claimed.run.id, "python", {
+    await runtimeService.completeRun(db(), claimed.run.id, runtime.id, {
       status: "succeeded",
       resultSummary: "Drafted today's briefing.",
       proposal: {
@@ -235,29 +236,31 @@ describe("today context", () => {
 });
 
 describe("disabled runtimes", () => {
-  it("refuses to claim when that runtime kind is disabled", async () => {
-    await db().insert(runtimes).values({
-      name: "Python worker",
-      kind: "python",
-      status: "disabled",
-    });
+  it("refuses to claim when that runtime instance is disabled", async () => {
+    const python = await registerMilesRuntime(db(), "paused-python", "python", "disabled");
     await runtimeService.enqueueTodayBriefing(db());
 
     await expect(
-      runtimeService.claimNextJob(db(), { runtimeKind: "python", role: "miles" }),
+      runtimeService.claimNextJob(db(), { runtimeId: python.id, role: "miles" }),
     ).rejects.toThrow(/disabled/);
   });
 });
 
-async function enqueueAndPropose(): Promise<string> {
+async function claimBriefing() {
   await runtimeService.enqueueTodayBriefing(db());
+  const runtime = await registerMilesRuntime(db(), "test-python");
   const claimed = await runtimeService.claimNextJob(db(), {
-    runtimeKind: "python",
+    runtimeId: runtime.id,
     role: "miles",
   });
   if (!claimed) throw new Error("expected a claim");
+  return { claimed, runtime };
+}
 
-  await runtimeService.completeRun(db(), claimed.run.id, "python", {
+async function enqueueAndPropose(): Promise<string> {
+  const { claimed, runtime } = await claimBriefing();
+
+  await runtimeService.completeRun(db(), claimed.run.id, runtime.id, {
     status: "succeeded",
     resultSummary: "Drafted today's briefing.",
     proposal: {

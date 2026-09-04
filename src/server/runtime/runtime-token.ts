@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 /**
@@ -64,6 +64,14 @@ export function presentedTokenMatches(expected: string, presented: string): bool
   const a = createHash("sha256").update(expected).digest();
   const b = createHash("sha256").update(presented).digest();
   return timingSafeEqual(a, b);
+}
+
+export function hashRuntimeSecret(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+export function generateRuntimeCredential(): string {
+  return `tylrt_${randomBytes(32).toString("base64url")}`;
 }
 
 function weaknesses(value: string): string[] {

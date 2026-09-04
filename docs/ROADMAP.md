@@ -301,7 +301,7 @@ summarisation, tagging or embedding of note content.
 
 ---
 
-## Now · autonomous wake-up
+## Shipped · autonomous wake-up
 
 Miles weekday morning briefing, owned by the control plane.
 
@@ -310,8 +310,17 @@ A typed `schedules` row (not a worker clock, not an agent) enqueues at most one
 completes quietly. Stale observe runs recover, three attempts then fail.
 See ADR 036.
 
-Deliberately not in this slice: email, calendar, provider routing, standing
-authority, Telegram, embeddings, or a specialist framework.
+---
+
+## Now · runtime fleet + capacity ledger
+
+Execution instances, hashed credentials, an append-only usage ledger, and
+example quota pools. Health is derived from last seen. `/capacity` is a
+read of real state. Automatic provider routing is not in this slice.
+See ADR 037.
+
+Deliberately not in this slice: cheapest-model algorithms, scraping
+subscription pages, a game-style world, or collapsing Miles into a runtime.
 
 ---
 

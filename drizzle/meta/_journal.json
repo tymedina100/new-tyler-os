@@ -50,6 +50,13 @@
       "when": 1788553740741,
       "tag": "0006_conscious_scarecrow",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788559860602,
+      "tag": "0007_aromatic_ricochet",
+      "breakpoints": true
     }
   ]
 }

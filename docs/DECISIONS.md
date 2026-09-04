@@ -1358,3 +1358,71 @@ retried. An obsolete run cannot complete after recovery.
 morning job to Python; a generic cron/workflow engine; JSON schedule blobs;
 auto-retrying non-observe work; emitting a "Nothing needs you" note every
 morning; a scheduler org role.
+
+---
+
+## 037 · Runtime fleet and a capacity ledger, without a router
+
+**Accepted** · instances, hashed credentials, usage + quota pools
+
+Wake-up proved TylerOS can create and execute background work. This slice
+gives it a truthful model of _where_ that work runs and _what AI capacity_
+it consumes. It does not choose a provider.
+
+**Roles are not runtimes. Runtimes are not providers. Devices are not
+roles.** Miles is organizational identity. `home-desktop-python` is an
+execution instance of kind `python`. Cursor Pro coding and a PAYG API
+budget are quota pools, possibly under one vendor. A hostname is an
+optional `device_id`. Collapsing any of those would make later routing
+guess. The hierarchy stays Tyler → Miles → specialists → TylerOS control
+plane → execution runtimes / devices / AI providers.
+
+**Identity is an instance, not a kind.** `runtimes` is no longer one row
+per `runtime_kind`. `instance_key` is the stable handle
+(`home-desktop-python`, `backup-python`). Existing rows backfill
+`instance_key = kind`, so a legacy Python singleton still authenticates.
+`runs.runtime_id` already pointed at that row; it now means the instance
+that actually ran.
+
+**Credentials identify the instance.** `runtime_credentials` stores a
+SHA-256 hash, never the token. Bootstrap (`pnpm runtime:bootstrap` or
+`POST /api/runtime/instances` with the system `RUNTIME_TOKEN`) prints the
+plaintext once. Claim/complete/heartbeat derive `runtime_id` from that
+hash. A kind header cannot impersonate another instance. Role is still
+requested (`X-TylerOS-Role`) and checked against `runtime_role_grants`.
+Legacy `RUNTIME_TOKEN` + kind header still maps to the migrated singleton
+for that kind. The scheduler tick stays on the system token: a worker is
+a clock, not a second source of schedule truth.
+
+**Capabilities are declarations, not a ranking engine.** Typed flags
+(`deterministic`, `browser`, `code`, `research`, `external_api`) so a
+later router has facts. Org ownership stays on the job.
+
+**Health is derived from `last_seen_at`.** Healthy within two minutes,
+stale until ten, then offline. Disabled always wins. No alerts. Presence
+comes from claim, heartbeat, complete, and today-context — not a fake ping.
+
+**Usage is a ledger.** `usage_entries` is append-only. Run columns remain
+a convenient summary. Deterministic work writes explicit zeros
+(`provider=none`, `model=deterministic`) rather than a null that could
+mean "unknown model."
+
+**Capacity is pools, not providers.** One vendor may have several
+independent pools. Remaining cannot go negative; percent cannot exceed 100. Reset instants are timestamptz plus an IANA zone. Manual remaining
+updates write `capacity_updates`. Seeded rows are labeled example/mock —
+not Tyler's real subscription limits. Burn forecasts are labeled
+estimated. Nothing scrapes a consumer usage page.
+
+**`/capacity` is a read of this state.** Instances, health, pools, recent
+usage. A future world view should subscribe here rather than invent
+activity. This slice does not build that visualization.
+
+**Not a router.** No automatic provider selection, cheapest-model
+scoring, quota shadow pricing, fallback chains, or subscription scraping.
+Those wait until this telemetry is trusted.
+
+**Considered and rejected:** one row per kind forever; trusting a worker
+to name its own runtime in a header; storing plaintext tokens; OAuth or a
+secrets manager; treating Miles/Forge as runtime instances; scraping
+subscription dashboards; automatic model routing; a game-style TylerOS
+World in this slice.
