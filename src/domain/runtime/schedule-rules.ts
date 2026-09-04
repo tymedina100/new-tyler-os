@@ -52,13 +52,13 @@ export function zonedCivilTime(now: Date, timeZone: string): ZonedCivilTime {
       minute: "2-digit",
     }).formatToParts(now);
   } catch {
-    throw new DomainError("invalid_input", `Unknown timezone: ${timeZone}`);
+    throw new DomainError("conflict", `Unknown timezone: ${timeZone}`);
   }
 
   const weekdayName = part(parts, "weekday");
   const weekday = WEEKDAY_INDEX[weekdayName];
   if (weekday === undefined) {
-    throw new DomainError("invalid_input", `Could not read weekday in ${timeZone}.`);
+    throw new DomainError("conflict", `Could not read weekday in ${timeZone}.`);
   }
 
   const year = part(parts, "year");
@@ -75,13 +75,13 @@ export function zonedCivilTime(now: Date, timeZone: string): ZonedCivilTime {
 export function parseLocalMinutes(value: string): number {
   const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
   if (!match) {
-    throw new DomainError("invalid_input", `Expected a local time like 06:20, got "${value}".`);
+    throw new DomainError("conflict", `Expected a local time like 06:20, got "${value}".`);
   }
 
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (hours > 23 || minutes > 59) {
-    throw new DomainError("invalid_input", `Invalid local time "${value}".`);
+    throw new DomainError("conflict", `Invalid local time "${value}".`);
   }
 
   return hours * 60 + minutes;
@@ -89,6 +89,6 @@ export function parseLocalMinutes(value: string): number {
 
 function part(parts: Intl.DateTimeFormatPart[], type: string): string {
   const value = parts.find((entry) => entry.type === type)?.value;
-  if (!value) throw new DomainError("invalid_input", `Missing ${type} in zoned time.`);
+  if (!value) throw new DomainError("conflict", `Missing ${type} in zoned time.`);
   return value;
 }

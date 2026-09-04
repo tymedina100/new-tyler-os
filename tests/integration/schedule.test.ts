@@ -129,7 +129,14 @@ describe("empty vs material Today", () => {
     await runtimeService.completeRun(db(), claimed.run.id, "python", {
       status: "succeeded",
       resultSummary: "No material Today items.",
-      usage: { provider: "none", model: "deterministic" },
+      usage: {
+        provider: "none",
+        model: "deterministic",
+        inputTokens: null,
+        cachedInputTokens: null,
+        outputTokens: null,
+        estimatedCostUsd: null,
+      },
     });
 
     expect(await noteService.listNotes(db())).toHaveLength(0);
