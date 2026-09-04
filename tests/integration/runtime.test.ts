@@ -134,6 +134,25 @@ describe("complete, accept and dismiss", () => {
     const [row] = await runtimeService.listRuntimeBoard(db());
     expect(row?.job.status).toBe("succeeded");
   });
+
+  it("creates exactly one note when two accepts race", async () => {
+    const approvalId = await enqueueAndPropose();
+
+    const results = await Promise.allSettled([
+      runtimeService.acceptApproval(db(), approvalId),
+      runtimeService.acceptApproval(db(), approvalId),
+    ]);
+
+    const succeeded = results.filter((result) => result.status === "fulfilled");
+    const failed = results.filter((result) => result.status === "rejected");
+    expect(succeeded).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toMatchObject({
+      status: "rejected",
+      reason: expect.objectContaining({ message: "This proposal has already been resolved." }),
+    });
+    expect(await noteService.listNotes(db())).toHaveLength(1);
+  });
 });
 
 describe("today context", () => {

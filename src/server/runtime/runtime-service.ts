@@ -146,11 +146,10 @@ export async function listRuntimeBoard(db: Database) {
 
 export async function acceptApproval(db: Database, id: string, now = new Date()): Promise<void> {
   await db.transaction(async (tx) => {
-    const approval = await requireApproval(tx, id);
-    const patch = resolveApproval(approval, "accepted", now);
+    const approval = await ownPendingApproval(tx, id, "accepted", now);
     const body = proposedNoteCaptureBody(approval.title, approval.body);
     const noteId = await captureNote(tx, { body, projectId: null });
-    await repo.updateApproval(tx, approval.id, { ...patch, acceptedNoteId: noteId });
+    await repo.updateApproval(tx, approval.id, { acceptedNoteId: noteId });
     const job = await requireJob(tx, approval.jobId);
     const settled = settleApprovedJob(job);
     await repo.updateJob(tx, job.id, settled);
@@ -159,9 +158,7 @@ export async function acceptApproval(db: Database, id: string, now = new Date())
 
 export async function dismissApproval(db: Database, id: string, now = new Date()): Promise<void> {
   await db.transaction(async (tx) => {
-    const approval = await requireApproval(tx, id);
-    const patch = resolveApproval(approval, "dismissed", now);
-    await repo.updateApproval(tx, approval.id, patch);
+    const approval = await ownPendingApproval(tx, id, "dismissed", now);
     const job = await requireJob(tx, approval.jobId);
     const settled = settleApprovedJob(job);
     await repo.updateJob(tx, job.id, settled);
@@ -180,10 +177,22 @@ async function requireJob(db: Database, id: string): Promise<Job> {
   return job;
 }
 
-async function requireApproval(db: Database, id: string) {
+async function ownPendingApproval(
+  db: Database,
+  id: string,
+  decision: "accepted" | "dismissed",
+  now: Date,
+) {
   const approval = await repo.findApprovalById(db, id);
   if (approval === null) throw new NotFoundError("Approval", id);
-  return approval;
+
+  const patch = resolveApproval(approval, decision, now);
+  const owned = await repo.takePendingApproval(db, id, patch);
+  if (owned === null) {
+    throw new DomainError("invalid_transition", "This proposal has already been resolved.");
+  }
+
+  return owned;
 }
 
 function assertRunOwnedBy(run: Run, runtimeId: string): void {

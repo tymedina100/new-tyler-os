@@ -180,6 +180,25 @@ export async function findApprovalById(db: Database, id: string): Promise<Approv
   return row ? toApproval(row) : null;
 }
 
+/**
+ * Atomically take a pending approval. Only one caller can win: the UPDATE
+ * matches `status = pending`, so a second concurrent resolve gets no row
+ * and must not apply a side effect.
+ */
+export async function takePendingApproval(
+  db: Database,
+  id: string,
+  patch: Pick<Approval, "status" | "resolvedAt">,
+): Promise<Approval | null> {
+  const [row] = await db
+    .update(approvals)
+    .set(patch)
+    .where(and(eq(approvals.id, id), eq(approvals.status, "pending")))
+    .returning();
+
+  return row ? toApproval(row) : null;
+}
+
 export async function updateApproval(
   db: Database,
   id: string,
