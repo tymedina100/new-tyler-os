@@ -301,6 +301,22 @@ summarisation, tagging or embedding of note content.
 
 ---
 
+## Now · runtime observe slice
+
+Infrastructure for the north star — a highly autonomous personal OS — proven
+one vertical at a time, not by building a framework first.
+
+Miles remains Chief of Staff. Specialist roles own domains. Providers are
+interchangeable under those roles. This slice adds a Postgres job/run/approval
+plane and a bearer-authed `/api/runtime` so a Python worker can act as Miles,
+read Today, and _propose_ a note. Accepting uses the existing note service.
+The Notion Work Board stays in Notion.
+
+Deliberately not in this slice: schedulers, standing authority, connectors,
+quota routing, device nodes, embeddings, or a specialist framework. See ADR 035.
+
+---
+
 ## Next · semantic retrieval, once something needs it
 
 Deferred from 0.6 deliberately, not skipped. Until now retrieval reached one
@@ -343,7 +359,9 @@ Recorded so they do not get proposed again as improvements:
 - A plugin or module framework before there are three real modules to generalise
   from
 - Multi-tenancy or an account system for a single-user application
-- Replacing Server Actions with an API layer "for flexibility"
+- Replacing Server Actions with a human-facing API layer "for flexibility"
+- Turning TylerOS into a generic job queue that replaces Miles → specialist
+  ownership. Runtimes execute under roles; they do not become the org chart.
 - A generic custom-fields or user-defined-schema system
 - Making AI a dependency of any core flow
 - Dashboards, charts or analytics about personal data nobody acts on

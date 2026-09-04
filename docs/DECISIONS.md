@@ -1241,3 +1241,77 @@ HTML in a personal note — nobody asked for); a hand-rolled regex-based
 renderer (markdown's own grammar, including nested lists and fenced code, is
 exactly the kind of parsing problem this codebase's own rules say not to
 reinvent).
+
+---
+
+## 035 · Runtime control plane: roles above runtimes, machine API below humans
+
+**Accepted** · observe slice
+
+TylerOS is meant to become a highly autonomous personal operating system: to
+continuously reduce the need to remember, coordinate, monitor, and make
+low-value decisions. That is direction, not this slice's scope. Miles remains
+Chief of Staff. Specialist roles own durable domains. AI providers and models
+are interchangeable execution resources **under** those roles. The runtime
+layer exists so a role can move between Grok, Python, Cursor, Claude, and
+official APIs without rewriting the org chart.
+
+**This slice proves one vertical:** Tyler asks Miles for a Today briefing → a
+queued job assigned to `miles` → a `python` runtime claims it acting as Miles
+→ it reads Today (titles and dates only) → it proposes a note → Tyler accepts
+on `/runs` → `noteService.captureNote` writes the note. Completing a run never
+writes personal state.
+
+**Roles are not runtimes.** `org_role` on a job is who owns the work (Miles,
+Forge, Archer, Mercury, Atlas, Scout, Ledger, Rally, Palate). `runtime_kind`
+is how it currently executes (`python`, `grok_bot`, `cursor`, `chatgpt`,
+`claude`, `gemini`, `api`). They are separate enums on purpose. A first draft
+that collapsed them into `worker_kind: miles_python` would have tied Miles to
+Python and made "Miles on Grok when Grok has capacity" a protocol change.
+Naming the other roles and kinds now is not a specialist framework and not a
+generic job queue replacing the hierarchy. Slice 1 only _uses_ Miles + Python.
+
+**Canonical sources stay split.** Notion remains shared projects, tasks,
+blockers, durable decisions and policies — the Work Board is not copied into
+Postgres. Postgres remains TylerOS application data **plus** machine/runtime
+state (jobs, runs, approvals, usage columns, later capacity). GitHub remains
+source and issues. Sheets remain large numerical tables. Chat remains
+temporary reasoning. A job is an execution record, not a second task board.
+
+**The machine API is the exception to ADR 004, not a repeal.** Humans still
+mutate through Server Actions (`enqueueTodayBriefingAction`, accept/dismiss).
+`/api/runtime/*` is for processes. `src/proxy.ts` lets those paths through
+without a session cookie, including when human auth is `misconfigured`, so a
+missing passphrase cannot take workers down. They are **not** on
+`PUBLIC_ROUTES`. The handler checks `RUNTIME_TOKEN` (min 32 characters, distinct
+from placeholders). Absent or weak token: the machine API is off, even in
+open-dev. Cookie sessions do not fit pollers.
+
+**AI still only proposes.** Authorization on this job is `observe`. Completing
+inserts an `approvals` row. Accepting goes through the ordinary note service,
+the same discipline ADR 027 used for item suggestions. The worker cannot write
+`notes` or `items`.
+
+**Usage columns without a ledger.** `runs` stores provider, model, token
+counts, and estimated cost so a later per-role, per-provider quota ledger can
+attach without changing the job protocol. This slice does not sum, reserve,
+route, or budget. `run_trigger` already includes `schedule` and `api`; nothing
+schedules yet. Authorization already names `propose`, `modify_local`, and
+`external_action`; nothing grants them yet.
+
+**Jobs are not agenda events.** ADR 023 refused a shared `events` table that
+would turn the fridge into a to-do list. Runtime audit belongs on `runs` and
+`approvals`, not on `/upcoming`. A briefing is not "due Friday."
+
+**What this slice must not prevent, and must not build:** continuous background
+work, email/calendar/task connectors, standing authority policies, preference
+learning, embeddings / second-brain memory beyond notes, proactive recommenders,
+purchases within budgets, quota-aware routing, model-capability monitoring,
+self-improvement via measured software changes, or multiple physical devices as
+nodes. No policy engine, node registry, scheduler, or memory product in this
+change. Prove infrastructure one vertical at a time.
+
+**Considered and rejected:** putting briefings on `items`; duplicating the
+Notion Work Board into Postgres; a plugin/multi-agent framework; sharing
+Postgres with the Python repo as a second writer of personal tables; treating
+`/api/runtime` as public-unauthenticated; tying Miles permanently to Grok Bot.

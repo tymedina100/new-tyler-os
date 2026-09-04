@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { authConfig } from "@/server/auth/auth-config";
+import { isMachineRoute } from "@/server/auth/machine-routes";
 import { isPublicRoute } from "@/server/auth/public-routes";
 import { SESSION_DURATION_MS, issueSession, verifySession } from "@/server/auth/session";
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/server/auth/session-cookie";
@@ -31,6 +32,8 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   const pathname = request.nextUrl.pathname;
 
   if (isPublicRoute(pathname)) return NextResponse.next();
+  // Cookie-exempt, not unauthenticated. The handler checks RUNTIME_TOKEN.
+  if (isMachineRoute(pathname)) return NextResponse.next();
 
   const config = authConfig();
 

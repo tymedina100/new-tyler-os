@@ -44,15 +44,14 @@ and get their own tables. Mostly-null columns on `items` are the signal that thi
 boundary is being crossed.
 
 Three milestones have tested this and `items` has not gained a column since 0.1.
-A jar of olive oil is not an item (`kitchen_inventory`, 0.3) but buying one is
-(`kind = 'purchase'`). A repeat stays an item; its four schedule fields went to
-`item_recurrence` (0.4) — three fields of one concept's own is the line. What a
-model guessed is not a property either (`item_suggestions`, 0.5). ADRs 019, 027.
+Kitchen stock, note knowledge, suggestion rows, and runtime jobs each got their
+own table rather than widening the spine. ADRs 019, 027, 033, 035.
 
 ## Layers
 
 ```
-src/app/     Routes, React Server Components, Server Actions as the only mutation path
+src/app/     Routes, React Server Components. Humans mutate via Server Actions;
+             machines via `/api/runtime` (ADR 035)
    |
    v
 src/server/  Repositories, services, actions. Drizzle lives here and nowhere else
@@ -120,8 +119,9 @@ failing page is far more often a missing `DATABASE_URL` than a bug.
 - **Prefer a domain concept to a generic utility.** `buildTodayView` > `groupBy`.
 - **Naming:** files `kebab-case`; components `PascalCase` named exports; database
   `snake_case` plural. Say what a thing is — `item-repository.ts`, not `utils.ts`.
-- **Do not add** authentication, an API layer, a client state library,
-  multi-tenancy, or a plugin system — each a recorded decision, not an oversight.
+- **Do not add** a client store, multi-tenancy, a plugin system, or a
+  human-facing REST/tRPC layer. `/api/runtime` is the machine exception to
+  ADR 004 — see ADR 035. Do not collapse Miles into a job queue.
 - **AI may only propose.** It never overwrites, never blocks a flow, and is never
   required. Everything works with it switched off, which is the default.
 
@@ -174,25 +174,18 @@ the system responsible for personal context. These files say how to build it.
 Shipped milestones live in `docs/ROADMAP.md`; below is only what a session must
 know before touching this code.
 
-**0.6 — Universal Search.** Items, projects and kitchen inventory in one ranked
-query, each domain owning its own matching; `src/server/search/` composes,
-`src/domain/search/` ranks. No `entities` table, no registry. ADRs 028–029.
+**0.6 — Universal Search.** One ranked query, each domain owning its match;
+no `entities` table. ADRs 028–029.
 
-**0.7 — Daily Access Foundation.** One authorized identity behind a signed
-cookie, checked at `src/proxy.ts` and again inside `runAction`. No accounts,
-no `user_id` — one passphrase, `node:crypto`. Installable (manifest + a
-generated icon), no service worker. Phone bar: four destinations + **More**;
-sidebar keeps all seven. ADRs 030–032.
+**0.7 — Daily Access.** Signed cookie at `src/proxy.ts` and again in
+`runAction`. No `user_id`. Phone bar: four destinations + **More**. ADRs 030–032.
 
-**0.8 — Notes & Knowledge.** A standalone `notes` table, not an item kind:
-`items.body` is supporting context for something actionable, a `Note` is the
-knowledge itself — no status, no due date, nothing that can be Done or
-Archived. Markdown stored as plain text; `NoteMarkdown` (`react-markdown` +
-`remark-gfm`, no `rehype-raw`) renders it so raw HTML in a note is always
-inert text, never executed. Notes are search's fourth domain — `tsvector`
-like items, since notes are prose — with **no change to `search-ranking.ts`**.
-A reserved `note:` prefix in the one capture box routes to
-`noteService.captureNote` instead of an item; a bare `note:` still falls
-through to an ordinary capture. Never reaches AI. ADRs 033–034.
+**0.8 — Notes & Knowledge.** Standalone `notes`, markdown without raw HTML,
+`note:` capture prefix, search's fourth domain. Never reaches AI. ADRs 033–034.
+
+**Now — runtime observe slice.** Roles (Miles CoS, specialists) are not
+runtimes (Python, Grok, …). A job is an execution, not an inbox item and not
+a Notion task. `/api/runtime` is bearer-authed; completing a run proposes, and
+accepting calls `noteService.captureNote`. ADR 035.
 
 **Next: semantic retrieval — but only once a real query defeats lexical search.**

@@ -36,7 +36,7 @@ const NOT_AUTHENTICATED_ERROR = "Your session has ended. Sign in again.";
  * Wraps an action body, translating the four kinds of failure TylerOS has: no
  * session, invalid input, a broken domain rule, and everything else.
  *
- * The session check is what makes every one of the 24 actions in
+ * The session check is what makes every action in
  * `src/server/actions/` a protected route without any of them naming auth —
  * `src/proxy.ts` is the optimistic check that keeps an unauthenticated request
  * from ever reaching a page; this is the one Next's own authentication guide

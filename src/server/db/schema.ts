@@ -19,6 +19,18 @@ import { ITEM_KINDS, ITEM_STATUSES } from "@/domain/items/item";
 import { KITCHEN_LOCATIONS } from "@/domain/kitchen/inventory";
 import { PROJECT_STATUSES } from "@/domain/projects/project";
 import { MAX_RECURRENCE_INTERVAL, RECURRENCE_FREQUENCIES } from "@/domain/recurrence/recurrence";
+import {
+  APPROVAL_KINDS,
+  APPROVAL_STATUSES,
+  AUTHORIZATION_LEVELS,
+  JOB_KINDS,
+  JOB_STATUSES,
+  RUN_STATUSES,
+  RUN_TRIGGERS,
+  ROLES,
+  RUNTIME_KINDS,
+  RUNTIME_STATUSES,
+} from "@/domain/runtime/runtime";
 import { SUGGESTION_FIELDS, SUGGESTION_STATUSES } from "@/domain/suggestions/suggestion";
 
 /**
@@ -47,6 +59,16 @@ export const kitchenLocationEnum = pgEnum("kitchen_location", KITCHEN_LOCATIONS)
 export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", RECURRENCE_FREQUENCIES);
 export const suggestionFieldEnum = pgEnum("suggestion_field", SUGGESTION_FIELDS);
 export const suggestionStatusEnum = pgEnum("suggestion_status", SUGGESTION_STATUSES);
+export const orgRoleEnum = pgEnum("org_role", ROLES);
+export const runtimeKindEnum = pgEnum("runtime_kind", RUNTIME_KINDS);
+export const runtimeStatusEnum = pgEnum("runtime_status", RUNTIME_STATUSES);
+export const jobKindEnum = pgEnum("job_kind", JOB_KINDS);
+export const jobStatusEnum = pgEnum("job_status", JOB_STATUSES);
+export const authorizationLevelEnum = pgEnum("authorization_level", AUTHORIZATION_LEVELS);
+export const runStatusEnum = pgEnum("run_status", RUN_STATUSES);
+export const runTriggerEnum = pgEnum("run_trigger", RUN_TRIGGERS);
+export const approvalKindEnum = pgEnum("approval_kind", APPROVAL_KINDS);
+export const approvalStatusEnum = pgEnum("approval_status", APPROVAL_STATUSES);
 
 export const projects = pgTable(
   "projects",
@@ -327,6 +349,130 @@ export const noteTags = pgTable(
 );
 
 /**
+ * Execution backends that may claim jobs. One row per runtime kind — Python,
+ * Grok Bot, Cursor, and the rest share this table. The org role that owns
+ * the work lives on the job, not here; swapping Grok for Python is a
+ * different runtime row acting as the same Miles. See ADR 035.
+ */
+export const runtimes = pgTable(
+  "runtimes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    kind: runtimeKindEnum("kind").notNull(),
+    status: runtimeStatusEnum("status").notNull().default("enabled"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("runtimes_kind_unique_idx").on(table.kind)],
+);
+
+/**
+ * Work a role was asked to do. Not an item: a briefing is an execution,
+ * "read Today and propose a note" is not something that can be Done in the
+ * inbox. Shared projects and blockers stay in Notion; this table is not a
+ * second work board. See docs/DECISIONS.md ADR 035.
+ */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: jobKindEnum("kind").notNull(),
+    title: text("title").notNull(),
+    instruction: text("instruction").notNull(),
+    status: jobStatusEnum("status").notNull().default("queued"),
+    authorization: authorizationLevelEnum("authorization").notNull().default("observe"),
+    assignedRole: orgRoleEnum("assigned_role").notNull(),
+    requestedRuntimeKind: runtimeKindEnum("requested_runtime_kind"),
+    claimedByRuntimeId: uuid("claimed_by_runtime_id").references(() => runtimes.id, {
+      onDelete: "set null",
+    }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("jobs_status_role_created_idx").on(table.status, table.assignedRole, table.createdAt),
+    index("jobs_claimed_by_idx").on(table.claimedByRuntimeId),
+  ],
+);
+
+/**
+ * One attempt at a job. Usage columns are stored so a later per-role,
+ * per-provider capacity ledger can be filled without changing the job
+ * protocol; slice 1 does not sum, reserve, or route from them.
+ */
+export const runs = pgTable(
+  "runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    runtimeId: uuid("runtime_id")
+      .notNull()
+      .references(() => runtimes.id, { onDelete: "restrict" }),
+    role: orgRoleEnum("role").notNull(),
+    status: runStatusEnum("status").notNull().default("running"),
+    trigger: runTriggerEnum("trigger").notNull().default("manual"),
+    resultSummary: text("result_summary"),
+    lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+    provider: text("provider"),
+    model: text("model"),
+    inputTokens: integer("input_tokens"),
+    cachedInputTokens: integer("cached_input_tokens"),
+    outputTokens: integer("output_tokens"),
+    estimatedCostUsd: numeric("estimated_cost_usd", { precision: 12, scale: 6, mode: "number" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("runs_job_idx").on(table.jobId),
+    index("runs_runtime_idx").on(table.runtimeId),
+    index("runs_started_at_idx").on(table.startedAt.desc()),
+  ],
+);
+
+/**
+ * A proposed side effect the user resolves. One row per proposal, the same
+ * shape as `item_suggestions`: applying one goes through the ordinary note
+ * (or later, item) service, so a worker can never write personal state.
+ */
+export const approvals = pgTable(
+  "approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    kind: approvalKindEnum("kind").notNull(),
+    status: approvalStatusEnum("status").notNull().default("pending"),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    acceptedNoteId: uuid("accepted_note_id").references(() => notes.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "approvals_create_note_check",
+      sql`${table.kind} = 'create_note' and char_length(${table.title}) > 0 and char_length(${table.body}) > 0`,
+    ),
+    index("approvals_run_idx").on(table.runId),
+    index("approvals_job_idx").on(table.jobId),
+    index("approvals_pending_idx")
+      .on(table.jobId)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
+
+/**
  * Kitchen inventory.
  *
  * Its own table, on purpose. A jar of olive oil is a fact about the world, not
@@ -399,11 +545,38 @@ export const itemTagsRelations = relations(itemTags, ({ one }) => ({
 export const notesRelations = relations(notes, ({ one, many }) => ({
   project: one(projects, { fields: [notes.projectId], references: [projects.id] }),
   noteTags: many(noteTags),
+  acceptedApprovals: many(approvals),
 }));
 
 export const noteTagsRelations = relations(noteTags, ({ one }) => ({
   note: one(notes, { fields: [noteTags.noteId], references: [notes.id] }),
   tag: one(tags, { fields: [noteTags.tagId], references: [tags.id] }),
+}));
+
+export const runtimesRelations = relations(runtimes, ({ many }) => ({
+  jobs: many(jobs),
+  runs: many(runs),
+}));
+
+export const jobsRelations = relations(jobs, ({ one, many }) => ({
+  claimedByRuntime: one(runtimes, {
+    fields: [jobs.claimedByRuntimeId],
+    references: [runtimes.id],
+  }),
+  runs: many(runs),
+  approvals: many(approvals),
+}));
+
+export const runsRelations = relations(runs, ({ one, many }) => ({
+  job: one(jobs, { fields: [runs.jobId], references: [jobs.id] }),
+  runtime: one(runtimes, { fields: [runs.runtimeId], references: [runtimes.id] }),
+  approvals: many(approvals),
+}));
+
+export const approvalsRelations = relations(approvals, ({ one }) => ({
+  run: one(runs, { fields: [approvals.runId], references: [runs.id] }),
+  job: one(jobs, { fields: [approvals.jobId], references: [jobs.id] }),
+  acceptedNote: one(notes, { fields: [approvals.acceptedNoteId], references: [notes.id] }),
 }));
 
 export type ItemRow = typeof items.$inferSelect;
@@ -419,3 +592,7 @@ export type ItemSuggestionRow = typeof itemSuggestions.$inferSelect;
 export type NewItemSuggestionRow = typeof itemSuggestions.$inferInsert;
 export type KitchenInventoryRow = typeof kitchenInventory.$inferSelect;
 export type NewKitchenInventoryRow = typeof kitchenInventory.$inferInsert;
+export type RuntimeRow = typeof runtimes.$inferSelect;
+export type JobRow = typeof jobs.$inferSelect;
+export type RunRow = typeof runs.$inferSelect;
+export type ApprovalRow = typeof approvals.$inferSelect;

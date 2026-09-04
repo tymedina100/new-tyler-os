@@ -13,6 +13,7 @@ import {
   Search,
   ShoppingCart,
   Sun,
+  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -43,6 +44,7 @@ const SIDEBAR_ITEMS = [
   { href: "/notes", label: "Notes", icon: NotebookText },
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/search", label: "Search", icon: Search },
+  { href: "/runs", label: "Runs", icon: Workflow },
 ] as const;
 
 /** The bar's three real links. Capture and More are buttons, not routes. */
@@ -60,6 +62,7 @@ const SECONDARY_ITEMS = [
   { href: "/notes", label: "Notes", icon: NotebookText },
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
+  { href: "/runs", label: "Runs", icon: Workflow },
 ] as const;
 
 function useIsActive() {

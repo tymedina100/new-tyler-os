@@ -22,6 +22,10 @@ Items are "things I captured, think about, or need to act on". Structured record
 are not items and must get their own tables:
 
 - kitchen inventory — **built in 0.3**, as `kitchen_inventory`
+- notes — **built in 0.8**, as `notes`
+- runtime jobs, runs, approvals — **built as the observe slice**, as
+  `jobs` / `runs` / `approvals`. An execution is not something captured to
+  act on, and it is not a second copy of the Notion work board. See ADR 035.
 - warranties, receipts, appliance manuals
 - routine templates and checklists — a named list of steps is not a captured
   thought. A repeating _task_ is one, and 0.4 kept it on the spine: see below
@@ -85,6 +89,7 @@ the database, which is why its tests run in milliseconds with no setup.
 | `projects/`             | Projects and progress                                               |
 | `tags/`                 | Tag name normalisation                                              |
 | `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds   |
+| `runtime/`              | Org roles vs execution runtimes; job/run/approval transitions       |
 | `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly               |
 | `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                   |
 
@@ -110,10 +115,12 @@ straight through where a `Database` is expected.
 
 ### `src/app/` — routes
 
-Server Components fetch, Server Actions mutate. There is **no REST or tRPC
-layer**: a single user does not need a network boundary inside their own app.
-Because services are plain functions over `db`, adding `app/api/*` later is a
-thin wrapper, not a refactor.
+Server Components fetch, Server Actions mutate for humans. There is **no
+human-facing REST or tRPC layer** (ADR 004): a single user does not need a
+network boundary inside their own app. `/api/runtime` is the exception, for
+machine pollers only — a thin wrapper over the same services, authenticated
+with `RUNTIME_TOKEN`, not a session cookie. See ADR 035. Because services are
+plain functions over `db`, that wrapper did not require a refactor.
 
 `export const dynamic = "force-dynamic"` sits in the root layout. TylerOS renders
 live personal data; nothing is prerendered, and `next build` never needs a
@@ -366,8 +373,12 @@ src/proxy.ts                  runs before every request. Reads a cookie, and
       |
       v
 src/server/action-result.ts   runAction() verifies the same session again,
-                               inside every one of the 24 actions, before its
-                               body runs. The authoritative check.
+                               inside every action, before its body runs.
+                               The authoritative check for humans.
+
+/api/runtime/*                 cookie-exempt at the proxy (including when
+                               human auth is misconfigured). Bearer
+                               RUNTIME_TOKEN is checked in the handler.
 ```
 
 `runAction` is the funnel every server action already passed through for its
@@ -462,17 +473,17 @@ state its browser suite runs in. See ADRs 026 and 027.
 
 ## Traps this design is built against
 
-| Trap                              | Defence                                                          |
-| --------------------------------- | ---------------------------------------------------------------- |
-| Unrelated CRUD pages              | One Item spine; the inbox is a status                            |
-| AI dependence                     | No AI in the core; every feature works without it                |
-| AI overwriting the user           | It proposes rows; only acceptance writes, and stale never wins   |
-| A key in browser JavaScript       | Lint forbids UI importing `src/server/ai/*`; verified to fire    |
-| Hard to migrate                   | Plain SQL migrations, owned and readable                         |
-| Hard to test                      | Pure domain; `db` passed as an argument                          |
-| Tight coupling                    | One-way layering, enforced by lint                               |
-| Over-engineering                  | No API layer, no client store, no abstraction with one use       |
-| Too complex for one developer     | Small files, explicit domain concepts over generic utilities     |
-| A route reachable with no session | `src/proxy.ts` + `runAction`, both proven by `src/proxy.test.ts` |
-| A secret in the client bundle     | Server-only modules; verified absent from `.next/static/`        |
-| Auth as an excuse for accounts    | One passphrase, no `user_id`, no provider library — ADR 030      |
+| Trap                              | Defence                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| Unrelated CRUD pages              | One Item spine; the inbox is a status                                   |
+| AI dependence                     | No AI in the core; every feature works without it                       |
+| AI overwriting the user           | It proposes rows; only acceptance writes, and stale never wins          |
+| A key in browser JavaScript       | Lint forbids UI importing `src/server/ai/*`; verified to fire           |
+| Hard to migrate                   | Plain SQL migrations, owned and readable                                |
+| Hard to test                      | Pure domain; `db` passed as an argument                                 |
+| Tight coupling                    | One-way layering, enforced by lint                                      |
+| Over-engineering                  | No human-facing API layer, no client store, no abstraction with one use |
+| Too complex for one developer     | Small files, explicit domain concepts over generic utilities            |
+| A route reachable with no session | `src/proxy.ts` + `runAction`, both proven by `src/proxy.test.ts`        |
+| A secret in the client bundle     | Server-only modules; verified absent from `.next/static/`               |
+| Auth as an excuse for accounts    | One passphrase, no `user_id`, no provider library — ADR 030             |

@@ -17,8 +17,10 @@ screen, and reachable from a bottom bar built for a thumb rather than a mouse.
 | **Inbox**    | Everything captured but not yet decided about                                  |
 | **Tasks**    | The working list. Defaults to open tasks; browses any type and status          |
 | **Projects** | Collections of related work, with progress                                     |
+| **Notes**    | Durable knowledge. Not a task; nothing here can be Done                        |
 | **Kitchen**  | What food is in the house, and the shopping list                               |
-| **Search**   | One query across items, projects and the kitchen, grouped by domain            |
+| **Search**   | One query across items, projects, notes and the kitchen, grouped by domain     |
+| **Runs**     | Jobs a role was asked to do, and proposals waiting on you                      |
 
 A capture bar sits on every screen. Press `c` to focus it (or tap "Capture" in
 the phone bar), `Cmd/Ctrl+K` for the command palette. Inline `#tags`,
@@ -199,6 +201,14 @@ pnpm test:e2e
 See [docs/VERIFICATION.md](docs/VERIFICATION.md) for what they cover and the
 manual checklist used to close a milestone.
 
+## Runtime worker
+
+A separate Python poller (`tyleros_worker.py` in the assistant repository) can
+act as Miles: it claims a Today briefing job, reads titles and dates, and
+proposes a note. It never writes notes itself. Set `RUNTIME_TOKEN` here
+(`openssl rand -base64 32`), apply migrations, then point that worker at this
+app with the same token.
+
 ## Documentation
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layers, domain boundaries, where new code goes
@@ -209,9 +219,10 @@ manual checklist used to close a milestone.
 
 ## What this is not
 
-No multiple users, no accounts, no roles, no OAuth or provider-based auth
-library — one person, one passphrase (ADR 030). No AI dependence: every
-feature works with `ANTHROPIC_API_KEY` unset, which is how this repository
+No multiple users, no accounts, no multi-user roles, no OAuth or provider-based
+auth library — one person, one passphrase (ADR 030). Org roles such as Miles
+are TylerOS staff identities, not login accounts (ADR 035). No AI dependence:
+every feature works with `ANTHROPIC_API_KEY` unset, which is how this repository
 ships. No offline mode — installable, not offline (ADR 031). All deliberate,
 and explained in `docs/DECISIONS.md`. TylerOS is designed to be useful before
 it is intelligent.

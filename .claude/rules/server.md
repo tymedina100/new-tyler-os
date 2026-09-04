@@ -18,10 +18,11 @@ degrades.
 ## Invariants
 
 - **`db` is the first parameter.** Every repository and service takes
-  `db: Database`. Never import `getDb()` into one. `getDb()` is called only by
-  server actions and route components. This is what lets integration tests run
-  against an in-process database and lets a transaction handle pass straight
-  through — a `PgTransaction` satisfies `Database`.
+  `db: Database`. Never import `getDb()` into one.
+- **`getDb()` is called only by server actions, route components, and route
+  handlers.** This is what lets integration tests run against an in-process
+  database and lets a transaction handle pass straight through — a
+  `PgTransaction` satisfies `Database`.
 - **Services contain no rules.** If you are writing an `if` about what _should_
   happen, it belongs in `src/domain/` with a test. A service that decides
   policy is the layering breaking down quietly.

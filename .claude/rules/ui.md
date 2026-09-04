@@ -1,23 +1,29 @@
 ---
 paths:
   - "src/app/**/*.tsx"
+  - "src/app/**/*.ts"
   - "src/components/**/*.tsx"
   - "src/app/**/*.css"
 ---
 
 # Working in `src/app/` and `src/components/`
 
-TylerOS has no client state library and no API layer. The server renders, server
-actions mutate, and the URL holds view state. Adding a store or a fetch layer is
-a recorded decision to _not_ do — see ADRs 004 and 006.
+TylerOS has no client state library and no human-facing API layer. The server
+renders, server actions mutate for Tyler, and the URL holds view state. Adding
+a store or a fetch layer for the UI is a recorded decision to _not_ do — see
+ADRs 004 and 006. The first `route.ts` handlers (`src/app/api/runtime/`) are
+**machine-only**: a Python (or later Grok) poller acting as a role, not the
+browser. UI still must not `fetch("/api/...")`.
 
 ## Invariants
 
 - **Server Components by default.** Reach for `"use client"` only when the file
   needs an event handler, a hook, a ref, or a browser API. Ten of roughly thirty
   components are client components today; that ratio should not creep upward.
-- **Mutations go through server actions** in `src/server/actions/`, called from a
-  client component. No `fetch("/api/...")` — there are no route handlers.
+- **Mutations from the UI go through server actions** in `src/server/actions/`,
+  called from a client component. Do not `fetch("/api/...")` from a component —
+  those route handlers are the runtime worker boundary (ADR 035), not a UI
+  data layer.
 - **View state lives in the URL**, not in `useState`. Filters, search terms and
   tags are search params, which is what makes every filtered view a link. See
   `src/components/items/item-filter-bar.tsx`.

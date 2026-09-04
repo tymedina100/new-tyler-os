@@ -12,6 +12,7 @@ import {
   Search,
   ShoppingCart,
   Sun,
+  Workflow,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -36,6 +37,7 @@ const DESTINATIONS = [
   { href: "/notes", label: "Notes", icon: NotebookText },
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
+  { href: "/runs", label: "Runs", icon: Workflow },
 ] as const;
 
 export function CommandPalette() {
