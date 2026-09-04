@@ -44,6 +44,7 @@ export async function insertJob(
     instruction: string;
     authorization: Job["authorization"];
     assignedRole: Role;
+    requestedRuntimeKind?: Job["requestedRuntimeKind"];
   },
 ): Promise<Job> {
   const [row] = await db
@@ -54,6 +55,7 @@ export async function insertJob(
       instruction: values.instruction,
       authorization: values.authorization,
       assignedRole: values.assignedRole,
+      requestedRuntimeKind: values.requestedRuntimeKind ?? null,
     })
     .returning();
 

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import * as itemService from "@/server/items/item-service";
 import * as noteService from "@/server/notes/note-service";
 import * as runtimeService from "@/server/runtime/runtime-service";
+import { insertJob } from "@/server/runtime/runtime-repository";
 import { runtimes } from "@/server/db/schema";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 
@@ -62,6 +63,23 @@ describe("enqueue and claim", () => {
       role: "miles",
     });
     expect(stillQueued?.job.id).toBe(job.id);
+  });
+
+  it("does not let Python claim a job pinned to grok_bot", async () => {
+    await insertJob(db(), {
+      kind: "today_briefing",
+      title: "Pinned briefing",
+      instruction: "Use Grok.",
+      authorization: "observe",
+      assignedRole: "miles",
+      requestedRuntimeKind: "grok_bot",
+    });
+
+    const claimed = await runtimeService.claimNextJob(db(), {
+      runtimeKind: "python",
+      role: "miles",
+    });
+    expect(claimed).toBeNull();
   });
 
   it("gives a queued job to only one of two concurrent claimants", async () => {
@@ -152,6 +170,36 @@ describe("complete, accept and dismiss", () => {
       reason: expect.objectContaining({ message: "This proposal has already been resolved." }),
     });
     expect(await noteService.listNotes(db())).toHaveLength(1);
+  });
+
+  it("resolves exactly once when accept and dismiss race", async () => {
+    const approvalId = await enqueueAndPropose();
+
+    const results = await Promise.allSettled([
+      runtimeService.acceptApproval(db(), approvalId),
+      runtimeService.dismissApproval(db(), approvalId),
+    ]);
+
+    const succeeded = results.filter((result) => result.status === "fulfilled");
+    const failed = results.filter((result) => result.status === "rejected");
+    expect(succeeded).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toMatchObject({
+      status: "rejected",
+      reason: expect.objectContaining({ message: "This proposal has already been resolved." }),
+    });
+
+    const notes = await noteService.listNotes(db());
+    expect(notes.length).toBeLessThanOrEqual(1);
+    if (results[0]?.status === "fulfilled") {
+      expect(notes).toHaveLength(1);
+    } else {
+      expect(notes).toHaveLength(0);
+    }
+
+    const [row] = await runtimeService.listRuntimeBoard(db());
+    expect(row?.job.status).toBe("succeeded");
+    expect(row?.pendingApproval).toBeNull();
   });
 });
 
