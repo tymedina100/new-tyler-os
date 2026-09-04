@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { config as proxyConfig } from "./proxy";
+import { isMachineRoute } from "./server/auth/machine-routes";
 import { PUBLIC_ROUTES, isPublicRoute } from "./server/auth/public-routes";
 
 /**
@@ -125,5 +126,21 @@ describe("framework-internal paths", () => {
   it("are excluded from the proxy boundary by the matcher, not by the allowlist", () => {
     expect(matchesProxyBoundary("/_next/static/chunk.js")).toBe(false);
     expect(matchesProxyBoundary("/_next/image")).toBe(false);
+  });
+});
+
+describe("machine runtime routes", () => {
+  it("are reached by the matcher and are not on the public allowlist", () => {
+    expect(matchesProxyBoundary("/api/runtime/jobs/next")).toBe(true);
+    expect(isPublicRoute("/api/runtime/jobs/next")).toBe(false);
+    expect(isPublicRoute("/api/runtime/context/today")).toBe(false);
+  });
+
+  it("are recognised as machine routes by prefix", () => {
+    expect(isMachineRoute("/api/runtime")).toBe(true);
+    expect(isMachineRoute("/api/runtime/jobs/next")).toBe(true);
+    expect(isMachineRoute("/api/runtime/runs/probe-id/complete")).toBe(true);
+    expect(isMachineRoute("/runs")).toBe(false);
+    expect(isMachineRoute("/api/notes")).toBe(false);
   });
 });

@@ -32,7 +32,7 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     db,
     async truncate() {
       await client.exec(
-        `truncate table "item_tags", "item_recurrence", "item_suggestions", "items", "note_tags", "notes", "tags", "projects", "kitchen_inventory" cascade;`,
+        `truncate table "item_tags", "item_recurrence", "item_suggestions", "items", "note_tags", "notes", "tags", "projects", "kitchen_inventory", "approvals", "runs", "jobs", "runtimes" cascade;`,
       );
     },
     async close() {

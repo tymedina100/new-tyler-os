@@ -43,7 +43,15 @@ test("the More sheet reaches every remaining destination", async ({ page }) => {
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "More" })).toBeVisible();
 
-  for (const label of ["Upcoming", "Tasks", "Projects", "Notes", "Kitchen", "Shopping list"]) {
+  for (const label of [
+    "Upcoming",
+    "Tasks",
+    "Projects",
+    "Notes",
+    "Kitchen",
+    "Shopping list",
+    "Runs",
+  ]) {
     await expect(sheet.getByRole("link", { name: label })).toBeVisible();
   }
 
@@ -104,6 +112,7 @@ test("the desktop sidebar keeps every destination visible, unlike the phone bar"
     "Notes",
     "Kitchen",
     "Search",
+    "Runs",
   ]) {
     await expect(page.getByRole("link", { name: destination }).first()).toBeVisible();
   }
