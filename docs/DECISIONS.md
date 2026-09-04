@@ -1295,8 +1295,8 @@ the same discipline ADR 027 used for item suggestions. The worker cannot write
 **Usage columns without a ledger.** `runs` stores provider, model, token
 counts, and estimated cost so a later per-role, per-provider quota ledger can
 attach without changing the job protocol. This slice does not sum, reserve,
-route, or budget. `run_trigger` already includes `schedule` and `api`; nothing
-schedules yet. Authorization already names `propose`, `modify_local`, and
+route, or budget. `run_trigger` already included `schedule`; ADR 036 is the
+first schedule. Authorization already names `propose`, `modify_local`, and
 `external_action`; nothing grants them yet.
 
 **Jobs are not agenda events.** ADR 023 refused a shared `events` table that
@@ -1308,10 +1308,53 @@ work, email/calendar/task connectors, standing authority policies, preference
 learning, embeddings / second-brain memory beyond notes, proactive recommenders,
 purchases within budgets, quota-aware routing, model-capability monitoring,
 self-improvement via measured software changes, or multiple physical devices as
-nodes. No policy engine, node registry, scheduler, or memory product in this
+nodes. No policy engine, node registry, or memory product in this
 change. Prove infrastructure one vertical at a time.
 
 **Considered and rejected:** putting briefings on `items`; duplicating the
 Notion Work Board into Postgres; a plugin/multi-agent framework; sharing
 Postgres with the Python repo as a second writer of personal tables; treating
 `/api/runtime` as public-unauthenticated; tying Miles permanently to Grok Bot.
+
+---
+
+## 036 · Autonomous wake-up: schedules under Miles, not as Miles
+
+**Accepted** · weekday morning briefing + observe recovery
+
+The observe slice proved a human can ask Miles for a briefing. This slice
+proves TylerOS can ask that of itself on weekday mornings without Tyler
+clicking anything.
+
+**A schedule is not an agent.** `schedules` is a typed row: key, job kind,
+assigned org role, authorization, local time, IANA timezone, weekdays, catch-up
+cutoff, optional runtime pin. The seeded row `miles_weekday_morning_briefing`
+belongs to Miles, is not pinned to Python, and fires 06:20–12:00
+`America/Phoenix` Monday–Friday. Python may tick the clock; it does not decide
+whether the job should exist.
+
+**Idempotency is a unique index**, `(schedule_id, scheduled_for_date)`, not an
+in-memory dedupe. Ten ticks and two concurrent ticks still create one job.
+Manual **Ask Miles** jobs have a null schedule pair, so they can coexist.
+
+**Catch-up is bounded.** Due from 06:20 local inclusive until noon exclusive.
+A PC that wakes at 07:43 still gets today's briefing. A first tick at 15:00
+does not manufacture a stale morning. Evaluation uses the schedule's zone, not
+the host's.
+
+**The tick is system infrastructure.** `POST /api/runtime/schedules/tick`
+uses `RUNTIME_TOKEN` and does not require a role header. It recovers stale
+observe runs, evaluates due schedules, and enqueues. Zero model calls.
+
+**Silence is success.** An empty Today completes with `No material Today items.`,
+no approval, no note. A material Today still proposes a note.
+
+**Observe-only recovery.** A running observe attempt whose heartbeat (or
+`startedAt`) is older than two minutes is failed and the job requeued, at most
+three attempts. Propose / modify_local / external_action are never blindly
+retried. An obsolete run cannot complete after recovery.
+
+**Considered and rejected:** hard-coding 06:20 in the Python worker; pinning the
+morning job to Python; a generic cron/workflow engine; JSON schedule blobs;
+auto-retrying non-observe work; emitting a "Nothing needs you" note every
+morning; a scheduler org role.

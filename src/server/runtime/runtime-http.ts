@@ -20,7 +20,7 @@ export function unauthorized(message: string, status = 401): NextResponse {
   return NextResponse.json({ error: message }, { status });
 }
 
-export function authenticateRuntime(request: Request): AuthedRuntimeRequest | NextResponse {
+export function authenticateMachine(request: Request): true | NextResponse {
   const config = runtimeTokenConfig();
   if (config.mode === "off") {
     return unauthorized(config.reason, 503);
@@ -30,6 +30,13 @@ export function authenticateRuntime(request: Request): AuthedRuntimeRequest | Ne
   if (presented === null || !presentedTokenMatches(config.token, presented)) {
     return unauthorized("Invalid runtime token.");
   }
+
+  return true;
+}
+
+export function authenticateRuntime(request: Request): AuthedRuntimeRequest | NextResponse {
+  const machine = authenticateMachine(request);
+  if (machine !== true) return machine;
 
   const identity = claimIdentitySchema.safeParse(readIdentity(request));
   if (!identity.success) {

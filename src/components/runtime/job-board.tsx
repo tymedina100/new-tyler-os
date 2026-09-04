@@ -34,6 +34,11 @@ export function JobBoard({
                   : row.job.requestedRuntimeKind
                     ? ` · pinned to ${RUNTIME_KIND_LABELS[row.job.requestedRuntimeKind]}`
                     : " · any runtime"}
+                {row.job.scheduleId
+                  ? " · Scheduled"
+                  : row.latestRun?.trigger === "schedule"
+                    ? " · Scheduled"
+                    : ""}
               </p>
             </div>
             <span className="text-muted-foreground text-xs font-medium">

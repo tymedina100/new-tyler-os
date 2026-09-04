@@ -24,6 +24,7 @@ export interface JobStatusPatch {
   status: JobStatus;
   claimedByRuntimeId: string | null;
   claimedAt: Date | null;
+  attemptCount: number;
 }
 
 export interface RunFinishPatch extends RunUsage {
@@ -44,7 +45,7 @@ export interface ClaimingRuntime {
 }
 
 export function claimQueuedJob(
-  job: Pick<Job, "status" | "assignedRole" | "requestedRuntimeKind">,
+  job: Pick<Job, "status" | "assignedRole" | "requestedRuntimeKind" | "attemptCount">,
   claiming: ClaimingRuntime,
   now: Date,
 ): JobStatusPatch {
@@ -70,6 +71,7 @@ export function claimQueuedJob(
     status: "running",
     claimedByRuntimeId: claiming.runtimeId,
     claimedAt: now,
+    attemptCount: job.attemptCount + 1,
   };
 }
 

@@ -25,7 +25,7 @@ describe("claimQueuedJob", () => {
   it("lets a runtime acting as Miles claim a Miles job", () => {
     expect(
       claimQueuedJob(
-        { status: "queued", assignedRole: "miles", requestedRuntimeKind: null },
+        { status: "queued", assignedRole: "miles", requestedRuntimeKind: null, attemptCount: 0 },
         milesPython,
         NOW,
       ),
@@ -33,13 +33,14 @@ describe("claimQueuedJob", () => {
       status: "running",
       claimedByRuntimeId: "runtime-1",
       claimedAt: NOW,
+      attemptCount: 1,
     });
   });
 
   it("refuses when the runtime is acting as the wrong role", () => {
     expect(() =>
       claimQueuedJob(
-        { status: "queued", assignedRole: "miles", requestedRuntimeKind: null },
+        { status: "queued", assignedRole: "miles", requestedRuntimeKind: null, attemptCount: 0 },
         { ...milesPython, role: "scout" },
         NOW,
       ),
@@ -49,7 +50,12 @@ describe("claimQueuedJob", () => {
   it("refuses when the job is pinned to a different runtime kind", () => {
     expect(() =>
       claimQueuedJob(
-        { status: "queued", assignedRole: "miles", requestedRuntimeKind: "grok_bot" },
+        {
+          status: "queued",
+          assignedRole: "miles",
+          requestedRuntimeKind: "grok_bot",
+          attemptCount: 0,
+        },
         milesPython,
         NOW,
       ),
@@ -58,7 +64,7 @@ describe("claimQueuedJob", () => {
 
   it("accepts a Grok runtime for the same Miles job when no pin is set", () => {
     const patch = claimQueuedJob(
-      { status: "queued", assignedRole: "miles", requestedRuntimeKind: null },
+      { status: "queued", assignedRole: "miles", requestedRuntimeKind: null, attemptCount: 0 },
       { runtimeId: "grok-1", runtimeKind: "grok_bot", role: "miles" },
       NOW,
     );
@@ -68,7 +74,7 @@ describe("claimQueuedJob", () => {
   it("refuses to claim a job that is already in progress", () => {
     expect(() =>
       claimQueuedJob(
-        { status: "running", assignedRole: "miles", requestedRuntimeKind: null },
+        { status: "running", assignedRole: "miles", requestedRuntimeKind: null, attemptCount: 1 },
         milesPython,
         NOW,
       ),

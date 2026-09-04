@@ -1,4 +1,5 @@
 import { DomainError, NotFoundError } from "@/domain/shared/errors";
+import { assertCurrentAttempt } from "@/domain/runtime/recovery-rules";
 import {
   CHIEF_OF_STAFF_ROLE,
   TODAY_BRIEFING_INSTRUCTION,
@@ -75,7 +76,7 @@ export async function claimNextJob(
       jobId: claimed.id,
       runtimeId: runtime.id,
       role: identity.role,
-      trigger: "manual",
+      trigger: claimed.scheduleId ? "schedule" : "manual",
       startedAt: now,
     });
 
@@ -110,6 +111,7 @@ export async function completeRun(
     const run = await requireRun(tx, runId);
     assertRunOwnedBy(run, runtime.id);
     const job = await requireJob(tx, run.jobId);
+    assertCurrentAttempt(job, run);
 
     const outcome = input.status;
     const usage = input.usage ?? emptyUsage();

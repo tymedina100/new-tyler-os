@@ -11,6 +11,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  time,
   timestamp,
   uniqueIndex,
   uuid,
@@ -368,6 +369,36 @@ export const runtimes = pgTable(
 );
 
 /**
+ * Recurring work the control plane evaluates on a tick.
+ *
+ * Not an agent. Miles still owns the briefing; this row only says when a
+ * `today_briefing` job should exist. `requested_runtime_kind` stays null so
+ * any Miles runtime may claim it. See ADR 036.
+ */
+export const schedules = pgTable(
+  "schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    jobKind: jobKindEnum("job_kind").notNull(),
+    assignedRole: orgRoleEnum("assigned_role").notNull(),
+    authorization: authorizationLevelEnum("authorization").notNull().default("observe"),
+    requestedRuntimeKind: runtimeKindEnum("requested_runtime_kind"),
+    enabled: boolean("enabled").notNull().default(true),
+    localTime: time("local_time", { precision: 0 }).notNull(),
+    timezone: text("timezone").notNull(),
+    weekdaysOnly: boolean("weekdays_only").notNull().default(true),
+    catchUpUntilLocalTime: time("catch_up_until_local_time", { precision: 0 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [uniqueIndex("schedules_key_unique_idx").on(table.key)],
+);
+
+/**
  * Work a role was asked to do. Not an item: a briefing is an execution,
  * "read Today and propose a note" is not something that can be Done in the
  * inbox. Shared projects and blockers stay in Notion; this table is not a
@@ -384,6 +415,9 @@ export const jobs = pgTable(
     authorization: authorizationLevelEnum("authorization").notNull().default("observe"),
     assignedRole: orgRoleEnum("assigned_role").notNull(),
     requestedRuntimeKind: runtimeKindEnum("requested_runtime_kind"),
+    scheduleId: uuid("schedule_id").references(() => schedules.id, { onDelete: "restrict" }),
+    scheduledForDate: date("scheduled_for_date", { mode: "string" }),
+    attemptCount: integer("attempt_count").notNull().default(0),
     claimedByRuntimeId: uuid("claimed_by_runtime_id").references(() => runtimes.id, {
       onDelete: "set null",
     }),
@@ -395,6 +429,11 @@ export const jobs = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    check(
+      "jobs_schedule_pair_check",
+      sql`(${table.scheduleId} is null) = (${table.scheduledForDate} is null)`,
+    ),
+    uniqueIndex("jobs_schedule_date_unique_idx").on(table.scheduleId, table.scheduledForDate),
     index("jobs_status_role_created_idx").on(table.status, table.assignedRole, table.createdAt),
     index("jobs_claimed_by_idx").on(table.claimedByRuntimeId),
   ],
@@ -558,10 +597,18 @@ export const runtimesRelations = relations(runtimes, ({ many }) => ({
   runs: many(runs),
 }));
 
+export const schedulesRelations = relations(schedules, ({ many }) => ({
+  jobs: many(jobs),
+}));
+
 export const jobsRelations = relations(jobs, ({ one, many }) => ({
   claimedByRuntime: one(runtimes, {
     fields: [jobs.claimedByRuntimeId],
     references: [runtimes.id],
+  }),
+  schedule: one(schedules, {
+    fields: [jobs.scheduleId],
+    references: [schedules.id],
   }),
   runs: many(runs),
   approvals: many(approvals),
@@ -593,6 +640,7 @@ export type NewItemSuggestionRow = typeof itemSuggestions.$inferInsert;
 export type KitchenInventoryRow = typeof kitchenInventory.$inferSelect;
 export type NewKitchenInventoryRow = typeof kitchenInventory.$inferInsert;
 export type RuntimeRow = typeof runtimes.$inferSelect;
+export type ScheduleRow = typeof schedules.$inferSelect;
 export type JobRow = typeof jobs.$inferSelect;
 export type RunRow = typeof runs.$inferSelect;
 export type ApprovalRow = typeof approvals.$inferSelect;

@@ -43,6 +43,13 @@
       "when": 1788550633567,
       "tag": "0005_dry_polaris",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788553740741,
+      "tag": "0006_conscious_scarecrow",
+      "breakpoints": true
     }
   ]
 }

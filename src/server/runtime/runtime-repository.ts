@@ -45,6 +45,8 @@ export async function insertJob(
     authorization: Job["authorization"];
     assignedRole: Role;
     requestedRuntimeKind?: Job["requestedRuntimeKind"];
+    scheduleId?: string | null;
+    scheduledForDate?: Job["scheduledForDate"];
   },
 ): Promise<Job> {
   const [row] = await db
@@ -56,11 +58,33 @@ export async function insertJob(
       authorization: values.authorization,
       assignedRole: values.assignedRole,
       requestedRuntimeKind: values.requestedRuntimeKind ?? null,
+      scheduleId: values.scheduleId ?? null,
+      scheduledForDate: values.scheduledForDate ?? null,
     })
+    .onConflictDoNothing({ target: [jobs.scheduleId, jobs.scheduledForDate] })
     .returning();
 
-  if (!row) throw new Error("Insert returned no job.");
-  return toJob(row);
+  if (row) return toJob(row);
+
+  if (values.scheduleId && values.scheduledForDate) {
+    const existing = await findJobByScheduleDate(db, values.scheduleId, values.scheduledForDate);
+    if (existing) return existing;
+  }
+
+  throw new Error("Insert returned no job.");
+}
+
+export async function findJobByScheduleDate(
+  db: Database,
+  scheduleId: string,
+  scheduledForDate: string,
+): Promise<Job | null> {
+  const [row] = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.scheduleId, scheduleId), eq(jobs.scheduledForDate, scheduledForDate)))
+    .limit(1);
+  return row ? toJob(row) : null;
 }
 
 export async function lockNextQueuedJob(
@@ -88,7 +112,7 @@ export async function lockNextQueuedJob(
 export async function updateJob(
   db: Database,
   id: string,
-  patch: Partial<Pick<Job, "status" | "claimedByRuntimeId" | "claimedAt">>,
+  patch: Partial<Pick<Job, "status" | "claimedByRuntimeId" | "claimedAt" | "attemptCount">>,
 ): Promise<Job | null> {
   const [row] = await db.update(jobs).set(patch).where(eq(jobs.id, id)).returning();
   return row ? toJob(row) : null;
@@ -237,4 +261,20 @@ export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoard
       pendingApproval: approvalRows[0] ? toApproval(approvalRows[0]) : null,
     };
   });
+}
+
+export async function listRunningObserveAttempts(db: Database): Promise<{ job: Job; run: Run }[]> {
+  const rows = await db
+    .select({ job: jobs, run: runs })
+    .from(jobs)
+    .innerJoin(runs, eq(runs.jobId, jobs.id))
+    .where(
+      and(
+        eq(jobs.status, "running"),
+        eq(jobs.authorization, "observe"),
+        eq(runs.status, "running"),
+      ),
+    );
+
+  return rows.map((row) => ({ job: toJob(row.job), run: toRun(row.run) }));
 }

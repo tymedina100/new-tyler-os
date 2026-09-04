@@ -174,6 +174,12 @@ export interface Job {
   assignedRole: Role;
   /** Optional pin to one backend. Null means any runtime acting as the role. */
   requestedRuntimeKind: RuntimeKind | null;
+  /** Null on a manual Ask Miles job. Set when a schedule created this row. */
+  scheduleId: string | null;
+  /** Local calendar date the schedule fired for. Null on manual jobs. */
+  scheduledForDate: string | null;
+  /** Claims so far, including the current one. Recovery stops at 3. */
+  attemptCount: number;
   claimedByRuntimeId: string | null;
   claimedAt: Date | null;
   createdAt: Date;
