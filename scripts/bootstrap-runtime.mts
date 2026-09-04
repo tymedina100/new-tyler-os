@@ -31,6 +31,8 @@ process.stdout.write(
     "",
   ].join("\n"),
 );
+process.exit(0);
+process.exit(0);
 
 function parseArgs(argv: string[]): Record<string, string> {
   const result: Record<string, string> = {};
