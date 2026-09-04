@@ -3,8 +3,8 @@ import { Skeleton, SkeletonList } from "@/components/ui/states";
 export default function Loading() {
   return (
     <div className="grid gap-5">
-      <Skeleton className="h-7 w-32" />
-      <SkeletonList rows={5} />
+      <Skeleton className="h-7 w-40" />
+      <SkeletonList rows={6} />
     </div>
   );
 }

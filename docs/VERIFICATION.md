@@ -440,11 +440,15 @@ Two things the first real browser run exposed:
   progressively-enhanced capture form worked. Fixed in `playwright.config.ts`.
   Worth remembering, because the symptom looks like a broken feature rather than
   a broken origin.
-- **`notFound()` renders under HTTP 200.** `app/loading.tsx` opens a Suspense
-  boundary at the root, so the shell streams — and the status is committed —
-  before the page decides it has nothing to show. The screen a person sees is
-  right; the status code a machine sees is not. Open, because the fix is to give
-  up the skeleton, which is a product call rather than a bug fix.
+- **`notFound()` rendered under HTTP 200.** `app/loading.tsx` opened a Suspense
+  boundary at the root, so the shell streamed — and the status was committed —
+  before the page decided it had nothing to show. The screen a person saw was
+  right; the status code a machine saw was not. Left open at 0.1 because the
+  fix appeared to require giving up the skeleton. **Fixed 2026-09-03:** the
+  root `(app)/loading.tsx` is gone. List pages keep their own skeletons via
+  nested `loading.tsx` files (route groups for any folder that also has an
+  `[id]` detail), so a missing item/project/kitchen/note can return a real
+  HTTP 404.
 
 ### 0.2 — Frictionless capture and keyboard triage · 2026-08-25
 
