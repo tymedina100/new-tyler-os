@@ -4,6 +4,7 @@ import { Command } from "cmdk";
 import {
   CalendarRange,
   FolderGit2,
+  Gauge,
   Inbox,
   ListChecks,
   NotebookText,
@@ -38,6 +39,7 @@ const DESTINATIONS = [
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
   { href: "/runs", label: "Runs", icon: Workflow },
+  { href: "/capacity", label: "Capacity", icon: Gauge },
 ] as const;
 
 export function CommandPalette() {

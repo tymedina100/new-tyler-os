@@ -1,5 +1,7 @@
 import { DomainError, NotFoundError } from "@/domain/shared/errors";
 import { assertCurrentAttempt } from "@/domain/runtime/recovery-rules";
+import { assertRoleGranted } from "@/domain/runtime/fleet-rules";
+import { ledgerUsage } from "@/domain/runtime/usage-rules";
 import {
   CHIEF_OF_STAFF_ROLE,
   TODAY_BRIEFING_INSTRUCTION,
@@ -7,7 +9,7 @@ import {
   type Job,
   type Role,
   type Run,
-  type RuntimeKind,
+  type Runtime,
 } from "@/domain/runtime/runtime";
 import type { CompleteRunInput } from "@/domain/runtime/runtime-schema";
 import {
@@ -26,6 +28,8 @@ import type { Database } from "@/server/db/client";
 import { getTodayData } from "@/server/items/item-service";
 import { getExpiringSoon } from "@/server/kitchen/inventory-service";
 import { captureNote } from "@/server/notes/note-service";
+import * as capacityRepo from "./capacity-repository";
+import * as fleetRepo from "./fleet-repository";
 import * as repo from "./runtime-repository";
 import { projectTodayContext } from "./today-context";
 
@@ -34,7 +38,7 @@ import { projectTodayContext } from "./today-context";
  *
  * Orchestrates: load state, ask the domain, write the patch. Completing a
  * run never writes a note — that happens only when Tyler accepts, through
- * the ordinary note service.
+ * the ordinary note service. Identity is an instance, not a kind singleton.
  */
 
 export async function enqueueTodayBriefing(db: Database): Promise<Job> {
@@ -49,21 +53,23 @@ export async function enqueueTodayBriefing(db: Database): Promise<Job> {
 
 export async function claimNextJob(
   db: Database,
-  identity: { runtimeKind: RuntimeKind; role: Role },
+  identity: { runtimeId: string; role: Role },
   now = new Date(),
 ): Promise<{ job: Job; run: Run } | null> {
   return db.transaction(async (tx) => {
-    const runtime = await repo.upsertRuntimeByKind(tx, identity.runtimeKind, now);
+    const runtime = await requireRuntime(tx, identity.runtimeId);
     assertRuntimeEnabled(runtime.status);
+    const grants = await fleetRepo.listRoleGrants(tx, runtime.id);
+    assertRoleGranted(grants, identity.role);
 
-    const job = await repo.lockNextQueuedJob(tx, identity.role, identity.runtimeKind);
+    const job = await repo.lockNextQueuedJob(tx, identity.role, runtime.kind);
     if (job === null) return null;
 
     const patch = claimQueuedJob(
       job,
       {
         runtimeId: runtime.id,
-        runtimeKind: identity.runtimeKind,
+        runtimeKind: runtime.kind,
         role: identity.role,
       },
       now,
@@ -71,6 +77,8 @@ export async function claimNextJob(
 
     const claimed = await repo.updateJob(tx, job.id, patch);
     if (claimed === null) throw new NotFoundError("Job", job.id);
+
+    await repo.touchRuntimeLastSeen(tx, runtime.id, now);
 
     const run = await repo.insertRun(tx, {
       jobId: claimed.id,
@@ -87,39 +95,52 @@ export async function claimNextJob(
 export async function heartbeatRun(
   db: Database,
   runId: string,
-  runtimeKind: RuntimeKind,
+  runtimeId: string,
   now = new Date(),
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    const runtime = await repo.upsertRuntimeByKind(tx, runtimeKind, now);
+    const runtime = await requireRuntime(tx, runtimeId);
     const run = await requireRun(tx, runId);
     assertRunOwnedBy(run, runtime.id);
     const patch = heartbeatRunningRun(run, now);
     await repo.updateRun(tx, run.id, patch);
+    await repo.touchRuntimeLastSeen(tx, runtime.id, now);
   });
 }
 
 export async function completeRun(
   db: Database,
   runId: string,
-  runtimeKind: RuntimeKind,
+  runtimeId: string,
   input: CompleteRunInput,
   now = new Date(),
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    const runtime = await repo.upsertRuntimeByKind(tx, runtimeKind, now);
+    const runtime = await requireRuntime(tx, runtimeId);
     const run = await requireRun(tx, runId);
     assertRunOwnedBy(run, runtime.id);
     const job = await requireJob(tx, run.jobId);
     assertCurrentAttempt(job, run);
 
     const outcome = input.status;
-    const usage = input.usage ?? emptyUsage();
+    const usage = ledgerUsage(input.usage ?? emptyUsage());
     const jobPatch = completeRunningJob(job, run, outcome, input.proposal !== undefined);
     const runPatch = finishRun(run, outcome, now, input.resultSummary, usage);
 
     await repo.updateRun(tx, run.id, runPatch);
     await repo.updateJob(tx, job.id, { status: jobPatch.jobStatus });
+    await capacityRepo.insertUsageEntry(tx, {
+      runId: run.id,
+      runtimeId: runtime.id,
+      provider: usage.provider,
+      model: usage.model,
+      inputTokens: usage.inputTokens,
+      cachedInputTokens: usage.cachedInputTokens,
+      outputTokens: usage.outputTokens,
+      estimatedCostUsd: usage.estimatedCostUsd,
+      recordedAt: now,
+    });
+    await repo.touchRuntimeLastSeen(tx, runtime.id, now);
 
     if (outcome === "succeeded" && input.proposal) {
       await repo.insertApproval(tx, {
@@ -140,6 +161,14 @@ export async function getTodayContext(db: Database, now = new Date()): Promise<T
   ]);
 
   return projectTodayContext(today, view, expiring.items);
+}
+
+export async function markRuntimeSeen(
+  db: Database,
+  runtime: Runtime,
+  now = new Date(),
+): Promise<void> {
+  await repo.touchRuntimeLastSeen(db, runtime.id, now);
 }
 
 export async function listRuntimeBoard(db: Database) {
@@ -171,6 +200,12 @@ async function requireRun(db: Database, id: string): Promise<Run> {
   const run = await repo.findRunById(db, id);
   if (run === null) throw new NotFoundError("Run", id);
   return run;
+}
+
+async function requireRuntime(db: Database, id: string): Promise<Runtime> {
+  const runtime = await repo.findRuntimeById(db, id);
+  if (runtime === null) throw new NotFoundError("Runtime", id);
+  return runtime;
 }
 
 async function requireJob(db: Database, id: string): Promise<Job> {

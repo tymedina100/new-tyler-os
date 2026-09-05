@@ -141,6 +141,7 @@ describe("machine runtime routes", () => {
     expect(isMachineRoute("/api/runtime/jobs/next")).toBe(true);
     expect(isMachineRoute("/api/runtime/runs/probe-id/complete")).toBe(true);
     expect(isMachineRoute("/api/runtime/schedules/tick")).toBe(true);
+    expect(isMachineRoute("/api/runtime/instances")).toBe(true);
     expect(isMachineRoute("/runs")).toBe(false);
     expect(isMachineRoute("/api/notes")).toBe(false);
   });

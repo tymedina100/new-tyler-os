@@ -4,6 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {
   CalendarRange,
   FolderGit2,
+  Gauge,
   Inbox,
   ListChecks,
   MoreHorizontal,
@@ -45,6 +46,7 @@ const SIDEBAR_ITEMS = [
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/search", label: "Search", icon: Search },
   { href: "/runs", label: "Runs", icon: Workflow },
+  { href: "/capacity", label: "Capacity", icon: Gauge },
 ] as const;
 
 /** The bar's three real links. Capture and More are buttons, not routes. */
@@ -63,6 +65,7 @@ const SECONDARY_ITEMS = [
   { href: "/kitchen", label: "Kitchen", icon: Refrigerator },
   { href: "/kitchen/shopping", label: "Shopping list", icon: ShoppingCart },
   { href: "/runs", label: "Runs", icon: Workflow },
+  { href: "/capacity", label: "Capacity", icon: Gauge },
 ] as const;
 
 function useIsActive() {

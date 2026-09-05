@@ -5,13 +5,14 @@ import { authenticateRuntime, isAuthed, machineError } from "@/server/runtime/ru
 import { completeRun } from "@/server/runtime/runtime-service";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = authenticateRuntime(request);
+  const db = getDb();
+  const auth = await authenticateRuntime(db, request);
   if (!isAuthed(auth)) return auth;
 
   try {
     const { id } = await context.params;
     const input = completeRunSchema.parse(await request.json());
-    await completeRun(getDb(), id, auth.runtimeKind, input);
+    await completeRun(db, id, auth.runtime.id, input);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return machineError(error);

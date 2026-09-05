@@ -1,6 +1,5 @@
 import { and, desc, eq, isNull, or } from "drizzle-orm";
 import type { Approval, Job, Run, Runtime, RuntimeKind, Role } from "@/domain/runtime/runtime";
-import { RUNTIME_KIND_LABELS } from "@/domain/runtime/runtime";
 import type { Database } from "@/server/db/client";
 import { approvals, jobs, runtimes, runs } from "@/server/db/schema";
 import { toApproval, toJob, toRun, toRuntime } from "./runtime-rows";
@@ -13,27 +12,30 @@ import { toApproval, toJob, toRun, toRuntime } from "./runtime-rows";
  * same job; the domain still decides whether the locked row may be claimed.
  */
 
-export async function upsertRuntimeByKind(
-  db: Database,
-  kind: RuntimeKind,
-  now: Date,
-): Promise<Runtime> {
-  const [row] = await db
-    .insert(runtimes)
-    .values({
-      name: RUNTIME_KIND_LABELS[kind],
-      kind,
-      status: "enabled",
-      lastSeenAt: now,
-    })
-    .onConflictDoUpdate({
-      target: runtimes.kind,
-      set: { lastSeenAt: now },
-    })
-    .returning();
+export async function findRuntimeById(db: Database, id: string): Promise<Runtime | null> {
+  const [row] = await db.select().from(runtimes).where(eq(runtimes.id, id)).limit(1);
+  return row ? toRuntime(row) : null;
+}
 
-  if (!row) throw new Error("Upsert returned no runtime.");
-  return toRuntime(row);
+export async function findRuntimeByInstanceKey(
+  db: Database,
+  instanceKey: string,
+): Promise<Runtime | null> {
+  const [row] = await db
+    .select()
+    .from(runtimes)
+    .where(eq(runtimes.instanceKey, instanceKey))
+    .limit(1);
+  return row ? toRuntime(row) : null;
+}
+
+export async function listRuntimes(db: Database): Promise<Runtime[]> {
+  const rows = await db.select().from(runtimes).orderBy(runtimes.createdAt);
+  return rows.map(toRuntime);
+}
+
+export async function touchRuntimeLastSeen(db: Database, id: string, now: Date): Promise<void> {
+  await db.update(runtimes).set({ lastSeenAt: now }).where(eq(runtimes.id, id));
 }
 
 export async function insertJob(
@@ -237,6 +239,8 @@ export async function updateApproval(
 export interface JobBoardRow {
   job: Job;
   claimedRuntimeKind: RuntimeKind | null;
+  claimedRuntimeName: string | null;
+  claimedRuntimeInstanceKey: string | null;
   latestRun: Run | null;
   pendingApproval: Approval | null;
 }
@@ -257,6 +261,8 @@ export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoard
     return {
       job: toJob(job),
       claimedRuntimeKind: claimedByRuntime?.kind ?? null,
+      claimedRuntimeName: claimedByRuntime?.name ?? null,
+      claimedRuntimeInstanceKey: claimedByRuntime?.instanceKey ?? null,
       latestRun: runRows[0] ? toRun(runRows[0]) : null,
       pendingApproval: approvalRows[0] ? toApproval(approvalRows[0]) : null,
     };

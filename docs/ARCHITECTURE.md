@@ -74,24 +74,24 @@ src/domain/     Pure TypeScript and Zod. No React, no Next, no database.
 Types, Zod schemas, and pure functions. It imports nothing from the framework or
 the database, which is why its tests run in milliseconds with no setup.
 
-| Module                  | Holds                                                                 |
-| ----------------------- | --------------------------------------------------------------------- |
-| `items/item.ts`         | The Item type, kinds, statuses, labels                                |
-| `items/item-rules.ts`   | Lifecycle transitions, returned as patches                            |
-| `items/item-schema.ts`  | Validation for everything entering the system                         |
-| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate               |
-| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat   |
-| `kitchen/`              | Food in the house: locations, quantities, expiry buckets              |
-| `notes/`                | Durable knowledge: title derivation, excerpts, display order          |
-| `recurrence/`           | How something repeats, and when it is next due                        |
-| `today/`                | Bucketing open items for the Today view                               |
-| `agenda/`               | The days ahead, one list per domain that has dates                    |
-| `projects/`             | Projects and progress                                                 |
-| `tags/`                 | Tag name normalisation                                                |
-| `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds     |
-| `runtime/`              | Roles vs runtimes; jobs, runs, approvals, weekday schedules (ADR 036) |
-| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly                 |
-| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                     |
+| Module                  | Holds                                                                |
+| ----------------------- | -------------------------------------------------------------------- |
+| `items/item.ts`         | The Item type, kinds, statuses, labels                               |
+| `items/item-rules.ts`   | Lifecycle transitions, returned as patches                           |
+| `items/item-schema.ts`  | Validation for everything entering the system                        |
+| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate              |
+| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat  |
+| `kitchen/`              | Food in the house: locations, quantities, expiry buckets             |
+| `notes/`                | Durable knowledge: title derivation, excerpts, display order         |
+| `recurrence/`           | How something repeats, and when it is next due                       |
+| `today/`                | Bucketing open items for the Today view                              |
+| `agenda/`               | The days ahead, one list per domain that has dates                   |
+| `projects/`             | Projects and progress                                                |
+| `tags/`                 | Tag name normalisation                                               |
+| `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds    |
+| `runtime/`              | Roles vs instances; jobs, runs, schedules, usage, capacity (ADR 037) |
+| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly                |
+| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                    |
 
 Rules return a **patch**, not a mutated object. `completeItem(item, now)` returns
 `{ status, completedAt, archivedAt }` and the caller persists it. This keeps
@@ -118,9 +118,11 @@ straight through where a `Database` is expected.
 Server Components fetch, Server Actions mutate for humans. There is **no
 human-facing REST or tRPC layer** (ADR 004): a single user does not need a
 network boundary inside their own app. `/api/runtime` is the exception, for
-machine pollers only — a thin wrapper over the same services, authenticated
-with `RUNTIME_TOKEN`, not a session cookie. See ADR 035. Because services are
-plain functions over `db`, that wrapper did not require a refactor.
+machine pollers only — a thin wrapper over the same services, not a session
+cookie. Instance credentials identify a runtime; the system `RUNTIME_TOKEN`
+ticks schedules and bootstraps instances. See ADRs 035 and 037. Because
+services are plain functions over `db`, that wrapper did not require a
+refactor.
 
 `export const dynamic = "force-dynamic"` sits in the root layout. TylerOS renders
 live personal data; nothing is prerendered, and `next build` never needs a
@@ -378,7 +380,9 @@ src/server/action-result.ts   runAction() verifies the same session again,
 
 /api/runtime/*                 cookie-exempt at the proxy (including when
                                human auth is misconfigured). Bearer
-                               RUNTIME_TOKEN is checked in the handler.
+                               RUNTIME_TOKEN is checked in the handler for
+                               tick/bootstrap. Instance credentials identify
+                               workers on claim/complete.
 ```
 
 `runAction` is the funnel every server action already passed through for its

@@ -9,6 +9,7 @@ import { insertJob } from "@/server/runtime/runtime-repository";
 import * as runtimeService from "@/server/runtime/runtime-service";
 import { findScheduleByKey } from "@/server/runtime/schedule-repository";
 import { tickSchedules } from "@/server/runtime/schedule-service";
+import { registerMilesRuntime } from "../support/runtime-fixtures";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 
 const MONDAY_BEFORE = new Date("2026-09-07T13:19:00.000Z");
@@ -108,25 +109,28 @@ describe("weekday morning schedule", () => {
 
   it("records trigger=schedule on the scheduled run", async () => {
     await tickSchedules(db(), MONDAY_DUE);
+    const python = await registerMilesRuntime(db(), "test-python");
     const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     expect(claimed?.run.trigger).toBe("schedule");
     expect(claimed?.run.role).toBe("miles");
+    expect(claimed?.run.runtimeId).toBe(python.id);
   });
 });
 
 describe("empty vs material Today", () => {
   it("completes with no approval or note when Today is empty", async () => {
     await runtimeService.enqueueTodayBriefing(db());
+    const python = await registerMilesRuntime(db(), "test-python");
     const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     if (!claimed) throw new Error("expected a claim");
 
-    await runtimeService.completeRun(db(), claimed.run.id, "python", {
+    await runtimeService.completeRun(db(), claimed.run.id, python.id, {
       status: "succeeded",
       resultSummary: "No material Today items.",
       usage: {
@@ -148,13 +152,14 @@ describe("empty vs material Today", () => {
   it("still proposes a note when Today has work", async () => {
     await itemService.captureItem(db(), { text: "Pay rent", projectId: null });
     await runtimeService.enqueueTodayBriefing(db());
+    const python = await registerMilesRuntime(db(), "test-python");
     const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     if (!claimed) throw new Error("expected a claim");
 
-    await runtimeService.completeRun(db(), claimed.run.id, "python", {
+    await runtimeService.completeRun(db(), claimed.run.id, python.id, {
       status: "succeeded",
       resultSummary: "Drafted today's briefing.",
       proposal: {
@@ -172,8 +177,9 @@ describe("empty vs material Today", () => {
 describe("stale observe recovery", () => {
   it("requeues a stale observe run so another runtime can claim it", async () => {
     await tickSchedules(db(), MONDAY_DUE);
+    const python = await registerMilesRuntime(db(), "home-desktop-python");
     const first = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     if (!first) throw new Error("expected a claim");
@@ -181,8 +187,9 @@ describe("stale observe recovery", () => {
     const tick = await tickSchedules(db(), STALE_NOW);
     expect(tick.recovered).toBe(1);
 
+    const grok = await registerMilesRuntime(db(), "test-grok", "grok_bot");
     const second = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "grok_bot",
+      runtimeId: grok.id,
       role: "miles",
     });
     expect(second?.run.runtimeId).not.toBe(first.run.runtimeId);
@@ -190,7 +197,7 @@ describe("stale observe recovery", () => {
     expect(second?.job.attemptCount).toBe(2);
 
     await expect(
-      runtimeService.completeRun(db(), first.run.id, "python", {
+      runtimeService.completeRun(db(), first.run.id, python.id, {
         status: "succeeded",
         resultSummary: "too late",
         proposal: { kind: "create_note", title: "Late", body: "nope" },
@@ -200,10 +207,11 @@ describe("stale observe recovery", () => {
 
   it("stops after three observe attempts", async () => {
     await tickSchedules(db(), MONDAY_DUE);
+    const python = await registerMilesRuntime(db(), "test-python");
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const claimed = await runtimeService.claimNextJob(db(), {
-        runtimeKind: "python",
+        runtimeId: python.id,
         role: "miles",
       });
       if (!claimed) throw new Error("expected a claim");
@@ -215,7 +223,7 @@ describe("stale observe recovery", () => {
     expect(row?.job.attemptCount).toBe(3);
 
     const again = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     expect(again).toBeNull();
@@ -229,8 +237,9 @@ describe("stale observe recovery", () => {
       authorization: "propose",
       assignedRole: "miles",
     });
+    const python = await registerMilesRuntime(db(), "test-python");
     const claimed = await runtimeService.claimNextJob(db(), {
-      runtimeKind: "python",
+      runtimeId: python.id,
       role: "miles",
     });
     if (!claimed) throw new Error("expected a claim");

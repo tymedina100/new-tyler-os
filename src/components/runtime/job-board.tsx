@@ -16,6 +16,8 @@ export function JobBoard({
   rows: readonly {
     job: Job;
     claimedRuntimeKind: RuntimeKind | null;
+    claimedRuntimeName?: string | null;
+    claimedRuntimeInstanceKey?: string | null;
     latestRun: Run | null;
     pendingApproval: Approval | null;
   }[];
@@ -29,11 +31,13 @@ export function JobBoard({
               <p className="text-sm font-medium">{row.job.title}</p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 {roleLabel(row.job.assignedRole)} · {AUTHORIZATION_LABELS[row.job.authorization]}
-                {row.claimedRuntimeKind
-                  ? ` · ${RUNTIME_KIND_LABELS[row.claimedRuntimeKind]}`
-                  : row.job.requestedRuntimeKind
-                    ? ` · pinned to ${RUNTIME_KIND_LABELS[row.job.requestedRuntimeKind]}`
-                    : " · any runtime"}
+                {row.claimedRuntimeName
+                  ? ` · ${row.claimedRuntimeName}`
+                  : row.claimedRuntimeKind
+                    ? ` · ${RUNTIME_KIND_LABELS[row.claimedRuntimeKind]}`
+                    : row.job.requestedRuntimeKind
+                      ? ` · pinned to ${RUNTIME_KIND_LABELS[row.job.requestedRuntimeKind]}`
+                      : " · any runtime"}
                 {row.job.scheduleId
                   ? " · Scheduled"
                   : row.latestRun?.trigger === "schedule"

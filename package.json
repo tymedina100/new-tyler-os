@@ -17,6 +17,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.mts",
+    "runtime:bootstrap": "tsx scripts/bootstrap-runtime.mts",
+    "capacity:seed-examples": "tsx scripts/seed-example-capacity.mts",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:context && pnpm test && pnpm build",
     "check:env": "tsx scripts/check-env.mts",
     "check:context": "tsx scripts/check-context.mts",

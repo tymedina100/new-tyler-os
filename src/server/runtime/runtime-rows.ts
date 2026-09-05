@@ -7,10 +7,12 @@ import type { ApprovalRow, JobRow, RunRow, RuntimeRow, ScheduleRow } from "@/ser
 export function toRuntime(row: RuntimeRow): Runtime {
   return {
     id: row.id,
+    instanceKey: row.instanceKey,
     name: row.name,
     kind: row.kind,
     status: row.status,
     lastSeenAt: row.lastSeenAt,
+    deviceId: row.deviceId,
     createdAt: row.createdAt,
   };
 }

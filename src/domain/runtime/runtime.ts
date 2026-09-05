@@ -13,9 +13,10 @@
  *   - A **role** is a durable member of the TylerOS org (Miles, Forge, …).
  *     Jobs are assigned to roles. The hierarchy does not change when a
  *     provider is swapped.
- *   - A **runtime** is how a role currently executes (Grok Bot, Cursor, a
- *     Python poller, an official API). Runtimes are interchangeable under a
- *     role. Miles-on-Grok and Miles-on-Python are the same role.
+ *   - A **runtime** is an execution *instance* (Home Desktop Python, a laptop
+ *     backup worker, Grok Bot). Kind is python/cursor/… — not Miles. Many
+ *     instances may share a kind. Miles-on-Grok and Miles-on-Python are the
+ *     same role.
  *
  * Slice 1 proves the seam with one Miles observe job. The other roles and
  * runtime kinds are named now so adding them later is a row, not a protocol
@@ -156,10 +157,14 @@ export const MAX_APPROVAL_BODY_LENGTH = 50_000;
 
 export interface Runtime {
   id: string;
+  /** Stable machine-facing id, e.g. `home-desktop-python`. Unique. */
+  instanceKey: string;
   name: string;
   kind: RuntimeKind;
   status: RuntimeStatus;
   lastSeenAt: Date | null;
+  /** Optional node label, e.g. a hostname. Not an org role. */
+  deviceId: string | null;
   createdAt: Date;
 }
 

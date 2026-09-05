@@ -1,20 +1,24 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { claimIdentitySchema, type ClaimIdentity } from "@/domain/runtime/runtime-schema";
+import { roleClaimSchema, claimIdentitySchema } from "@/domain/runtime/runtime-schema";
+import type { Role, Runtime } from "@/domain/runtime/runtime";
 import { isDomainError } from "@/domain/shared/errors";
+import type { Database } from "@/server/db/client";
+import { findRuntimeByCredential, listGrantedRoles } from "@/server/runtime/fleet-service";
+import { findRuntimeByInstanceKey } from "@/server/runtime/runtime-repository";
 import { presentedTokenMatches, runtimeTokenConfig } from "@/server/runtime/runtime-token";
+import { assertRoleGranted } from "@/domain/runtime/fleet-rules";
 
 /**
  * Shared machine-API request handling.
  *
- * Every `/api/runtime` route goes through this so a missing bearer check
- * cannot hide in one handler. Identity is a role plus a runtime kind —
- * never a collapsed "miles_python" worker type.
+ * Instance credentials identify the runtime. Role is still requested, then
+ * checked against grants. A kind header cannot impersonate another instance.
  */
 
 const BEARER_PREFIX = "Bearer ";
 
-export type AuthedRuntimeRequest = ClaimIdentity;
+export type AuthedRuntimeRequest = { runtime: Runtime; role: Role };
 
 export function unauthorized(message: string, status = 401): NextResponse {
   return NextResponse.json({ error: message }, { status });
@@ -34,22 +38,64 @@ export function authenticateMachine(request: Request): true | NextResponse {
   return true;
 }
 
-export function authenticateRuntime(request: Request): AuthedRuntimeRequest | NextResponse {
-  const machine = authenticateMachine(request);
-  if (machine !== true) return machine;
+export async function authenticateRuntime(
+  db: Database,
+  request: Request,
+  now = new Date(),
+): Promise<AuthedRuntimeRequest | NextResponse> {
+  const presented = bearerToken(request);
+  if (presented === null) {
+    const config = runtimeTokenConfig();
+    if (config.mode === "off") {
+      return unauthorized(config.reason, 503);
+    }
+    return unauthorized("Invalid runtime token.");
+  }
 
-  const identity = claimIdentitySchema.safeParse(readIdentity(request));
+  const instance = await findRuntimeByCredential(db, presented, now);
+  if (instance) {
+    const role = parseRole(request);
+    if (!role) {
+      return NextResponse.json(
+        { error: "Send X-TylerOS-Role (or a role query parameter)." },
+        { status: 400 },
+      );
+    }
+    try {
+      assertRoleGranted(await listGrantedRoles(db, instance.id), role);
+    } catch (error) {
+      return machineError(error);
+    }
+    return { runtime: instance, role };
+  }
+
+  const config = runtimeTokenConfig();
+  if (config.mode !== "on" || !presentedTokenMatches(config.token, presented)) {
+    return unauthorized("Invalid runtime token.");
+  }
+
+  const identity = claimIdentitySchema.safeParse(readLegacyIdentity(request));
   if (!identity.success) {
     return NextResponse.json(
       {
-        error:
-          "Send X-TylerOS-Runtime-Kind and X-TylerOS-Role (or runtimeKind and role query parameters).",
+        error: "Legacy RUNTIME_TOKEN claims need X-TylerOS-Runtime-Kind and X-TylerOS-Role.",
       },
       { status: 400 },
     );
   }
 
-  return identity.data;
+  const runtime = await findRuntimeByInstanceKey(db, identity.data.runtimeKind);
+  if (runtime === null) {
+    return unauthorized("No runtime instance is registered for that kind.");
+  }
+
+  try {
+    assertRoleGranted(await listGrantedRoles(db, runtime.id), identity.data.role);
+  } catch (error) {
+    return machineError(error);
+  }
+
+  return { runtime, role: identity.data.role };
 }
 
 export function isAuthed(
@@ -82,7 +128,14 @@ function bearerToken(request: Request): string | null {
   return token.length === 0 ? null : token;
 }
 
-function readIdentity(request: Request): { runtimeKind: unknown; role: unknown } {
+function parseRole(request: Request): Role | null {
+  const parsed = roleClaimSchema.safeParse({
+    role: request.headers.get("x-tyleros-role") ?? new URL(request.url).searchParams.get("role"),
+  });
+  return parsed.success ? parsed.data.role : null;
+}
+
+function readLegacyIdentity(request: Request): { runtimeKind: unknown; role: unknown } {
   const url = new URL(request.url);
   return {
     runtimeKind:
