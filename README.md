@@ -162,24 +162,26 @@ exactly as it does in this repository today.
 
 ## Commands
 
-| Command              | What it does                                              |
-| -------------------- | --------------------------------------------------------- |
-| `pnpm dev`           | Development server                                        |
-| `pnpm build`         | Production build (needs no database)                      |
-| `pnpm start`         | Serve the production build                                |
-| `pnpm check`         | The gate: types, lint, context, tests, build. No database |
-| `pnpm check:env`     | Is this machine ready to run TylerOS?                     |
-| `pnpm check:context` | Are the instruction files and docs still true?            |
-| `pnpm test`          | Vitest, once                                              |
-| `pnpm test:watch`    | Vitest, watching                                          |
-| `pnpm test:e2e`      | Playwright smoke tests. Needs a real database             |
-| `pnpm typecheck`     | Route typegen, then `tsc --noEmit`                        |
-| `pnpm lint`          | ESLint, including the architectural layering rules        |
-| `pnpm format`        | Prettier                                                  |
-| `pnpm db:generate`   | Generate a migration from schema changes                  |
-| `pnpm db:migrate`    | Apply pending migrations                                  |
-| `pnpm db:studio`     | Drizzle Studio                                            |
-| `pnpm db:seed`       | Seed sample data                                          |
+| Command                       | What it does                                              |
+| ----------------------------- | --------------------------------------------------------- |
+| `pnpm dev`                    | Development server                                        |
+| `pnpm build`                  | Production build (needs no database)                      |
+| `pnpm start`                  | Serve the production build                                |
+| `pnpm check`                  | The gate: types, lint, context, tests, build. No database |
+| `pnpm check:env`              | Is this machine ready to run TylerOS?                     |
+| `pnpm check:context`          | Are the instruction files and docs still true?            |
+| `pnpm test`                   | Vitest, once                                              |
+| `pnpm test:watch`             | Vitest, watching                                          |
+| `pnpm test:e2e`               | Playwright smoke tests. Needs a real database             |
+| `pnpm typecheck`              | Route typegen, then `tsc --noEmit`                        |
+| `pnpm lint`                   | ESLint, including the architectural layering rules        |
+| `pnpm format`                 | Prettier                                                  |
+| `pnpm db:generate`            | Generate a migration from schema changes                  |
+| `pnpm db:migrate`             | Apply pending migrations                                  |
+| `pnpm db:studio`              | Drizzle Studio                                            |
+| `pnpm db:seed`                | Seed sample data                                          |
+| `pnpm runtime:bootstrap`      | Create a runtime instance credential (requires `--role`)  |
+| `pnpm capacity:seed-examples` | Optional local mock quota pools; never a migration        |
 
 ## Tests
 
@@ -207,7 +209,7 @@ A separate Python poller (`tyleros_worker.py` in the assistant repository) can
 act as Miles: it ticks schedules, claims Today briefing jobs, and proposes a
 note only when Today has material. Empty mornings complete quietly. Set
 `RUNTIME_TOKEN` here (`openssl rand -base64 32`), apply migrations, then
-bootstrap an instance (`pnpm runtime:bootstrap -- --key home-desktop-python`)
+bootstrap an instance (`pnpm runtime:bootstrap -- --key home-desktop-python --role miles`)
 and point the worker at this app with `TYLEROS_RUNTIME_CREDENTIAL`. The 06:20
 Phoenix weekday schedule lives in TylerOS, not in the worker.
 

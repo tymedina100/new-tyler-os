@@ -1,6 +1,10 @@
-import { CHIEF_OF_STAFF_ROLE, type Role, type Runtime } from "@/domain/runtime/runtime";
+import type { Role, Runtime } from "@/domain/runtime/runtime";
 import { defaultCapabilitiesFor, type RuntimeCapability } from "@/domain/runtime/fleet";
-import { assertInstanceKey, uniqueCapabilities } from "@/domain/runtime/fleet-rules";
+import {
+  assertExplicitRoles,
+  assertInstanceKey,
+  uniqueCapabilities,
+} from "@/domain/runtime/fleet-rules";
 import { DomainError } from "@/domain/shared/errors";
 import type { Database } from "@/server/db/client";
 import { generateRuntimeCredential, hashRuntimeSecret } from "@/server/runtime/runtime-token";
@@ -22,7 +26,7 @@ export async function bootstrapRuntime(
     kind: Runtime["kind"];
     deviceId?: string | null;
     capabilities?: readonly RuntimeCapability[];
-    roles?: readonly Role[];
+    roles: readonly Role[];
     status?: Runtime["status"];
   },
   now = new Date(),
@@ -35,7 +39,7 @@ export async function bootstrapRuntime(
 
   const token = generateRuntimeCredential();
   const capabilities = uniqueCapabilities(input.capabilities ?? defaultCapabilitiesFor(input.kind));
-  const roles = input.roles ?? [CHIEF_OF_STAFF_ROLE];
+  const roles = assertExplicitRoles(input.roles);
 
   const runtime = await db.transaction(async (tx) => {
     const created = await fleetRepo.insertRuntime(tx, {

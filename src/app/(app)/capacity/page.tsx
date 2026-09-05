@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Capacity" };
  * Operational read of execution instances and quota pools.
  *
  * Not a game world and not a router. Health is derived from last seen.
- * Example pools are labeled as mock.
+ * Quota pools stay empty until real remaining is recorded.
  */
 export default async function CapacityPage() {
   const board = await listFleetBoard(getDb());
@@ -31,7 +31,7 @@ export default async function CapacityPage() {
         {board.runtimes.length === 0 ? (
           <EmptyState
             title="No runtime instances"
-            description="Bootstrap a worker with pnpm runtime:bootstrap. Miles is a role; a Python process is an instance under it."
+            description="Bootstrap a worker with pnpm runtime:bootstrap -- --role miles. Miles is a role; a Python process is an instance under it."
           />
         ) : (
           <ul className="grid gap-2">
@@ -65,7 +65,10 @@ export default async function CapacityPage() {
           {`Last 7 days estimated spend $${board.spendWindowUsd.toFixed(2)}. Today (America/Phoenix) $${board.spendTodayUsd.toFixed(2)}. Forecasts are estimated.`}
         </p>
         {board.pools.length === 0 ? (
-          <EmptyState title="No pools" description="Quota pools are data, not application logic." />
+          <EmptyState
+            title="No pools"
+            description="Quota pools stay empty until you record them. Migrations do not invent subscription limits. Local mock data is pnpm capacity:seed-examples only."
+          />
         ) : (
           <ul className="grid gap-2">
             {board.pools.map(({ pool, forecast }) => (

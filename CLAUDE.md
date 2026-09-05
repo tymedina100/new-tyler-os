@@ -191,5 +191,5 @@ catch-up until noon), unique per local date, observe-only stale recovery.
 Empty Today is quiet. ADR 036.
 
 **Now — runtime fleet + capacity.** Instances (not one row per kind), hashed
-credentials, capabilities, usage ledger, example quota pools. No routing.
-ADR 037.
+credentials, capabilities, usage ledger, empty quota pools until recorded.
+No routing. ADR 037.

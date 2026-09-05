@@ -1409,9 +1409,17 @@ mean "unknown model."
 
 **Capacity is pools, not providers.** One vendor may have several
 independent pools. Remaining cannot go negative; percent cannot exceed 100. Reset instants are timestamptz plus an IANA zone. Manual remaining
-updates write `capacity_updates`. Seeded rows are labeled example/mock —
-not Tyler's real subscription limits. Burn forecasts are labeled
-estimated. Nothing scrapes a consumer usage page.
+updates write `capacity_updates`. Migrations create the empty table;
+they do not invent subscription remaining, reset times, or dollar
+limits. Opt-in mock rows live in `pnpm capacity:seed-examples` and in
+tests, labeled as example/mock. Burn forecasts are labeled estimated.
+Nothing scrapes a consumer usage page.
+
+**Role grants are least-privilege.** Bootstrap requires an explicit
+`--role` (or `roles` in JSON). Miles is not implied for a new instance.
+Existing rows from before this slice still receive a Miles grant in
+0007, because they were already the Miles Python worker. That backfill
+does not apply to instances created after.
 
 **`/capacity` is a read of this state.** Instances, health, pools, recent
 usage. A future world view should subscribe here rather than invent

@@ -24,7 +24,9 @@ export const bootstrapRuntimeSchema = z.object({
   kind: runtimeKindSchema,
   deviceId: optionalText(120),
   capabilities: z.array(z.enum(RUNTIME_CAPABILITIES)).optional(),
-  roles: z.array(roleSchema).min(1).optional(),
+  roles: z
+    .array(roleSchema)
+    .min(1, "A runtime needs an explicit role grant, for example --role miles."),
 });
 export type BootstrapRuntimeInput = z.infer<typeof bootstrapRuntimeSchema>;
 

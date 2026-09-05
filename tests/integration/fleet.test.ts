@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { deriveRuntimeHealth } from "@/domain/runtime/health";
 import { authenticateRuntime, isAuthed } from "@/server/runtime/runtime-http";
-import { bootstrapRuntime } from "@/server/runtime/fleet-service";
+import { bootstrapRuntime, listGrantedRoles } from "@/server/runtime/fleet-service";
 import { capacityPools, capacityUpdates, runtimeCredentials } from "@/server/db/schema";
 import { listUsageForRun, updatePoolRemaining } from "@/server/runtime/capacity-service";
 import * as capacityRepo from "@/server/runtime/capacity-repository";
@@ -196,6 +196,32 @@ describe("runtime fleet", () => {
       estimatedCostUsd: 0,
     });
   });
+
+  it("rejects bootstrap without an explicit role grant", async () => {
+    await expect(
+      bootstrapRuntime(db(), {
+        instanceKey: "home-desktop-python",
+        name: "Home Desktop Python",
+        kind: "python",
+        roles: [],
+      }),
+    ).rejects.toThrow(/explicit role grant/);
+  });
+
+  it("does not grant miles to a runtime given only another role", async () => {
+    const scout = await bootstrapRuntime(db(), {
+      instanceKey: "research-python",
+      name: "Research Python",
+      kind: "python",
+      roles: ["scout"],
+    });
+    expect(await listGrantedRoles(db(), scout.runtime.id)).toEqual(["scout"]);
+
+    await runtimeService.enqueueTodayBriefing(db());
+    await expect(
+      runtimeService.claimNextJob(db(), { runtimeId: scout.runtime.id, role: "miles" }),
+    ).rejects.toThrow(/not allowed to act as miles/);
+  });
 });
 
 describe("capacity ledger", () => {
@@ -260,5 +286,17 @@ describe("capacity ledger", () => {
     expect(audit?.previousRemaining).toBe(25);
     expect(audit?.newRemaining).toBe(18);
     expect(audit?.note).toBe("Manual mock remaining.");
+  });
+});
+
+describe("fresh migration", () => {
+  it("does not invent capacity pools", async () => {
+    const fresh = await createTestDatabase();
+    try {
+      const pools = await fresh.db.select({ id: capacityPools.id }).from(capacityPools);
+      expect(pools).toHaveLength(0);
+    } finally {
+      await fresh.close();
+    }
   });
 });

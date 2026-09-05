@@ -602,7 +602,8 @@ export const usageEntries = pgTable(
 
 /**
  * Quota pools, not providers. Cursor Pro coding and a PAYG API budget are
- * two pools even when they share a vendor. Precise limits live in data.
+ * two pools even when they share a vendor. Precise limits live in data
+ * you record; migrations do not invent remaining.
  */
 export const capacityPools = pgTable(
   "capacity_pools",

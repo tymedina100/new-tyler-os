@@ -2,8 +2,8 @@
  * Provider capacity pools — quota, not routing.
  *
  * One provider may have several independent pools (Cursor Pro coding vs a
- * PAYG API budget). Numbers here are observed or estimated, never scraped.
- * Example rows are labeled as mock. See ADR 037.
+ * PAYG API budget). Numbers here are observed or estimated, never scraped,
+ * and never invented by a migration. See ADR 037.
  */
 
 export const CAPACITY_UNITS = ["usd", "percent", "requests", "tokens", "unknown"] as const;

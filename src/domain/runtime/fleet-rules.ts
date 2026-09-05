@@ -26,6 +26,18 @@ export function assertRoleGranted(granted: readonly Role[], role: Role): void {
   }
 }
 
+/** Bootstrap must name the roles. Miles is never implied. */
+export function assertExplicitRoles(roles: readonly Role[]): Role[] {
+  const unique = [...new Set(roles)];
+  if (unique.length === 0) {
+    throw new DomainError(
+      "invalid_transition",
+      "A runtime needs an explicit role grant, for example --role miles.",
+    );
+  }
+  return unique;
+}
+
 export function uniqueCapabilities(values: readonly RuntimeCapability[]): RuntimeCapability[] {
   return [...new Set(values)];
 }

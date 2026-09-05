@@ -315,9 +315,9 @@ See ADR 036.
 ## Now · runtime fleet + capacity ledger
 
 Execution instances, hashed credentials, an append-only usage ledger, and
-example quota pools. Health is derived from last seen. `/capacity` is a
-read of real state. Automatic provider routing is not in this slice.
-See ADR 037.
+quota pools you record yourself. Health is derived from last seen.
+`/capacity` is a read of real state. Automatic provider routing is not in
+this slice. See ADR 037.
 
 Deliberately not in this slice: cheapest-model algorithms, scraping
 subscription pages, a game-style world, or collapsing Miles into a runtime.
