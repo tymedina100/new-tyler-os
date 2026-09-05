@@ -181,6 +181,7 @@ exactly as it does in this repository today.
 | `pnpm db:studio`              | Drizzle Studio                                            |
 | `pnpm db:seed`                | Seed sample data                                          |
 | `pnpm runtime:bootstrap`      | Create a runtime instance credential (requires `--role`)  |
+| `pnpm ai:profile:add`         | Create an explicit AI execution profile (no API key)      |
 | `pnpm capacity:seed-examples` | Optional local mock quota pools; never a migration        |
 
 ## Tests
@@ -211,7 +212,9 @@ note only when Today has material. Empty mornings complete quietly. Set
 `RUNTIME_TOKEN` here (`openssl rand -base64 32`), apply migrations, then
 bootstrap an instance (`pnpm runtime:bootstrap -- --key home-desktop-python --role miles`)
 and point the worker at this app with `TYLEROS_RUNTIME_CREDENTIAL`. The 06:20
-Phoenix weekday schedule lives in TylerOS, not in the worker.
+Phoenix weekday schedule lives in TylerOS, not in the worker. A manual AI
+Today briefing needs an explicit profile (`pnpm ai:profile:add`) and
+`ANTHROPIC_API_KEY` on the TylerOS process — not on the worker.
 
 ## Documentation
 

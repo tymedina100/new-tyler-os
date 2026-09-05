@@ -35,6 +35,8 @@ describe("completeRunSchema", () => {
 
     expect(parsed).toEqual({
       provider: null,
+      product: null,
+      poolKey: null,
       model: null,
       inputTokens: null,
       cachedInputTokens: null,

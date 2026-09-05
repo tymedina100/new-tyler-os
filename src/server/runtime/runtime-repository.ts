@@ -47,6 +47,7 @@ export async function insertJob(
     authorization: Job["authorization"];
     assignedRole: Role;
     requestedRuntimeKind?: Job["requestedRuntimeKind"];
+    aiExecutionProfileId?: Job["aiExecutionProfileId"];
     scheduleId?: string | null;
     scheduledForDate?: Job["scheduledForDate"];
   },
@@ -60,6 +61,7 @@ export async function insertJob(
       authorization: values.authorization,
       assignedRole: values.assignedRole,
       requestedRuntimeKind: values.requestedRuntimeKind ?? null,
+      aiExecutionProfileId: values.aiExecutionProfileId ?? null,
       scheduleId: values.scheduleId ?? null,
       scheduledForDate: values.scheduledForDate ?? null,
     })

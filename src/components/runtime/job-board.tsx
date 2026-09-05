@@ -1,10 +1,12 @@
 import { ApprovalCard } from "@/components/runtime/approval-card";
 import {
   AUTHORIZATION_LABELS,
+  JOB_KIND_LABELS,
   JOB_STATUS_LABELS,
   RUNTIME_KIND_LABELS,
   roleLabel,
   type Job,
+  type JobKind,
   type Run,
   type RuntimeKind,
 } from "@/domain/runtime/runtime";
@@ -28,7 +30,11 @@ export function JobBoard({
         <li key={row.job.id} className="border-border bg-card grid gap-3 rounded-xl border p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium">{row.job.title}</p>
+              <p className="text-sm font-medium">
+                {row.job.kind === "today_briefing_ai"
+                  ? JOB_KIND_LABELS.today_briefing_ai
+                  : row.job.title}
+              </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 {roleLabel(row.job.assignedRole)} · {AUTHORIZATION_LABELS[row.job.authorization]}
                 {row.claimedRuntimeName
@@ -54,9 +60,38 @@ export function JobBoard({
             <p className="text-muted-foreground text-sm">{row.latestRun.resultSummary}</p>
           ) : null}
 
+          <RunTelemetry jobKind={row.job.kind} run={row.latestRun} />
+
           {row.pendingApproval ? <ApprovalCard approval={row.pendingApproval} /> : null}
         </li>
       ))}
     </ol>
   );
+}
+
+function RunTelemetry({ jobKind, run }: { jobKind: JobKind; run: Run | null }) {
+  if (!run) return null;
+
+  const facts = [
+    run.provider && run.provider !== "none" ? titleCase(run.provider) : null,
+    run.model && run.model !== "deterministic" ? run.model : null,
+    tokenLine(run),
+    jobKind === "today_briefing_ai" && run.status === "running" ? "Calling provider" : null,
+  ].filter((value): value is string => value !== null);
+
+  if (facts.length === 0) return null;
+
+  return <p className="text-muted-foreground text-xs">{facts.join(" · ")}</p>;
+}
+
+function tokenLine(run: Run): string | null {
+  if (run.inputTokens === null && run.outputTokens === null) return null;
+  if (run.provider === "none" || run.model === "deterministic") return null;
+  const input = (run.inputTokens ?? 0).toLocaleString("en-US");
+  const output = (run.outputTokens ?? 0).toLocaleString("en-US");
+  return `${input} input / ${output} output`;
+}
+
+function titleCase(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }

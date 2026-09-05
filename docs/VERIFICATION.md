@@ -355,6 +355,17 @@ are skipped otherwise — say so rather than implying they passed.
       lands normally, no error reaches the screen, and the server log shows one
       line naming a failure category.
 
+**Miles AI briefing — explicit profile, one official API call**
+
+The 06:20 deterministic briefing is unchanged. This path is manual only.
+
+- [ ] With zero `ai_execution_profiles`, `/runs` shows **Ask Miles for AI briefing** disabled and does not pick a provider.
+- [ ] `pnpm ai:profile:add` creates one profile. The database row has no API key.
+- [ ] Empty Today + AI job completes quietly: `provider=none`, `model=deterministic`, no approval.
+- [ ] A due-today item + **Ask Miles for AI briefing** with the selected profile produces one proposal. Accept writes exactly one note. Dismiss writes none.
+- [ ] `/runs` shows Anthropic, the model id, and input/output tokens from the provider. `usage_entries` matches. Capacity remaining is unchanged.
+- [ ] If `ANTHROPIC_API_KEY` is unset, say so: the live network call was not proven. Mocked provider tests still must pass.
+
 **Notes — does TylerOS now feel like the obvious place to put it?**
 
 - [ ] Write a note with nothing but a first line — no title typed. The title

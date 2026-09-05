@@ -1,10 +1,12 @@
-import type { Metadata } from "next";
+import { EnqueueAiBriefing } from "@/components/runtime/enqueue-ai-briefing";
 import { EnqueueBriefingButton } from "@/components/runtime/enqueue-briefing-button";
 import { JobBoard } from "@/components/runtime/job-board";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { getDb } from "@/server/db/client";
+import { listEnabledAiExecutionProfiles } from "@/server/runtime/ai-profile-service";
 import { listRuntimeBoard } from "@/server/runtime/runtime-service";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Runs" };
 
@@ -16,14 +18,25 @@ export const metadata: Metadata = { title: "Runs" };
  * note service.
  */
 export default async function RunsPage() {
-  const rows = await listRuntimeBoard(getDb());
+  const db = getDb();
+  const [rows, profiles] = await Promise.all([
+    listRuntimeBoard(db),
+    listEnabledAiExecutionProfiles(db),
+  ]);
+
+  const actions = (
+    <div className="flex flex-col items-end gap-2">
+      <EnqueueBriefingButton />
+      <EnqueueAiBriefing profiles={profiles} />
+    </div>
+  );
 
   return (
     <>
       <PageHeader
         title="Runs"
-        description="Ask Miles to brief Today. Proposals wait here until you accept them as notes."
-        action={<EnqueueBriefingButton />}
+        description="Ask Miles to brief Today. AI briefings need an explicit profile — nothing is routed automatically."
+        action={actions}
       />
 
       {rows.length === 0 ? (

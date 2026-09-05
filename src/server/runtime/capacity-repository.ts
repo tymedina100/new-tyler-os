@@ -55,6 +55,18 @@ export async function findCapacityPoolById(db: Database, id: string): Promise<Ca
   return row ? toCapacityPool(row) : null;
 }
 
+export async function findCapacityPoolByKey(
+  db: Database,
+  poolKey: string,
+): Promise<CapacityPool | null> {
+  const [row] = await db
+    .select()
+    .from(capacityPools)
+    .where(eq(capacityPools.poolKey, poolKey))
+    .limit(1);
+  return row ? toCapacityPool(row) : null;
+}
+
 export async function updateCapacityRemaining(
   db: Database,
   id: string,

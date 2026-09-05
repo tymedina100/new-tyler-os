@@ -1434,3 +1434,78 @@ to name its own runtime in a header; storing plaintext tokens; OAuth or a
 secrets manager; treating Miles/Forge as runtime instances; scraping
 subscription dashboards; automatic model routing; a game-style TylerOS
 World in this slice.
+
+---
+
+## 038 · Miles AI briefing: explicit profile, official API, measured usage
+
+**Accepted** · one Anthropic adapter, no router, usage is a ledger
+
+Fleet and capacity (ADR 037) made it possible to _record_ where work ran and
+what quota might exist. This slice proves the first real AI judgment loop
+through TylerOS, **manually**, before any recurring AI spend.
+
+**The hierarchy does not collapse.** Tyler chooses. Miles (Chief of Staff)
+owns the job. Specialist roles are still unused here. A runtime instance
+executes. An AI execution profile binds provider/model metadata — optionally
+to a capacity pool. A provider is not a specialist. A model is not Miles.
+Python is not Miles. A capacity pool is not a runtime. Notion remains the
+Work Board and is not copied into Postgres.
+
+**Profiles are metadata.** `ai_execution_profiles` stores `key`, display
+name, `provider`, `model`, optional product, optional pool, enabled.
+Migrations do not seed rows. API keys never land in this table; they stay
+in the TylerOS process environment (`ANTHROPIC_API_KEY`). Create with
+`pnpm ai:profile:add`. Duplicate keys conflict.
+
+**Tyler selects. Nothing routes.** `today_briefing_ai` requires an explicit
+enabled profile id. Zero profiles disables **Ask Miles for AI briefing**.
+There is no cheapest-model score, no fallback chain, no default profile.
+The 06:20 `today_briefing` schedule is unchanged and still deterministic.
+
+**One official adapter.** Anthropic Messages was already the only official
+API path in TylerOS (`src/server/ai/anthropic-messages.ts`). This slice
+reuses it, records `usage` tokens, and keeps the call as a function
+argument (`TodayBriefingCaller`) so a second provider can be added later
+without rewriting the job protocol. No SDK, no automatic retries, no
+browser automation, no subscription scraping. The Python worker does not
+hold the key: after claim, it POSTs `/api/runtime/runs/:id/brief` and
+TylerOS makes the one provider request.
+
+**Bounded Today only.** Deterministic code projects titles and dates
+(plus expiring food). Item text is data, not instructions. Counts and
+string lengths are clipped. No Gmail, Calendar, or Notion retrieval.
+
+**Zero-AI fast path is mandatory.** Empty or immaterial Today completes
+with `provider=none`, `model=deterministic`, no provider call, no
+approval, no note — including for `today_briefing_ai`.
+
+**Structured Miles judgment.** The model returns
+`{ summary, priorities, needsTyler, watch }`. Invalid JSON fails the run,
+creates no approval and no note, and still writes known usage. Valid
+output is rendered to markdown by application code, then proposed.
+Accept still goes through `noteService.captureNote`. Dismiss writes
+nothing.
+
+**Usage is truthful.** `usage_entries` records run, runtime, provider,
+product, pool key (if the profile has one), model, input / cached input /
+output tokens. Estimated cost stays null unless trustworthy configured
+pricing exists (it does not). Tokens do not decrement capacity remaining.
+Attribution and remaining-capacity measurement stay different facts.
+
+**Presentation projects this state.** `/runs` shows role, job kind,
+instance, provider, model, token counts, approval status. A future
+TylerOS World should subscribe to jobs/runs/roles/runtime/provider
+state, never become a source of truth.
+
+**Failures fail cleanly.** Missing key, unauthorized, timeout, malformed
+output, disabled or missing profile, wrong runtime instance: no
+accidental note, no unlimited retry. One provider request per run.
+Observe stale-run recovery is unchanged.
+
+**Considered and rejected:** calling the model from the Python worker;
+a provider-adapter interface with one implementation; seeding fake
+profiles; treating `AI_SUGGESTIONS=off` as hiding a briefing key Tyler
+explicitly asked to spend; inventing USD cost from tokens; decrementing
+manual capacity percentages; scheduled recurring AI; multiple providers
+for symmetry; automatic profile selection.

@@ -75,7 +75,7 @@ export const RUNTIME_KIND_LABELS: Record<RuntimeKind, string> = {
   api: "Official API",
 };
 
-export const JOB_KINDS = ["today_briefing"] as const;
+export const JOB_KINDS = ["today_briefing", "today_briefing_ai"] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
 /**
@@ -123,6 +123,7 @@ export const SLICE_RUNTIME_KIND: RuntimeKind = "python";
 
 export const JOB_KIND_LABELS: Record<JobKind, string> = {
   today_briefing: "Today briefing",
+  today_briefing_ai: "AI Today briefing",
 };
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
@@ -149,6 +150,11 @@ export const TODAY_BRIEFING_TITLE = "Today briefing";
 
 export const TODAY_BRIEFING_INSTRUCTION =
   "Read Today's open items and food that is expiring soon. Write a short markdown briefing as Miles. Propose it as a note — do not create the note yourself.";
+
+export const TODAY_BRIEFING_AI_TITLE = "AI Today briefing";
+
+export const TODAY_BRIEFING_AI_INSTRUCTION =
+  "Read Today's open items and food that is expiring soon. If Today is empty, complete quietly with no proposal and no model call. If Today has material, ask TylerOS to run the selected AI execution profile once and propose the structured briefing as a note — do not create the note yourself.";
 
 export const MAX_RESULT_SUMMARY_LENGTH = 500;
 export const MAX_JOB_INSTRUCTION_LENGTH = 4_000;
@@ -179,6 +185,11 @@ export interface Job {
   assignedRole: Role;
   /** Optional pin to one backend. Null means any runtime acting as the role. */
   requestedRuntimeKind: RuntimeKind | null;
+  /**
+   * Explicit AI execution profile for `today_briefing_ai`. Null on the
+   * deterministic briefing — a profile is never inferred.
+   */
+  aiExecutionProfileId: string | null;
   /** Null on a manual Ask Miles job. Set when a schedule created this row. */
   scheduleId: string | null;
   /** Local calendar date the schedule fired for. Null on manual jobs. */

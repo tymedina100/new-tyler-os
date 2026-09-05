@@ -74,24 +74,24 @@ src/domain/     Pure TypeScript and Zod. No React, no Next, no database.
 Types, Zod schemas, and pure functions. It imports nothing from the framework or
 the database, which is why its tests run in milliseconds with no setup.
 
-| Module                  | Holds                                                                |
-| ----------------------- | -------------------------------------------------------------------- |
-| `items/item.ts`         | The Item type, kinds, statuses, labels                               |
-| `items/item-rules.ts`   | Lifecycle transitions, returned as patches                           |
-| `items/item-schema.ts`  | Validation for everything entering the system                        |
-| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate              |
-| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat  |
-| `kitchen/`              | Food in the house: locations, quantities, expiry buckets             |
-| `notes/`                | Durable knowledge: title derivation, excerpts, display order         |
-| `recurrence/`           | How something repeats, and when it is next due                       |
-| `today/`                | Bucketing open items for the Today view                              |
-| `agenda/`               | The days ahead, one list per domain that has dates                   |
-| `projects/`             | Projects and progress                                                |
-| `tags/`                 | Tag name normalisation                                               |
-| `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds    |
-| `runtime/`              | Roles vs instances; jobs, runs, schedules, usage, capacity (ADR 037) |
-| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly                |
-| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                    |
+| Module                  | Holds                                                               |
+| ----------------------- | ------------------------------------------------------------------- |
+| `items/item.ts`         | The Item type, kinds, statuses, labels                              |
+| `items/item-rules.ts`   | Lifecycle transitions, returned as patches                          |
+| `items/item-schema.ts`  | Validation for everything entering the system                       |
+| `items/item-filters.ts` | The filter vocabulary, shared by SQL, URL and predicate             |
+| `capture/`              | Parsing captured text: `#tag`, `@project`, trailing date and repeat |
+| `kitchen/`              | Food in the house: locations, quantities, expiry buckets            |
+| `notes/`                | Durable knowledge: title derivation, excerpts, display order        |
+| `recurrence/`           | How something repeats, and when it is next due                      |
+| `today/`                | Bucketing open items for the Today view                             |
+| `agenda/`               | The days ahead, one list per domain that has dates                  |
+| `projects/`             | Projects and progress                                               |
+| `tags/`                 | Tag name normalisation                                              |
+| `suggestions/`          | What AI may be asked, what grounds, whether accepting still holds   |
+| `runtime/`              | Roles, instances, jobs, AI profiles, usage, capacity (ADRs 037–038) |
+| `shared/date.ts`        | Calendar dates. Every function takes "now" explicitly               |
+| `shared/errors.ts`      | `DomainError`, thrown when an invariant is broken                   |
 
 Rules return a **patch**, not a mutated object. `completeItem(item, now)` returns
 `{ status, completedAt, archivedAt }` and the caller persists it. This keeps
@@ -120,7 +120,7 @@ human-facing REST or tRPC layer** (ADR 004): a single user does not need a
 network boundary inside their own app. `/api/runtime` is the exception, for
 machine pollers only — a thin wrapper over the same services, not a session
 cookie. Instance credentials identify a runtime; the system `RUNTIME_TOKEN`
-ticks schedules and bootstraps instances. See ADRs 035 and 037. Because
+ticks schedules and bootstraps instances. See ADRs 035, 037 and 038. Because
 services are plain functions over `db`, that wrapper did not require a
 refactor.
 
@@ -474,6 +474,13 @@ answer could beat the user's own syntax. The model is simply not asked.
 once the capture response has already been sent. With no `ANTHROPIC_API_KEY` no
 call is made and no row is written — which is how this repository ships, and the
 state its browser suite runs in. See ADRs 026 and 027.
+
+**Miles AI briefing is a second, still-optional caller of the same official
+API.** Capture classification and a manual `today_briefing_ai` job both use
+Anthropic Messages through `src/server/ai/`. Tyler picks an
+`ai_execution_profiles` row; nothing routes. The 06:20 deterministic briefing
+is unchanged. Secrets stay in the process environment. Structured Miles
+judgment is validated before a note is proposed. See ADR 038.
 
 ## Traps this design is built against
 

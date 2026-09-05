@@ -57,6 +57,13 @@
       "when": 1788559860602,
       "tag": "0007_aromatic_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788631061877,
+      "tag": "0008_thankful_zombie",
+      "breakpoints": true
     }
   ]
 }

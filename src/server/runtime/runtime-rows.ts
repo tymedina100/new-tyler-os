@@ -27,6 +27,7 @@ export function toJob(row: JobRow): Job {
     authorization: row.authorization,
     assignedRole: row.assignedRole,
     requestedRuntimeKind: row.requestedRuntimeKind,
+    aiExecutionProfileId: row.aiExecutionProfileId,
     scheduleId: row.scheduleId,
     scheduledForDate: row.scheduledForDate,
     attemptCount: row.attemptCount,

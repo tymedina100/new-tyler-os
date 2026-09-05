@@ -429,6 +429,9 @@ export const jobs = pgTable(
     authorization: authorizationLevelEnum("authorization").notNull().default("observe"),
     assignedRole: orgRoleEnum("assigned_role").notNull(),
     requestedRuntimeKind: runtimeKindEnum("requested_runtime_kind"),
+    aiExecutionProfileId: uuid("ai_execution_profile_id").references(() => aiExecutionProfiles.id, {
+      onDelete: "restrict",
+    }),
     scheduleId: uuid("schedule_id").references(() => schedules.id, { onDelete: "restrict" }),
     scheduledForDate: date("scheduled_for_date", { mode: "string" }),
     attemptCount: integer("attempt_count").notNull().default(0),
@@ -642,6 +645,33 @@ export const capacityPools = pgTable(
   ],
 );
 
+/**
+ * Explicit AI execution metadata. Provider and model are chosen by Tyler.
+ * API keys are never stored here — they belong in the runtime environment.
+ * Migrations do not seed profiles.
+ */
+export const aiExecutionProfiles = pgTable(
+  "ai_execution_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    product: text("product"),
+    capacityPoolId: uuid("capacity_pool_id").references(() => capacityPools.id, {
+      onDelete: "set null",
+    }),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [uniqueIndex("ai_execution_profiles_key_unique_idx").on(table.key)],
+);
+
 export const capacityUpdates = pgTable(
   "capacity_updates",
   {
@@ -760,8 +790,20 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
     fields: [jobs.scheduleId],
     references: [schedules.id],
   }),
+  aiExecutionProfile: one(aiExecutionProfiles, {
+    fields: [jobs.aiExecutionProfileId],
+    references: [aiExecutionProfiles.id],
+  }),
   runs: many(runs),
   approvals: many(approvals),
+}));
+
+export const aiExecutionProfilesRelations = relations(aiExecutionProfiles, ({ one, many }) => ({
+  capacityPool: one(capacityPools, {
+    fields: [aiExecutionProfiles.capacityPoolId],
+    references: [capacityPools.id],
+  }),
+  jobs: many(jobs),
 }));
 
 export const runsRelations = relations(runs, ({ one, many }) => ({
@@ -796,6 +838,7 @@ export const usageEntriesRelations = relations(usageEntries, ({ one }) => ({
 
 export const capacityPoolsRelations = relations(capacityPools, ({ many }) => ({
   updates: many(capacityUpdates),
+  aiExecutionProfiles: many(aiExecutionProfiles),
 }));
 
 export const capacityUpdatesRelations = relations(capacityUpdates, ({ one }) => ({
@@ -824,3 +867,4 @@ export type RuntimeCredentialRow = typeof runtimeCredentials.$inferSelect;
 export type UsageEntryRow = typeof usageEntries.$inferSelect;
 export type CapacityPoolRow = typeof capacityPools.$inferSelect;
 export type CapacityUpdateRow = typeof capacityUpdates.$inferSelect;
+export type AiExecutionProfileRow = typeof aiExecutionProfiles.$inferSelect;

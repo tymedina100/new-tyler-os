@@ -49,6 +49,9 @@ export const DEFAULT_AI_MODEL = "claude-opus-5";
  */
 export const AI_REQUEST_TIMEOUT_MS = 12_000;
 
+/** Structured briefing is still one request, with a little more room to finish. */
+export const BRIEFING_REQUEST_TIMEOUT_MS = 20_000;
+
 /** Why AI is off, when it is. Reported once at startup, never to the user. */
 export type AiDisabledReason = "no_api_key" | "switched_off";
 
@@ -72,6 +75,17 @@ export function aiConfig(): AiConfig {
 
   cached = resolve(env);
   return cached;
+}
+
+/**
+ * The official Anthropic credential, independent of capture suggestions.
+ * Briefing uses this; `AI_SUGGESTIONS=off` must not hide a key that Tyler
+ * explicitly asked a profile to spend.
+ */
+export function anthropicApiKey(): string | null {
+  const parsed = aiEnvSchema.safeParse(process.env);
+  const key = parsed.success ? parsed.data.ANTHROPIC_API_KEY : undefined;
+  return key && key.length > 0 ? key : null;
 }
 
 function resolve(env: Partial<z.infer<typeof aiEnvSchema>>): AiConfig {
