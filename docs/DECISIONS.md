@@ -1498,6 +1498,12 @@ instance, provider, model, token counts, approval status. A future
 TylerOS World should subscribe to jobs/runs/roles/runtime/provider
 state, never become a source of truth.
 
+**One run, one provider request.** `/brief` takes ownership with a
+conditional update of `runs.ai_request_started_at` before any model
+call, and does not hold a transaction across the network. A second
+concurrent `/brief` gets `invalid_transition` (409). Briefing timeout
+(20s) stays below the observe lease (2 min). No retries, no fallbacks.
+
 **Failures fail cleanly.** Missing key, unauthorized, timeout, malformed
 output, disabled or missing profile, wrong runtime instance: no
 accidental note, no unlimited retry. One provider request per run.

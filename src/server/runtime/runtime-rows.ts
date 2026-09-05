@@ -48,6 +48,7 @@ export function toRun(row: RunRow): Run {
     trigger: row.trigger,
     resultSummary: row.resultSummary,
     lastHeartbeatAt: row.lastHeartbeatAt,
+    aiRequestStartedAt: row.aiRequestStartedAt,
     provider: row.provider,
     model: row.model,
     inputTokens: row.inputTokens,

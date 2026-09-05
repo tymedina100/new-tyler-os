@@ -152,6 +152,32 @@ export async function findRunById(db: Database, id: string): Promise<Run | null>
   return row ? toRun(row) : null;
 }
 
+/**
+ * Exactly one /brief may start an AI request for a run. The UPDATE is the
+ * lock; the caller must not hold a transaction across the provider call.
+ */
+export async function claimAiRequest(
+  db: Database,
+  runId: string,
+  runtimeId: string,
+  now: Date,
+): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set({ aiRequestStartedAt: now })
+    .where(
+      and(
+        eq(runs.id, runId),
+        eq(runs.runtimeId, runtimeId),
+        eq(runs.status, "running"),
+        isNull(runs.aiRequestStartedAt),
+      ),
+    )
+    .returning();
+
+  return row ? toRun(row) : null;
+}
+
 export async function findJobById(db: Database, id: string): Promise<Job | null> {
   const [row] = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
   return row ? toJob(row) : null;

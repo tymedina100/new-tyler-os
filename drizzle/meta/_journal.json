@@ -64,6 +64,13 @@
       "when": 1788631061877,
       "tag": "0008_thankful_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788633737421,
+      "tag": "0009_tidy_doorman",
+      "breakpoints": true
     }
   ]
 }

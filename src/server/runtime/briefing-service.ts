@@ -65,7 +65,12 @@ export async function briefAiRun(
     throw new DomainError("invalid_transition", "Only a running AI briefing can request a model.");
   }
 
-  const profile = await loadProfileOrFail(db, job, run, runtimeId, now);
+  const claimed = await runtimeRepo.claimAiRequest(db, run.id, runtimeId, now);
+  if (claimed === null) {
+    throw new DomainError("invalid_transition", "This run's AI request has already started.");
+  }
+
+  const profile = await loadProfileOrFail(db, job, claimed, runtimeId, now);
   if (!profile) return { status: "failed" };
 
   const context = await getTodayContext(db, now);

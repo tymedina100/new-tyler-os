@@ -222,6 +222,11 @@ export interface Run extends RunUsage {
   trigger: RunTrigger;
   resultSummary: string | null;
   lastHeartbeatAt: Date | null;
+  /**
+   * When this attempt was allowed to call a model. Null until /brief
+   * wins the single-owner update. Not a second job status.
+   */
+  aiRequestStartedAt: Date | null;
   startedAt: Date;
   finishedAt: Date | null;
 }

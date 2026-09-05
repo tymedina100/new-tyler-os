@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { aiExecutionProfiles, capacityPools } from "@/server/db/schema";
 import * as itemService from "@/server/items/item-service";
 import * as noteService from "@/server/notes/note-service";
@@ -291,6 +291,59 @@ describe("structured AI briefing", () => {
       ),
     ).rejects.toThrow(/different runtime/);
   });
+
+  it("lets only one concurrent /brief own the provider call", async () => {
+    const { claimed, runtime } = await claimAiJob();
+    await addDueTodayItem();
+
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+
+    const caller = async () => {
+      calls += 1;
+      await gate;
+      return {
+        ok: true as const,
+        text: VALID_JSON,
+        model: "claude-opus-5",
+        usage: { inputTokens: 11, cachedInputTokens: 0, outputTokens: 3 },
+      };
+    };
+
+    const first = track(briefAiRun(db(), claimed.run.id, runtime.id, caller, NOW));
+    const second = track(briefAiRun(db(), claimed.run.id, runtime.id, caller, NOW));
+
+    await vi.waitFor(() => {
+      expect(calls).toBe(1);
+    });
+
+    const loserError = await Promise.race([
+      first.settled.then((result) => (result.ok ? hang() : result.error)),
+      second.settled.then((result) => (result.ok ? hang() : result.error)),
+    ]);
+    expect(loserError).toMatchObject({
+      message: "This run's AI request has already started.",
+    });
+    expect(calls).toBe(1);
+
+    release();
+    const settled = await Promise.all([first.settled, second.settled]);
+    const fulfilled = settled.filter((result) => result.ok);
+    const rejected = settled.filter((result) => !result.ok);
+
+    expect(calls).toBe(1);
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(fulfilled[0]).toMatchObject({ value: { status: "needs_approval" } });
+
+    const [row] = await runtimeService.listRuntimeBoard(db());
+    expect(row?.pendingApproval).toBeTruthy();
+    expect(await capacityRepo.listUsageForRun(db(), claimed.run.id)).toHaveLength(1);
+    expect(await noteService.listNotes(db())).toHaveLength(0);
+  });
 });
 
 describe("fresh migration", () => {
@@ -363,4 +416,19 @@ async function insertPool(remaining: number) {
     .returning();
   if (!row) throw new Error("expected pool");
   return row;
+}
+
+function track<T>(promise: Promise<T>): {
+  settled: Promise<{ ok: true; value: T } | { ok: false; error: unknown }>;
+} {
+  return {
+    settled: promise.then(
+      (value) => ({ ok: true as const, value }),
+      (error: unknown) => ({ ok: false as const, error }),
+    ),
+  };
+}
+
+function hang(): Promise<never> {
+  return new Promise(() => undefined);
 }

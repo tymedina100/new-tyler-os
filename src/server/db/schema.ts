@@ -476,6 +476,11 @@ export const runs = pgTable(
     trigger: runTriggerEnum("trigger").notNull().default("manual"),
     resultSummary: text("result_summary"),
     lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+    /**
+     * Set once when this run is allowed to call a model. A second /brief
+     * cannot win this column, so two pollers cannot double-bill.
+     */
+    aiRequestStartedAt: timestamp("ai_request_started_at", { withTimezone: true }),
     provider: text("provider"),
     model: text("model"),
     inputTokens: integer("input_tokens"),
