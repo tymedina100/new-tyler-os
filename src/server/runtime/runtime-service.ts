@@ -12,6 +12,7 @@ import {
   type Runtime,
 } from "@/domain/runtime/runtime";
 import type { CompleteRunInput } from "@/domain/runtime/runtime-schema";
+import { completeRunSchema } from "@/domain/runtime/runtime-schema";
 import {
   assertRuntimeEnabled,
   claimQueuedJob,
@@ -115,6 +116,7 @@ export async function completeRun(
   input: CompleteRunInput,
   now = new Date(),
 ): Promise<void> {
+  const parsed = completeRunSchema.parse(input);
   await db.transaction(async (tx) => {
     const runtime = await requireRuntime(tx, runtimeId);
     const run = await requireRun(tx, runId);
@@ -122,10 +124,10 @@ export async function completeRun(
     const job = await requireJob(tx, run.jobId);
     assertCurrentAttempt(job, run);
 
-    const outcome = input.status;
-    const usage = ledgerUsage(input.usage ?? emptyUsage());
-    const jobPatch = completeRunningJob(job, run, outcome, input.proposal !== undefined);
-    const runPatch = finishRun(run, outcome, now, input.resultSummary, usage);
+    const outcome = parsed.status;
+    const usage = ledgerUsage(parsed.usage ?? emptyUsage());
+    const jobPatch = completeRunningJob(job, run, outcome, parsed.proposal !== undefined);
+    const runPatch = finishRun(run, outcome, now, parsed.resultSummary, usage);
 
     await repo.updateRun(tx, run.id, runPatch);
     await repo.updateJob(tx, job.id, { status: jobPatch.jobStatus });
@@ -133,6 +135,8 @@ export async function completeRun(
       runId: run.id,
       runtimeId: runtime.id,
       provider: usage.provider,
+      product: parsed.usage?.product ?? null,
+      poolKey: parsed.usage?.poolKey ?? null,
       model: usage.model,
       inputTokens: usage.inputTokens,
       cachedInputTokens: usage.cachedInputTokens,
@@ -142,13 +146,13 @@ export async function completeRun(
     });
     await repo.touchRuntimeLastSeen(tx, runtime.id, now);
 
-    if (outcome === "succeeded" && input.proposal) {
+    if (outcome === "succeeded" && parsed.proposal) {
       await repo.insertApproval(tx, {
         runId: run.id,
         jobId: job.id,
-        kind: input.proposal.kind,
-        title: input.proposal.title,
-        body: input.proposal.body,
+        kind: parsed.proposal.kind,
+        title: parsed.proposal.title,
+        body: parsed.proposal.body,
       });
     }
   });

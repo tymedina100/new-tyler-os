@@ -32,19 +32,28 @@ export type ProviderFailure =
   | "timeout"
   | "network"
   | "rate_limited"
+  | "unauthorized"
   | "client_error"
   | "server_error"
   | "refused"
   | "truncated"
   | "empty_response";
 
+export type ProviderUsage = {
+  inputTokens: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+};
+
 export type ProviderResult =
-  { ok: true; text: string; model: string } | { ok: false; failure: ProviderFailure };
+  | { ok: true; text: string; model: string; usage: ProviderUsage }
+  | { ok: false; failure: ProviderFailure; usage: ProviderUsage | null };
 
 export interface ProviderRequest {
   system: string;
   prompt: string;
   maxTokens: number;
+  timeoutMs?: number;
 }
 
 /**
@@ -62,6 +71,13 @@ const messageResponseSchema = z.object({
     .array(z.looseObject({ type: z.string(), text: z.string().optional() }))
     .optional()
     .default([]),
+  usage: z
+    .object({
+      input_tokens: z.number().int().nonnegative().optional(),
+      output_tokens: z.number().int().nonnegative().optional(),
+      cache_read_input_tokens: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
 });
 
 /** Only the error *type* is read. Provider error bodies are never logged whole. */
@@ -95,30 +111,37 @@ export async function requestMessage(
       // A stalled provider must not hold a background task open indefinitely.
       // Capture has already returned by the time this runs, so a timeout costs
       // the suggestion and nothing else.
-      signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(request.timeoutMs ?? AI_REQUEST_TIMEOUT_MS),
     });
   } catch (error) {
     // Not swallowed — classified, and reported to the caller, which logs it.
     // The error is deliberately not attached: a fetch failure can carry the
     // request in its message, and the request carries the key.
-    return { ok: false, failure: isTimeout(error) ? "timeout" : "network" };
+    return {
+      ok: false,
+      failure: isTimeout(error) ? "timeout" : "network",
+      usage: null,
+    };
   }
 
-  if (!response.ok) return { ok: false, failure: await classifyHttpFailure(response) };
+  if (!response.ok) {
+    return { ok: false, failure: await classifyHttpFailure(response), usage: null };
+  }
 
   const parsed = messageResponseSchema.safeParse(await readJson(response));
-  if (!parsed.success) return { ok: false, failure: "empty_response" };
+  if (!parsed.success) return { ok: false, failure: "empty_response", usage: null };
 
   const message = parsed.data;
+  const usage = readUsage(message.usage);
 
   // A safety decline is an HTTP 200 with nothing usable in it. For an optional
   // classification the right answer is simply no suggestion, so no fallback
   // model is configured — a second paid attempt to label "buy cilantro" would
   // be spending money to avoid an outcome that costs the user nothing.
-  if (message.stop_reason === "refusal") return { ok: false, failure: "refused" };
+  if (message.stop_reason === "refusal") return { ok: false, failure: "refused", usage };
   // A truncated object would fail JSON parsing downstream anyway. Naming it
   // here is what makes "raise max_tokens" findable in a log.
-  if (message.stop_reason === "max_tokens") return { ok: false, failure: "truncated" };
+  if (message.stop_reason === "max_tokens") return { ok: false, failure: "truncated", usage };
 
   const text = message.content
     .filter((block) => block.type === "text" && typeof block.text === "string")
@@ -126,9 +149,29 @@ export async function requestMessage(
     .join("")
     .trim();
 
-  if (text.length === 0) return { ok: false, failure: "empty_response" };
+  if (text.length === 0) return { ok: false, failure: "empty_response", usage };
 
-  return { ok: true, text, model: message.model ?? credentials.model };
+  return { ok: true, text, model: message.model ?? credentials.model, usage };
+}
+
+function readUsage(
+  usage:
+    | {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_read_input_tokens?: number;
+      }
+    | undefined,
+): ProviderUsage {
+  if (!usage) {
+    return { inputTokens: null, cachedInputTokens: null, outputTokens: null };
+  }
+
+  return {
+    inputTokens: usage.input_tokens ?? null,
+    cachedInputTokens: usage.cache_read_input_tokens ?? null,
+    outputTokens: usage.output_tokens ?? null,
+  };
 }
 
 function isTimeout(error: unknown): boolean {
@@ -144,6 +187,10 @@ function isTimeout(error: unknown): boolean {
  */
 async function classifyHttpFailure(response: Response): Promise<ProviderFailure> {
   if (response.status === 429) return "rate_limited";
+  if (response.status === 401 || response.status === 403) {
+    await readJson(response);
+    return "unauthorized";
+  }
 
   // Drained regardless, so the connection is not left holding a body nobody
   // wants. The type is not used to change behaviour, only to be reportable.

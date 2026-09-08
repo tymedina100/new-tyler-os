@@ -47,6 +47,7 @@ export async function insertJob(
     authorization: Job["authorization"];
     assignedRole: Role;
     requestedRuntimeKind?: Job["requestedRuntimeKind"];
+    aiExecutionProfileId?: Job["aiExecutionProfileId"];
     scheduleId?: string | null;
     scheduledForDate?: Job["scheduledForDate"];
   },
@@ -60,6 +61,7 @@ export async function insertJob(
       authorization: values.authorization,
       assignedRole: values.assignedRole,
       requestedRuntimeKind: values.requestedRuntimeKind ?? null,
+      aiExecutionProfileId: values.aiExecutionProfileId ?? null,
       scheduleId: values.scheduleId ?? null,
       scheduledForDate: values.scheduledForDate ?? null,
     })
@@ -147,6 +149,32 @@ export async function insertRun(
 
 export async function findRunById(db: Database, id: string): Promise<Run | null> {
   const [row] = await db.select().from(runs).where(eq(runs.id, id)).limit(1);
+  return row ? toRun(row) : null;
+}
+
+/**
+ * Exactly one /brief may start an AI request for a run. The UPDATE is the
+ * lock; the caller must not hold a transaction across the provider call.
+ */
+export async function claimAiRequest(
+  db: Database,
+  runId: string,
+  runtimeId: string,
+  now: Date,
+): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set({ aiRequestStartedAt: now })
+    .where(
+      and(
+        eq(runs.id, runId),
+        eq(runs.runtimeId, runtimeId),
+        eq(runs.status, "running"),
+        isNull(runs.aiRequestStartedAt),
+      ),
+    )
+    .returning();
+
   return row ? toRun(row) : null;
 }
 

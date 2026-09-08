@@ -80,13 +80,15 @@ const optionalCost = z
  */
 export const runUsageSchema = z.object({
   provider: optionalBoundedText(80),
+  product: optionalBoundedText(80),
+  poolKey: optionalBoundedText(80),
   model: optionalBoundedText(120),
   inputTokens: optionalTokenCount,
   cachedInputTokens: optionalTokenCount,
   outputTokens: optionalTokenCount,
   estimatedCostUsd: optionalCost,
 });
-export type RunUsageInput = z.infer<typeof runUsageSchema>;
+export type RunUsageInput = z.input<typeof runUsageSchema>;
 
 export const createNoteProposalSchema = z.object({
   kind: z.literal("create_note" satisfies ApprovalKind),
@@ -101,12 +103,14 @@ export const completeRunSchema = z.object({
   proposal: createNoteProposalSchema.optional(),
   usage: runUsageSchema.optional(),
 });
-export type CompleteRunInput = z.infer<typeof completeRunSchema>;
+export type CompleteRunInput = z.input<typeof completeRunSchema>;
 
 export const enqueueTodayBriefingSchema = z.object({
   kind: z.literal("today_briefing" satisfies JobKind).optional(),
   trigger: runTriggerSchema.optional(),
 });
+
+export { enqueueTodayBriefingAiSchema } from "./ai-profile-schema";
 
 export const approvalIdSchema = z.object({ id: z.uuid() });
 

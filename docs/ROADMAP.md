@@ -312,15 +312,26 @@ See ADR 036.
 
 ---
 
-## Now · runtime fleet + capacity ledger
+## Shipped · runtime fleet + capacity ledger
 
 Execution instances, hashed credentials, an append-only usage ledger, and
 quota pools you record yourself. Health is derived from last seen.
 `/capacity` is a read of real state. Automatic provider routing is not in
 this slice. See ADR 037.
 
-Deliberately not in this slice: cheapest-model algorithms, scraping
-subscription pages, a game-style world, or collapsing Miles into a runtime.
+---
+
+## Now · Miles AI briefing — explicit provider, measured usage
+
+Tyler chooses an AI execution profile. Miles owns a manual `today_briefing_ai`
+job. TylerOS assembles bounded Today context, calls one official Anthropic
+API, validates a structured Miles judgment, records exact usage, and proposes
+a note. Empty Today still spends zero tokens. The 06:20 deterministic briefing
+is unchanged. No router. See ADR 038.
+
+Deliberately not in this slice: automatic provider/model routing, fallback
+chains, scheduled AI spend, Gmail/Calendar/Notion connectors, or a game-style
+world.
 
 ---
 

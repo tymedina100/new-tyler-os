@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { enqueueTodayBriefingAiSchema } from "@/domain/runtime/ai-profile-schema";
 import { approvalIdSchema, enqueueTodayBriefingSchema } from "@/domain/runtime/runtime-schema";
 import { type ActionResult, runAction } from "@/server/action-result";
 import { getDb } from "@/server/db/client";
+import { enqueueTodayBriefingAi } from "@/server/runtime/briefing-service";
 import * as service from "@/server/runtime/runtime-service";
 
 /**
@@ -18,6 +20,17 @@ export async function enqueueTodayBriefingAction(): Promise<ActionResult<{ id: s
   return runAction("enqueueTodayBriefing", async () => {
     enqueueTodayBriefingSchema.parse({});
     const job = await service.enqueueTodayBriefing(getDb());
+    revalidatePath("/", "layout");
+    return { id: job.id };
+  });
+}
+
+export async function enqueueTodayBriefingAiAction(
+  profileId: string,
+): Promise<ActionResult<{ id: string }>> {
+  return runAction("enqueueTodayBriefingAi", async () => {
+    const input = enqueueTodayBriefingAiSchema.parse({ profileId });
+    const job = await enqueueTodayBriefingAi(getDb(), input.profileId);
     revalidatePath("/", "layout");
     return { id: job.id };
   });
