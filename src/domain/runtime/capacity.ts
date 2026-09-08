@@ -29,6 +29,15 @@ export const CAPACITY_CONFIDENCE_LABELS: Record<CapacityConfidence, string> = {
   unknown: "Unknown",
 };
 
+/**
+ * Recent-usage dollars. Null is unknown, not a measured zero.
+ * This does not invent Anthropic prices.
+ */
+export function formatEstimatedCostUsd(value: number | null): string {
+  if (value === null) return "cost unknown";
+  return `$${value.toFixed(4)}`;
+}
+
 export interface CapacityPool {
   id: string;
   provider: string;

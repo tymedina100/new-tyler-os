@@ -359,12 +359,12 @@ are skipped otherwise — say so rather than implying they passed.
 
 The 06:20 deterministic briefing is unchanged. This path is manual only.
 
-- [ ] With zero `ai_execution_profiles`, `/runs` shows **Ask Miles for AI briefing** disabled and does not pick a provider.
-- [ ] `pnpm ai:profile:add` creates one profile. The database row has no API key.
-- [ ] Empty Today + AI job completes quietly: `provider=none`, `model=deterministic`, no approval.
-- [ ] A due-today item + **Ask Miles for AI briefing** with the selected profile produces one proposal. Accept writes exactly one note. Dismiss writes none.
-- [ ] `/runs` shows Anthropic, the model id, and input/output tokens from the provider. `usage_entries` matches. Capacity remaining is unchanged.
-- [ ] If `ANTHROPIC_API_KEY` is unset, say so: the live network call was not proven. Mocked provider tests still must pass.
+- [x] With zero `ai_execution_profiles`, `/runs` shows **Ask Miles for AI briefing** disabled and does not pick a provider.
+- [x] `pnpm ai:profile:add` creates one profile. The database row has no API key.
+- [x] Empty Today + AI job completes quietly: `provider=none`, `model=deterministic`, no approval.
+- [x] A due-today item + **Ask Miles for AI briefing** with the selected profile produces one proposal. Accept writes exactly one note. Dismiss writes none.
+- [x] `/runs` shows Anthropic, the model id, and input/output tokens from the provider. `usage_entries` matches. Capacity remaining is unchanged.
+- [x] Live official API call proven — see the Miles AI briefing record below. `/capacity` recent usage shows `estimated_cost_usd=null` as **cost unknown**, not `$0.0000`.
 
 **Notes — does TylerOS now feel like the obvious place to put it?**
 
@@ -894,3 +894,41 @@ the `e2e/notes.spec.ts` assertions that now pin the correct output down.
 specifically with Notes open (covered generally at 0.7 and unaffected by this
 milestone); a from-scratch install on a second physical device. Both are
 pre-existing gaps in this project's verification, not new ones.
+
+---
+
+### Miles AI briefing — live official API · 2026-09-08
+
+First real AI judgment loop through TylerOS. Manual only. No second paid
+call was made after this proof.
+
+**Profile:** `miles-briefing-primary` · anthropic · `claude-opus-5`. The
+API key stayed in the TylerOS process environment and is not recorded here.
+
+**Live path:** one material Today item; `/runs` explicitly selected that
+profile; **Ask Miles for AI briefing**; authenticated Python runtime claimed
+the Miles job; TylerOS made **exactly one** Anthropic Messages request;
+structured output validated; **one** `usage_entries` row; **one** proposal;
+Accept created **exactly one** note through `noteService`. A second `/brief`
+on the same run was rejected (409) and did not make another provider request.
+
+**TylerOS telemetry** (`usage_entries` / the run):
+
+| Field                | Value           |
+| -------------------- | --------------- |
+| provider             | `anthropic`     |
+| model                | `claude-opus-5` |
+| input tokens         | 480             |
+| cached tokens        | 0               |
+| output tokens        | 80              |
+| `estimated_cost_usd` | `null`          |
+
+The Anthropic console token delta for that request matched TylerOS. Capacity
+remaining was not decremented. TylerOS did not invent a dollar cost.
+
+**External billing guardrail, not TylerOS capacity:** the Anthropic API org
+spend cap is currently **$5**. That is an org-wide Console limit. It is not a
+TylerOS quota-pool remaining value and is not written into `capacity_pools`.
+
+`/capacity` recent usage must render `estimated_cost_usd=null` as **cost
+unknown**. A measured `0` still renders as `$0.0000`.

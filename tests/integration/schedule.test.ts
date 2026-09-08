@@ -178,10 +178,14 @@ describe("stale observe recovery", () => {
   it("requeues a stale observe run so another runtime can claim it", async () => {
     await tickSchedules(db(), MONDAY_DUE);
     const python = await registerMilesRuntime(db(), "home-desktop-python");
-    const first = await runtimeService.claimNextJob(db(), {
-      runtimeId: python.id,
-      role: "miles",
-    });
+    const first = await runtimeService.claimNextJob(
+      db(),
+      {
+        runtimeId: python.id,
+        role: "miles",
+      },
+      MONDAY_DUE,
+    );
     if (!first) throw new Error("expected a claim");
 
     const tick = await tickSchedules(db(), STALE_NOW);
@@ -210,10 +214,14 @@ describe("stale observe recovery", () => {
     const python = await registerMilesRuntime(db(), "test-python");
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const claimed = await runtimeService.claimNextJob(db(), {
-        runtimeId: python.id,
-        role: "miles",
-      });
+      const claimed = await runtimeService.claimNextJob(
+        db(),
+        {
+          runtimeId: python.id,
+          role: "miles",
+        },
+        MONDAY_DUE,
+      );
       if (!claimed) throw new Error("expected a claim");
       await tickSchedules(db(), new Date(STALE_NOW.getTime() + attempt * 60_000));
     }

@@ -1494,9 +1494,11 @@ pricing exists (it does not). Tokens do not decrement capacity remaining.
 Attribution and remaining-capacity measurement stay different facts.
 
 **Presentation projects this state.** `/runs` shows role, job kind,
-instance, provider, model, token counts, approval status. A future
-TylerOS World should subscribe to jobs/runs/roles/runtime/provider
-state, never become a source of truth.
+instance, provider, model, token counts, approval status. `/capacity`
+recent usage shows a numeric estimated cost as dollars (`$0.0000` when
+the ledger recorded a measured zero) and **cost unknown** when
+`estimated_cost_usd` is null. A future TylerOS World should subscribe to
+jobs/runs/roles/runtime/provider state, never become a source of truth.
 
 **One run, one provider request.** `/brief` takes ownership with a
 conditional update of `runs.ai_request_started_at` before any model

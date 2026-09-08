@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { CapacityRemainingForm } from "@/components/runtime/capacity-remaining-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
-import { CAPACITY_CONFIDENCE_LABELS, CAPACITY_UNIT_LABELS } from "@/domain/runtime/capacity";
+import {
+  CAPACITY_CONFIDENCE_LABELS,
+  CAPACITY_UNIT_LABELS,
+  formatEstimatedCostUsd,
+} from "@/domain/runtime/capacity";
 import { RUNTIME_CAPABILITY_LABELS, RUNTIME_HEALTH_LABELS } from "@/domain/runtime/fleet";
 import { RUNTIME_KIND_LABELS } from "@/domain/runtime/runtime";
 import { getDb } from "@/server/db/client";
@@ -117,8 +121,8 @@ export default async function CapacityPage() {
             {board.recentUsage.map((entry) => (
               <li key={entry.id} className="text-muted-foreground text-xs">
                 {entry.recordedAt.toISOString().replace("T", " ").slice(0, 19)} ·{" "}
-                {entry.provider ?? "none"} / {entry.model ?? "—"} · $
-                {(entry.estimatedCostUsd ?? 0).toFixed(4)}
+                {entry.provider ?? "none"} / {entry.model ?? "—"} ·{" "}
+                {formatEstimatedCostUsd(entry.estimatedCostUsd)}
               </li>
             ))}
           </ul>
