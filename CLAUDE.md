@@ -183,10 +183,11 @@ no `entities` table. ADRs 028–029.
 **0.8 — Notes & Knowledge.** Standalone `notes`, markdown without raw HTML,
 `note:` capture prefix, search's fourth domain. Never reaches AI. ADRs 033–034.
 
-**Shipped — runtime observe, wake-up, fleet.** Roles ≠ runtimes ≠ providers.
-Accept uses `noteService`. 06:20 briefing stays deterministic. Instances,
-hashed credentials, usage ledger. ADRs 035–037.
+**Shipped — runtime observe, wake-up, fleet, Miles AI briefing.** Roles ≠
+runtimes ≠ providers. Accept uses `noteService`. 06:20 stays deterministic.
+Explicit AI profiles, one Anthropic adapter. ADRs 035–038.
 
-**Now — Miles AI briefing.** Explicit `ai_execution_profiles` (no secrets).
-Manual `today_briefing_ai`; Tyler chooses the profile. One Anthropic official
-API adapter. Structured judgment, measured usage, no router. ADR 038.
+**Now — Standing authority.** Default deny. Explicit `standing_authorities`
+(role + job kind + action). First grant: Miles `today_briefing_ai`
+`create_note`. Auto-exec still uses `noteService`. Audit is `auto_executed`,
+not a fake Accept. ADR 039.

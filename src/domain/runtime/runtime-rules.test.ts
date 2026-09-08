@@ -10,6 +10,7 @@ import {
   proposedNoteCaptureBody,
   reconcileApproval,
   resolveApproval,
+  resolveUnderStandingAuthority,
   settleApprovedJob,
 } from "./runtime-rules";
 
@@ -100,6 +101,12 @@ describe("completeRunningJob", () => {
       completeRunningJob({ status: "running" }, { status: "running" }, "failed", true),
     ).toEqual({ jobStatus: "failed" });
   });
+
+  it("succeeds without waiting when standing authority already authorized the proposal", () => {
+    expect(
+      completeRunningJob({ status: "running" }, { status: "running" }, "succeeded", true, true),
+    ).toEqual({ jobStatus: "succeeded" });
+  });
 });
 
 describe("finishRun", () => {
@@ -148,6 +155,20 @@ describe("reconcileApproval and resolveApproval", () => {
       reason: "already_resolved",
     });
     expect(() => resolveApproval({ status: "dismissed" }, "accepted", NOW)).toThrow(DomainError);
+  });
+
+  it("does not treat standing-authority execution as a Tyler Accept", () => {
+    expect(resolveUnderStandingAuthority({ status: "pending" }, NOW)).toEqual({
+      status: "auto_executed",
+      resolvedAt: NOW,
+    });
+    expect(reconcileApproval({ status: "auto_executed" })).toEqual({
+      applicable: false,
+      reason: "already_resolved",
+    });
+    expect(() => resolveApproval({ status: "auto_executed" }, "accepted", NOW)).toThrow(
+      DomainError,
+    );
   });
 });
 

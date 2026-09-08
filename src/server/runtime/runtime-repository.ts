@@ -244,7 +244,8 @@ export async function findApprovalById(db: Database, id: string): Promise<Approv
 export async function takePendingApproval(
   db: Database,
   id: string,
-  patch: Pick<Approval, "status" | "resolvedAt">,
+  patch: Pick<Approval, "status" | "resolvedAt"> &
+    Partial<Pick<Approval, "standingAuthorityId" | "standingAuthorityKey" | "acceptedNoteId">>,
 ): Promise<Approval | null> {
   const [row] = await db
     .update(approvals)
@@ -258,7 +259,12 @@ export async function takePendingApproval(
 export async function updateApproval(
   db: Database,
   id: string,
-  patch: Partial<Pick<Approval, "status" | "resolvedAt" | "acceptedNoteId">>,
+  patch: Partial<
+    Pick<
+      Approval,
+      "status" | "resolvedAt" | "acceptedNoteId" | "standingAuthorityId" | "standingAuthorityKey"
+    >
+  >,
 ): Promise<Approval | null> {
   const [row] = await db.update(approvals).set(patch).where(eq(approvals.id, id)).returning();
   return row ? toApproval(row) : null;
@@ -271,6 +277,7 @@ export interface JobBoardRow {
   claimedRuntimeInstanceKey: string | null;
   latestRun: Run | null;
   pendingApproval: Approval | null;
+  latestApproval: Approval | null;
 }
 
 export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoardRow[]> {
@@ -278,7 +285,7 @@ export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoard
     with: {
       claimedByRuntime: true,
       runs: { orderBy: [desc(runs.startedAt)], limit: 1 },
-      approvals: { where: eq(approvals.status, "pending") },
+      approvals: { orderBy: [desc(approvals.createdAt)], limit: 1 },
     },
     orderBy: [desc(jobs.createdAt)],
     limit,
@@ -286,13 +293,15 @@ export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoard
 
   return rows.map((row) => {
     const { claimedByRuntime, runs: runRows, approvals: approvalRows, ...job } = row;
+    const latestApproval = approvalRows[0] ? toApproval(approvalRows[0]) : null;
     return {
       job: toJob(job),
       claimedRuntimeKind: claimedByRuntime?.kind ?? null,
       claimedRuntimeName: claimedByRuntime?.name ?? null,
       claimedRuntimeInstanceKey: claimedByRuntime?.instanceKey ?? null,
       latestRun: runRows[0] ? toRun(runRows[0]) : null,
-      pendingApproval: approvalRows[0] ? toApproval(approvalRows[0]) : null,
+      pendingApproval: latestApproval?.status === "pending" ? latestApproval : null,
+      latestApproval,
     };
   });
 }

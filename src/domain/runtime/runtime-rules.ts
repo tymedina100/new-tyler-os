@@ -93,6 +93,7 @@ export function completeRunningJob(
   run: Pick<Run, "status">,
   outcome: RunOutcome,
   hasProposal: boolean,
+  authorizedByStandingAuthority = false,
 ): { jobStatus: JobStatus } {
   if (job.status !== "running") {
     throw new DomainError("invalid_transition", "Only a running job can be completed.");
@@ -102,7 +103,9 @@ export function completeRunningJob(
   }
 
   if (outcome === "failed") return { jobStatus: "failed" };
-  return { jobStatus: hasProposal ? "needs_approval" : "succeeded" };
+  if (!hasProposal) return { jobStatus: "succeeded" };
+  if (authorizedByStandingAuthority) return { jobStatus: "succeeded" };
+  return { jobStatus: "needs_approval" };
 }
 
 export function finishRun(
@@ -153,6 +156,18 @@ export function resolveApproval(
   }
 
   return { status: decision, resolvedAt: now };
+}
+
+export function resolveUnderStandingAuthority(
+  approval: Pick<Approval, "status">,
+  now: Date,
+): ApprovalStatusPatch {
+  const reconciled = reconcileApproval(approval);
+  if (!reconciled.applicable) {
+    throw new DomainError("invalid_transition", "This proposal has already been resolved.");
+  }
+
+  return { status: "auto_executed", resolvedAt: now };
 }
 
 export function settleApprovedJob(job: Pick<Job, "status">): { status: JobStatus } {

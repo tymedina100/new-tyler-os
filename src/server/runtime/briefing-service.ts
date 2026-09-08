@@ -138,7 +138,7 @@ export async function briefAiRun(
   }
 
   const proposal = renderMilesBriefing(context.today, judgment);
-  await completeRun(
+  const completed = await completeRun(
     db,
     run.id,
     runtimeId,
@@ -150,7 +150,9 @@ export async function briefAiRun(
     },
     now,
   );
-  return { status: "needs_approval" };
+  return {
+    status: completed.jobStatus === "needs_approval" ? "needs_approval" : "succeeded",
+  };
 }
 
 async function loadProfileOrFail(

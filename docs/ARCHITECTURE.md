@@ -23,9 +23,10 @@ are not items and must get their own tables:
 
 - kitchen inventory — **built in 0.3**, as `kitchen_inventory`
 - notes — **built in 0.8**, as `notes`
-- runtime jobs, runs, approvals — **built as the observe slice**, as
-  `jobs` / `runs` / `approvals`. An execution is not something captured to
-  act on, and it is not a second copy of the Notion work board. See ADR 035.
+- runtime jobs, runs, approvals, standing authorities — **built as the observe
+  slice**, as `jobs` / `runs` / `approvals` / `standing_authorities`. An
+  execution is not something captured to act on, and it is not a second copy
+  of the Notion work board. See ADRs 035 and 039.
 - warranties, receipts, appliance manuals
 - routine templates and checklists — a named list of steps is not a captured
   thought. A repeating _task_ is one, and 0.4 kept it on the spine: see below
@@ -480,21 +481,23 @@ API.** Capture classification and a manual `today_briefing_ai` job both use
 Anthropic Messages through `src/server/ai/`. Tyler picks an
 `ai_execution_profiles` row; nothing routes. The 06:20 deterministic briefing
 is unchanged. Secrets stay in the process environment. Structured Miles
-judgment is validated before a note is proposed. See ADR 038.
+judgment is validated before a note is proposed. Standing authority, if
+Tyler has granted it, may then execute that proposal through `noteService`;
+the model never decides that. See ADRs 038 and 039.
 
 ## Traps this design is built against
 
-| Trap                              | Defence                                                                 |
-| --------------------------------- | ----------------------------------------------------------------------- |
-| Unrelated CRUD pages              | One Item spine; the inbox is a status                                   |
-| AI dependence                     | No AI in the core; every feature works without it                       |
-| AI overwriting the user           | It proposes rows; only acceptance writes, and stale never wins          |
-| A key in browser JavaScript       | Lint forbids UI importing `src/server/ai/*`; verified to fire           |
-| Hard to migrate                   | Plain SQL migrations, owned and readable                                |
-| Hard to test                      | Pure domain; `db` passed as an argument                                 |
-| Tight coupling                    | One-way layering, enforced by lint                                      |
-| Over-engineering                  | No human-facing API layer, no client store, no abstraction with one use |
-| Too complex for one developer     | Small files, explicit domain concepts over generic utilities            |
-| A route reachable with no session | `src/proxy.ts` + `runAction`, both proven by `src/proxy.test.ts`        |
-| A secret in the client bundle     | Server-only modules; verified absent from `.next/static/`               |
-| Auth as an excuse for accounts    | One passphrase, no `user_id`, no provider library — ADR 030             |
+| Trap                              | Defence                                                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Unrelated CRUD pages              | One Item spine; the inbox is a status                                                                                   |
+| AI dependence                     | No AI in the core; every feature works without it                                                                       |
+| AI overwriting the user           | Models propose. TylerOS policy decides. Domain services execute. Absent standing authority, only Tyler's Accept writes. |
+| A key in browser JavaScript       | Lint forbids UI importing `src/server/ai/*`; verified to fire                                                           |
+| Hard to migrate                   | Plain SQL migrations, owned and readable                                                                                |
+| Hard to test                      | Pure domain; `db` passed as an argument                                                                                 |
+| Tight coupling                    | One-way layering, enforced by lint                                                                                      |
+| Over-engineering                  | No human-facing API layer, no client store, no abstraction with one use                                                 |
+| Too complex for one developer     | Small files, explicit domain concepts over generic utilities                                                            |
+| A route reachable with no session | `src/proxy.ts` + `runAction`, both proven by `src/proxy.test.ts`                                                        |
+| A secret in the client bundle     | Server-only modules; verified absent from `.next/static/`                                                               |
+| Auth as an excuse for accounts    | One passphrase, no `user_id`, no provider library — ADR 030                                                             |
