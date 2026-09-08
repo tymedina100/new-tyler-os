@@ -7,6 +7,7 @@ import {
   emptyUsage,
   finishRun,
   heartbeatRunningRun,
+  proposalAllowedForCompletion,
   proposedNoteCaptureBody,
   reconcileApproval,
   resolveApproval,
@@ -106,6 +107,30 @@ describe("completeRunningJob", () => {
     expect(
       completeRunningJob({ status: "running" }, { status: "running" }, "succeeded", true, true),
     ).toEqual({ jobStatus: "succeeded" });
+  });
+});
+
+describe("proposalAllowedForCompletion", () => {
+  const proposal = { kind: "create_note" as const, title: "Note", body: "Body" };
+
+  it("lets the worker complete an AI briefing with no proposal", () => {
+    expect(proposalAllowedForCompletion("today_briefing_ai", undefined, "runtime")).toBeUndefined();
+  });
+
+  it("rejects a worker-supplied AI briefing proposal", () => {
+    expect(() => proposalAllowedForCompletion("today_briefing_ai", proposal, "runtime")).toThrow(
+      /validates Miles judgment/,
+    );
+  });
+
+  it("lets the validated AI path propose a note", () => {
+    expect(proposalAllowedForCompletion("today_briefing_ai", proposal, "validated_ai")).toBe(
+      proposal,
+    );
+  });
+
+  it("lets the worker propose a note for the deterministic briefing", () => {
+    expect(proposalAllowedForCompletion("today_briefing", proposal, "runtime")).toBe(proposal);
   });
 });
 

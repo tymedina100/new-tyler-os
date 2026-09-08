@@ -379,6 +379,8 @@ slice does not change the provider path.
 - [x] Revoke returns the next run to pending approval. The earlier note stays.
 - [x] Wrong role / wrong job kind do not match. The 06:20 briefing still needs Accept.
 - [x] Empty Today with authority granted still spends zero tokens and writes no note.
+- [x] Concurrent `completeRun` on two PostgreSQL connections creates one usage row, one approval, and one note.
+- [x] `POST /complete` cannot auto-save an arbitrary note on `today_briefing_ai`; only validated `/brief` judgment can.
 
 **Notes — does TylerOS now feel like the obvious place to put it?**
 

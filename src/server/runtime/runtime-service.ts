@@ -27,7 +27,7 @@ import { assertRunOwnedBy, requireJob, requireRun, requireRuntime } from "./runt
 import * as repo from "./runtime-repository";
 import { projectTodayContext } from "./today-context";
 
-export { completeRun } from "./complete-run";
+export { completeRun, completeValidatedAiRun } from "./complete-run";
 
 /**
  * Runtime use cases.

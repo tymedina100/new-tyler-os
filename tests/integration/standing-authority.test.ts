@@ -4,6 +4,7 @@ import * as itemService from "@/server/items/item-service";
 import * as noteService from "@/server/notes/note-service";
 import * as profileService from "@/server/runtime/ai-profile-service";
 import { briefAiRun, enqueueTodayBriefingAi } from "@/server/runtime/briefing-service";
+import * as capacityRepo from "@/server/runtime/capacity-repository";
 import * as runtimeService from "@/server/runtime/runtime-service";
 import * as authorityService from "@/server/runtime/standing-authority-service";
 import { registerMilesRuntime } from "../support/runtime-fixtures";
@@ -325,6 +326,97 @@ describe("concurrent auto-execution", () => {
     expect(rejected).toHaveLength(1);
     expect(fulfilled[0]).toMatchObject({ value: { status: "succeeded" } });
     expect(await noteService.listNotes(db())).toHaveLength(1);
+  });
+});
+
+describe("worker completion cannot bypass validated AI", () => {
+  it("rejects an arbitrary /complete proposal on an AI briefing", async () => {
+    await authorityService.grantStandingAuthority(db(), MILES_AI_NOTE);
+    const { claimed, runtime } = await claimAiJob();
+    await addDueTodayItem();
+
+    await expect(
+      runtimeService.completeRun(db(), claimed.run.id, runtime.id, {
+        status: "succeeded",
+        resultSummary: "I wrote a note myself.",
+        proposal: {
+          kind: "create_note",
+          title: "Unvalidated briefing",
+          body: "This never passed Miles judgment.",
+        },
+      }),
+    ).rejects.toThrow(/validates Miles judgment/);
+
+    expect(await noteService.listNotes(db())).toHaveLength(0);
+    const [row] = await runtimeService.listRuntimeBoard(db());
+    expect(row?.job.status).toBe("running");
+    expect(row?.pendingApproval).toBeNull();
+    expect(row?.latestApproval).toBeNull();
+    expect(row?.latestRun?.status).toBe("running");
+    expect(row?.latestRun?.resultSummary).toBeNull();
+  });
+
+  it("still lets the worker complete an empty AI briefing with no proposal", async () => {
+    const { claimed, runtime } = await claimAiJob();
+    await runtimeService.completeRun(db(), claimed.run.id, runtime.id, {
+      status: "succeeded",
+      resultSummary: "No material Today items.",
+      usage: { provider: "none", model: "deterministic" },
+    });
+
+    expect(await noteService.listNotes(db())).toHaveLength(0);
+    const [row] = await runtimeService.listRuntimeBoard(db());
+    expect(row?.job.status).toBe("succeeded");
+    expect(row?.latestApproval).toBeNull();
+  });
+});
+
+describe("completion ownership", () => {
+  it("rolls back when noteService.captureNote fails during auto-execution", async () => {
+    await authorityService.grantStandingAuthority(db(), MILES_AI_NOTE);
+    const { claimed, runtime } = await claimAiJob();
+    vi.spyOn(noteService, "captureNote").mockRejectedValueOnce(new Error("note write failed"));
+
+    await expect(
+      runtimeService.completeValidatedAiRun(db(), claimed.run.id, runtime.id, {
+        status: "succeeded",
+        resultSummary: "Drafted today's AI briefing.",
+        proposal: {
+          kind: "create_note",
+          title: "AI Today briefing",
+          body: "## Priorities\n- Review TylerOS runtime PR",
+        },
+      }),
+    ).rejects.toThrow(/note write failed/);
+
+    expect(await noteService.listNotes(db())).toHaveLength(0);
+    const [row] = await runtimeService.listRuntimeBoard(db());
+    expect(row?.job.status).toBe("running");
+    expect(row?.latestApproval).toBeNull();
+    expect(row?.latestRun?.status).toBe("running");
+    expect(await capacityRepo.listUsageForRun(db(), claimed.run.id)).toHaveLength(0);
+  });
+
+  it("lets only one sequential completion write usage and a note", async () => {
+    await authorityService.grantStandingAuthority(db(), MILES_AI_NOTE);
+    const { claimed, runtime } = await claimAiJob();
+    const input = {
+      status: "succeeded" as const,
+      resultSummary: "Drafted today's AI briefing.",
+      proposal: {
+        kind: "create_note" as const,
+        title: "AI Today briefing",
+        body: "## Priorities\n- Review TylerOS runtime PR",
+      },
+    };
+
+    await runtimeService.completeValidatedAiRun(db(), claimed.run.id, runtime.id, input);
+    await expect(
+      runtimeService.completeValidatedAiRun(db(), claimed.run.id, runtime.id, input),
+    ).rejects.toThrow(/no longer the current claim/);
+
+    expect(await noteService.listNotes(db())).toHaveLength(1);
+    expect(await capacityRepo.listUsageForRun(db(), claimed.run.id)).toHaveLength(1);
   });
 });
 

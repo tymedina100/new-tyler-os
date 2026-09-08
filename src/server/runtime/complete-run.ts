@@ -8,8 +8,10 @@ import {
   completeRunningJob,
   emptyUsage,
   finishRun,
+  proposalAllowedForCompletion,
   proposedNoteCaptureBody,
   resolveUnderStandingAuthority,
+  type RunCompletionSource,
 } from "@/domain/runtime/runtime-rules";
 import type { StandingAuthority } from "@/domain/runtime/standing-authority";
 import type { Database } from "@/server/db/client";
@@ -20,8 +22,9 @@ import * as repo from "./runtime-repository";
 import { findMatchingStandingAuthority } from "./standing-authority-service";
 
 /**
- * Finish a run. A proposal waits on Tyler unless standing authority matches;
- * auto-execution still creates the note through `noteService.captureNote`.
+ * Finish a run. Completion is a conditional transition on `running`.
+ * A proposal waits on Tyler unless standing authority matches; auto-execution
+ * still creates the note through `noteService.captureNote`.
  */
 
 export async function completeRun(
@@ -30,6 +33,28 @@ export async function completeRun(
   runtimeId: string,
   input: CompleteRunInput,
   now = new Date(),
+): Promise<{ jobStatus: JobStatus }> {
+  return completeAttempt(db, runId, runtimeId, input, "runtime", now);
+}
+
+/** In-process path after structured Miles judgment. Not reachable from /complete. */
+export async function completeValidatedAiRun(
+  db: Database,
+  runId: string,
+  runtimeId: string,
+  input: CompleteRunInput,
+  now = new Date(),
+): Promise<{ jobStatus: JobStatus }> {
+  return completeAttempt(db, runId, runtimeId, input, "validated_ai", now);
+}
+
+async function completeAttempt(
+  db: Database,
+  runId: string,
+  runtimeId: string,
+  input: CompleteRunInput,
+  source: RunCompletionSource,
+  now: Date,
 ): Promise<{ jobStatus: JobStatus }> {
   const parsed = completeRunSchema.parse(input);
   return db.transaction(async (tx) => {
@@ -40,7 +65,11 @@ export async function completeRun(
     assertCurrentAttempt(job, run);
 
     const outcome = parsed.status;
-    const proposal = outcome === "succeeded" ? parsed.proposal : undefined;
+    const proposal = proposalAllowedForCompletion(
+      job.kind,
+      outcome === "succeeded" ? parsed.proposal : undefined,
+      source,
+    );
     const matched = proposal
       ? await findMatchingStandingAuthority(tx, {
           role: job.assignedRole,
@@ -59,8 +88,16 @@ export async function completeRun(
     );
     const runPatch = finishRun(run, outcome, now, parsed.resultSummary, usage);
 
-    await repo.updateRun(tx, run.id, runPatch);
-    await repo.updateJob(tx, job.id, { status: jobPatch.jobStatus });
+    const finished = await repo.takeOwnedRunningRun(tx, run.id, runtime.id, runPatch);
+    if (finished === null) {
+      throw new DomainError("invalid_transition", "This attempt is no longer the current claim.");
+    }
+
+    const settledJob = await repo.takeOwnedRunningJob(tx, job.id, runtime.id, jobPatch.jobStatus);
+    if (settledJob === null) {
+      throw new DomainError("invalid_transition", "This attempt is no longer the current claim.");
+    }
+
     await capacityRepo.insertUsageEntry(tx, {
       runId: run.id,
       runtimeId: runtime.id,

@@ -1541,15 +1541,21 @@ exact on all three fields plus `enabled`. Role-only matching is impossible:
 the request type requires the job kind and action. Forge, Archer, a
 deterministic `today_briefing`, or any other action cannot inherit this grant.
 
-**Decision point.** After a validated proposal exists, `completeRun` loads
-enabled authorities and asks `matchStandingAuthority`. That function is
-domain code. It does not live in the Anthropic adapter, the Python worker, a
-React component, or `noteService`. The model never decides whether it has
-authority. The runtime never decides either.
+**Decision point.** After a validated proposal exists, the in-process
+`completeValidatedAiRun` path loads enabled authorities and asks
+`matchStandingAuthority`. That function is domain code. It does not live in
+the Anthropic adapter, the Python worker, a React component, or `noteService`.
+The model never decides whether it has authority. The runtime never decides
+either. `POST /complete` is the worker boundary: it may complete empty Today
+or report failure, but it cannot submit a `today_briefing_ai` proposal.
+Completion itself is a conditional `running` → finished transition; only the
+winning transaction writes usage, approvals, or notes.
 
 **One write path.** Authorized auto-execution still calls
 `noteService.captureNote` with the same `proposedNoteCaptureBody` as Accept.
-There is no second notes table and no worker write.
+There is no second notes table and no worker write. If that call fails, the
+completion transaction rolls back — the run stays `running`, with no usage
+row and no `auto_executed` audit.
 
 **Audit is not a fake Accept.** The approval row is kept. Status
 `auto_executed` is distinct from `accepted`. `standing_authority_key` is

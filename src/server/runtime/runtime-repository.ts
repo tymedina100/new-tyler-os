@@ -206,6 +206,68 @@ export async function updateRun(
   return row ? toRun(row) : null;
 }
 
+type RunFinishPersist = Partial<
+  Pick<
+    Run,
+    | "status"
+    | "resultSummary"
+    | "finishedAt"
+    | "provider"
+    | "model"
+    | "inputTokens"
+    | "cachedInputTokens"
+    | "outputTokens"
+    | "estimatedCostUsd"
+  >
+>;
+
+/**
+ * Atomic completion ownership. Only one UPDATE can win `status = running`.
+ * The loser must not write usage, approvals, or notes.
+ */
+export async function takeOwnedRunningRun(
+  db: Database,
+  runId: string,
+  runtimeId: string,
+  patch: RunFinishPersist,
+): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set(patch)
+    .where(and(eq(runs.id, runId), eq(runs.runtimeId, runtimeId), eq(runs.status, "running")))
+    .returning();
+  return row ? toRun(row) : null;
+}
+
+export async function takeRunningRun(
+  db: Database,
+  runId: string,
+  patch: RunFinishPersist,
+): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set(patch)
+    .where(and(eq(runs.id, runId), eq(runs.status, "running")))
+    .returning();
+  return row ? toRun(row) : null;
+}
+
+export async function takeOwnedRunningJob(
+  db: Database,
+  jobId: string,
+  runtimeId: string,
+  status: Job["status"],
+): Promise<Job | null> {
+  const [row] = await db
+    .update(jobs)
+    .set({ status })
+    .where(
+      and(eq(jobs.id, jobId), eq(jobs.status, "running"), eq(jobs.claimedByRuntimeId, runtimeId)),
+    )
+    .returning();
+  return row ? toJob(row) : null;
+}
+
 export async function insertApproval(
   db: Database,
   values: {

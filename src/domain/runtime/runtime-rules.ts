@@ -4,6 +4,7 @@ import {
   type Approval,
   type ApprovalStatus,
   type Job,
+  type JobKind,
   type JobStatus,
   type Role,
   type Run,
@@ -87,6 +88,28 @@ export function heartbeatRunningRun(
 }
 
 export type RunOutcome = "succeeded" | "failed";
+
+/**
+ * Who is completing the run. The HTTP worker boundary is `runtime`.
+ * `validated_ai` is only the in-process path after Miles judgment parsed.
+ * This is not a client-supplied flag.
+ */
+export type RunCompletionSource = "runtime" | "validated_ai";
+
+export function proposalAllowedForCompletion<T>(
+  jobKind: JobKind,
+  proposal: T | undefined,
+  source: RunCompletionSource,
+): T | undefined {
+  if (proposal === undefined) return undefined;
+  if (jobKind === "today_briefing_ai" && source !== "validated_ai") {
+    throw new DomainError(
+      "invalid_transition",
+      "An AI briefing can only propose a note after TylerOS validates Miles judgment.",
+    );
+  }
+  return proposal;
+}
 
 export function completeRunningJob(
   job: Pick<Job, "status">,
