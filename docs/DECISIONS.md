@@ -1517,3 +1517,61 @@ profiles; treating `AI_SUGGESTIONS=off` as hiding a briefing key Tyler
 explicitly asked to spend; inventing USD cost from tokens; decrementing
 manual capacity percentages; scheduled recurring AI; multiple providers
 for symmetry; automatic profile selection.
+
+---
+
+## 039 · Standing authority: delegated execution is explicit, default deny
+
+**Accepted** · Miles AI briefing notes only, via `noteService`
+
+A proposal is not authorization. Models propose. TylerOS policy decides
+whether an action is permitted. Domain services execute. Audit records
+who/what authorized it.
+
+**Default deny.** A fresh database grants nothing. Migrations do not seed
+`standing_authorities`. Absent a matching enabled row, completing a run
+inserts a pending approval exactly as ADR 035/038 specified. Tyler must
+grant authority explicitly (`pnpm authority:grant`). Duplicate keys
+conflict. Revoke disables the row; later runs return to approval. Historical
+auto-executions keep their audit.
+
+**Narrow matching.** A grant is `key` + `role` + `job` kind + `action`. The
+first grant is Miles + `today_briefing_ai` + `create_note`. Matching is
+exact on all three fields plus `enabled`. Role-only matching is impossible:
+the request type requires the job kind and action. Forge, Archer, a
+deterministic `today_briefing`, or any other action cannot inherit this grant.
+
+**Decision point.** After a validated proposal exists, the in-process
+`completeValidatedAiRun` path loads enabled authorities and asks
+`matchStandingAuthority`. That function is domain code. It does not live in
+the Anthropic adapter, the Python worker, a React component, or `noteService`.
+The model never decides whether it has authority. The runtime never decides
+either. `POST /complete` is the worker boundary: it may complete empty Today
+or report failure, but it cannot submit a `today_briefing_ai` proposal.
+Completion itself is a conditional `running` → finished transition; only the
+winning transaction writes usage, approvals, or notes.
+
+**One write path.** Authorized auto-execution still calls
+`noteService.captureNote` with the same `proposedNoteCaptureBody` as Accept.
+There is no second notes table and no worker write. If that call fails, the
+completion transaction rolls back — the run stays `running`, with no usage
+row and no `auto_executed` audit.
+
+**Audit is not a fake Accept.** The approval row is kept. Status
+`auto_executed` is distinct from `accepted`. `standing_authority_key` is
+denormalised onto the approval so a later revoke does not erase what
+authorized the note. Tyler Accept remains `accepted` with a null key.
+
+**Empty Today is unchanged.** No material, no provider call, no proposal, no
+authority evaluation, no note. Authority is not an excuse to spend tokens.
+
+**Authorization is not routing.** This table answers "may this action happen?"
+Provider/model selection stays on the explicit AI execution profile.
+
+**Considered and rejected:** seeding a Miles default; storing a JSON/DSL
+policy engine; spend limits, merchants, calendars, email sensitivity,
+confidence, geography, or time windows; treating `accepted` as the
+auto-exec status; putting the check in the provider adapter or worker;
+auto-executing the 06:20 deterministic briefing under the AI-note grant.
+
+---

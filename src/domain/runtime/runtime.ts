@@ -115,7 +115,13 @@ export type RunTrigger = (typeof RUN_TRIGGERS)[number];
 export const APPROVAL_KINDS = ["create_note"] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 
-export const APPROVAL_STATUSES = ["pending", "accepted", "dismissed", "superseded"] as const;
+export const APPROVAL_STATUSES = [
+  "pending",
+  "accepted",
+  "dismissed",
+  "superseded",
+  "auto_executed",
+] as const;
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
 export const CHIEF_OF_STAFF_ROLE: Role = "miles";
@@ -144,6 +150,14 @@ export const AUTHORIZATION_LABELS: Record<AuthorizationLevel, string> = {
 
 export const APPROVAL_KIND_LABELS: Record<ApprovalKind, string> = {
   create_note: "Create note",
+};
+
+export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  dismissed: "Dismissed",
+  superseded: "Superseded",
+  auto_executed: "Auto-executed under standing authority",
 };
 
 export const TODAY_BRIEFING_TITLE = "Today briefing";
@@ -240,6 +254,8 @@ export interface Approval {
   title: string;
   body: string;
   acceptedNoteId: string | null;
+  standingAuthorityId: string | null;
+  standingAuthorityKey: string | null;
   createdAt: Date;
   resolvedAt: Date | null;
 }

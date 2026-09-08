@@ -321,7 +321,7 @@ this slice. See ADR 037.
 
 ---
 
-## Now · Miles AI briefing — explicit provider, measured usage
+## Shipped · Miles AI briefing — explicit provider, measured usage
 
 Tyler chooses an AI execution profile. Miles owns a manual `today_briefing_ai`
 job. TylerOS assembles bounded Today context, calls one official Anthropic
@@ -329,9 +329,21 @@ API, validates a structured Miles judgment, records exact usage, and proposes
 a note. Empty Today still spends zero tokens. The 06:20 deterministic briefing
 is unchanged. No router. See ADR 038.
 
-Deliberately not in this slice: automatic provider/model routing, fallback
-chains, scheduled AI spend, Gmail/Calendar/Notion connectors, or a game-style
-world.
+---
+
+## Now · Standing authority — safe internal auto-execution
+
+A proposal is not authorization. Models propose. TylerOS policy decides whether
+an action is permitted. Domain services execute. Audit records who/what
+authorized it. Default deny: absent an explicit `standing_authorities` row,
+current pending-approval behaviour remains.
+
+The first grant is Miles + `today_briefing_ai` + `create_note`. Auto-execution
+still uses `noteService.captureNote`. `/runs` shows auto-executed under
+standing authority rather than a fake Accept. See ADR 039.
+
+Deliberately not in this slice: purchases, email, calendar, deletion, GitHub
+merges, deploys, policy DSL, automatic routing, or TylerOS World.
 
 ---
 

@@ -38,7 +38,9 @@ async function recoverStaleObserveRuns(
     const decision = recoverStaleObserveAttempt(job, run, now);
     if (!decision.applicable) continue;
 
-    await runtimeRepo.updateRun(db, run.id, decision.run);
+    const finished = await runtimeRepo.takeRunningRun(db, run.id, decision.run);
+    if (finished === null) continue;
+
     await runtimeRepo.updateJob(db, job.id, decision.job);
     recovered += 1;
     if (decision.job.status === "failed") failedAfterAttempts += 1;

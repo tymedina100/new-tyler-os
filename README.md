@@ -182,6 +182,8 @@ exactly as it does in this repository today.
 | `pnpm db:seed`                | Seed sample data                                          |
 | `pnpm runtime:bootstrap`      | Create a runtime instance credential (requires `--role`)  |
 | `pnpm ai:profile:add`         | Create an explicit AI execution profile (no API key)      |
+| `pnpm authority:grant`        | Grant an explicit standing authority (no silent default)  |
+| `pnpm authority:revoke`       | Disable a standing authority by key                       |
 | `pnpm capacity:seed-examples` | Optional local mock quota pools; never a migration        |
 
 ## Tests

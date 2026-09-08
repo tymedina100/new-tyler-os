@@ -1,16 +1,17 @@
 import { ApprovalCard } from "@/components/runtime/approval-card";
 import {
+  APPROVAL_STATUS_LABELS,
   AUTHORIZATION_LABELS,
   JOB_KIND_LABELS,
   JOB_STATUS_LABELS,
   RUNTIME_KIND_LABELS,
   roleLabel,
+  type Approval,
   type Job,
   type JobKind,
   type Run,
   type RuntimeKind,
 } from "@/domain/runtime/runtime";
-import type { Approval } from "@/domain/runtime/runtime";
 
 export function JobBoard({
   rows,
@@ -22,6 +23,7 @@ export function JobBoard({
     claimedRuntimeInstanceKey?: string | null;
     latestRun: Run | null;
     pendingApproval: Approval | null;
+    latestApproval: Approval | null;
   }[];
 }) {
   return (
@@ -52,7 +54,9 @@ export function JobBoard({
               </p>
             </div>
             <span className="text-muted-foreground text-xs font-medium">
-              {JOB_STATUS_LABELS[row.job.status]}
+              {row.latestApproval?.status === "auto_executed"
+                ? "Completed"
+                : JOB_STATUS_LABELS[row.job.status]}
             </span>
           </div>
 
@@ -63,9 +67,23 @@ export function JobBoard({
           <RunTelemetry jobKind={row.job.kind} run={row.latestRun} />
 
           {row.pendingApproval ? <ApprovalCard approval={row.pendingApproval} /> : null}
+          {row.latestApproval?.status === "auto_executed" ? (
+            <StandingAuthorityAudit approval={row.latestApproval} />
+          ) : null}
         </li>
       ))}
     </ol>
+  );
+}
+
+function StandingAuthorityAudit({ approval }: { approval: Approval }) {
+  return (
+    <div className="border-border/70 grid gap-1 rounded-lg border p-3">
+      <p className="text-sm font-medium">{APPROVAL_STATUS_LABELS.auto_executed}</p>
+      {approval.standingAuthorityKey ? (
+        <p className="text-muted-foreground text-xs">{approval.standingAuthorityKey}</p>
+      ) : null}
+    </div>
   );
 }
 

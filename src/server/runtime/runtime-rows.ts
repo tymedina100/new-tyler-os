@@ -70,6 +70,8 @@ export function toApproval(row: ApprovalRow): Approval {
     title: row.title,
     body: row.body,
     acceptedNoteId: row.acceptedNoteId,
+    standingAuthorityId: row.standingAuthorityId,
+    standingAuthorityKey: row.standingAuthorityKey,
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
   };

@@ -22,7 +22,7 @@ import {
 import * as capacityRepo from "./capacity-repository";
 import * as profileRepo from "./ai-profile-repository";
 import * as runtimeRepo from "./runtime-repository";
-import { completeRun, getTodayContext } from "./runtime-service";
+import { completeRun, completeValidatedAiRun, getTodayContext } from "./runtime-service";
 
 /**
  * Manual Miles AI briefing. Tyler picks the profile. One provider request
@@ -138,7 +138,7 @@ export async function briefAiRun(
   }
 
   const proposal = renderMilesBriefing(context.today, judgment);
-  await completeRun(
+  const completed = await completeValidatedAiRun(
     db,
     run.id,
     runtimeId,
@@ -150,7 +150,9 @@ export async function briefAiRun(
     },
     now,
   );
-  return { status: "needs_approval" };
+  return {
+    status: completed.jobStatus === "needs_approval" ? "needs_approval" : "succeeded",
+  };
 }
 
 async function loadProfileOrFail(

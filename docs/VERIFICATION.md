@@ -366,6 +366,22 @@ The 06:20 deterministic briefing is unchanged. This path is manual only.
 - [x] `/runs` shows Anthropic, the model id, and input/output tokens from the provider. `usage_entries` matches. Capacity remaining is unchanged.
 - [x] Live official API call proven — see the Miles AI briefing record below. `/capacity` recent usage shows `estimated_cost_usd=null` as **cost unknown**, not `$0.0000`.
 
+**Standing authority — Miles AI briefing notes only**
+
+Default deny. Tyler grants `miles-ai-briefing-note` explicitly. The 06:20
+deterministic briefing is unchanged. Mocked provider results are enough; this
+slice does not change the provider path.
+
+- [x] Fresh database has zero `standing_authorities` rows.
+- [x] No matching authority: AI briefing → one pending approval, zero notes until Accept.
+- [x] `pnpm authority:grant` for Miles + `today_briefing_ai` + `create_note`: AI briefing auto-executes exactly one note through `noteService.captureNote`. Audit status is `auto_executed`, not `accepted`.
+- [x] `/runs` shows Completed and **Auto-executed under standing authority** plus `miles-ai-briefing-note`.
+- [x] Revoke returns the next run to pending approval. The earlier note stays.
+- [x] Wrong role / wrong job kind do not match. The 06:20 briefing still needs Accept.
+- [x] Empty Today with authority granted still spends zero tokens and writes no note.
+- [x] Concurrent `completeRun` on two PostgreSQL connections creates one usage row, one approval, and one note.
+- [x] `POST /complete` cannot auto-save an arbitrary note on `today_briefing_ai`; only validated `/brief` judgment can.
+
 **Notes — does TylerOS now feel like the obvious place to put it?**
 
 - [ ] Write a note with nothing but a first line — no title typed. The title

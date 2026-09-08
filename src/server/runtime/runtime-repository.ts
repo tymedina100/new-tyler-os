@@ -206,6 +206,68 @@ export async function updateRun(
   return row ? toRun(row) : null;
 }
 
+type RunFinishPersist = Partial<
+  Pick<
+    Run,
+    | "status"
+    | "resultSummary"
+    | "finishedAt"
+    | "provider"
+    | "model"
+    | "inputTokens"
+    | "cachedInputTokens"
+    | "outputTokens"
+    | "estimatedCostUsd"
+  >
+>;
+
+/**
+ * Atomic completion ownership. Only one UPDATE can win `status = running`.
+ * The loser must not write usage, approvals, or notes.
+ */
+export async function takeOwnedRunningRun(
+  db: Database,
+  runId: string,
+  runtimeId: string,
+  patch: RunFinishPersist,
+): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set(patch)
+    .where(and(eq(runs.id, runId), eq(runs.runtimeId, runtimeId), eq(runs.status, "running")))
+    .returning();
+  return row ? toRun(row) : null;
+}
+
+export async function takeRunningRun(
+  db: Database,
+  runId: string,
+  patch: RunFinishPersist,
+): Promise<Run | null> {
+  const [row] = await db
+    .update(runs)
+    .set(patch)
+    .where(and(eq(runs.id, runId), eq(runs.status, "running")))
+    .returning();
+  return row ? toRun(row) : null;
+}
+
+export async function takeOwnedRunningJob(
+  db: Database,
+  jobId: string,
+  runtimeId: string,
+  status: Job["status"],
+): Promise<Job | null> {
+  const [row] = await db
+    .update(jobs)
+    .set({ status })
+    .where(
+      and(eq(jobs.id, jobId), eq(jobs.status, "running"), eq(jobs.claimedByRuntimeId, runtimeId)),
+    )
+    .returning();
+  return row ? toJob(row) : null;
+}
+
 export async function insertApproval(
   db: Database,
   values: {
@@ -244,7 +306,8 @@ export async function findApprovalById(db: Database, id: string): Promise<Approv
 export async function takePendingApproval(
   db: Database,
   id: string,
-  patch: Pick<Approval, "status" | "resolvedAt">,
+  patch: Pick<Approval, "status" | "resolvedAt"> &
+    Partial<Pick<Approval, "standingAuthorityId" | "standingAuthorityKey" | "acceptedNoteId">>,
 ): Promise<Approval | null> {
   const [row] = await db
     .update(approvals)
@@ -258,7 +321,12 @@ export async function takePendingApproval(
 export async function updateApproval(
   db: Database,
   id: string,
-  patch: Partial<Pick<Approval, "status" | "resolvedAt" | "acceptedNoteId">>,
+  patch: Partial<
+    Pick<
+      Approval,
+      "status" | "resolvedAt" | "acceptedNoteId" | "standingAuthorityId" | "standingAuthorityKey"
+    >
+  >,
 ): Promise<Approval | null> {
   const [row] = await db.update(approvals).set(patch).where(eq(approvals.id, id)).returning();
   return row ? toApproval(row) : null;
@@ -271,6 +339,7 @@ export interface JobBoardRow {
   claimedRuntimeInstanceKey: string | null;
   latestRun: Run | null;
   pendingApproval: Approval | null;
+  latestApproval: Approval | null;
 }
 
 export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoardRow[]> {
@@ -278,7 +347,7 @@ export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoard
     with: {
       claimedByRuntime: true,
       runs: { orderBy: [desc(runs.startedAt)], limit: 1 },
-      approvals: { where: eq(approvals.status, "pending") },
+      approvals: { orderBy: [desc(approvals.createdAt)], limit: 1 },
     },
     orderBy: [desc(jobs.createdAt)],
     limit,
@@ -286,13 +355,15 @@ export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoard
 
   return rows.map((row) => {
     const { claimedByRuntime, runs: runRows, approvals: approvalRows, ...job } = row;
+    const latestApproval = approvalRows[0] ? toApproval(approvalRows[0]) : null;
     return {
       job: toJob(job),
       claimedRuntimeKind: claimedByRuntime?.kind ?? null,
       claimedRuntimeName: claimedByRuntime?.name ?? null,
       claimedRuntimeInstanceKey: claimedByRuntime?.instanceKey ?? null,
       latestRun: runRows[0] ? toRun(runRows[0]) : null,
-      pendingApproval: approvalRows[0] ? toApproval(approvalRows[0]) : null,
+      pendingApproval: latestApproval?.status === "pending" ? latestApproval : null,
+      latestApproval,
     };
   });
 }

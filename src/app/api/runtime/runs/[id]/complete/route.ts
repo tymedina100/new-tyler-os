@@ -4,6 +4,11 @@ import { getDb } from "@/server/db/client";
 import { authenticateRuntime, isAuthed, machineError } from "@/server/runtime/runtime-http";
 import { completeRun } from "@/server/runtime/runtime-service";
 
+/**
+ * Worker completion. Empty-Today and failures are legitimate here.
+ * A `today_briefing_ai` proposal is not: that requires validated Miles
+ * judgment on the `/brief` path, not a worker-supplied note.
+ */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const db = getDb();
   const auth = await authenticateRuntime(db, request);

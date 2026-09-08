@@ -19,6 +19,8 @@
     "db:seed": "tsx scripts/seed.mts",
     "runtime:bootstrap": "tsx scripts/bootstrap-runtime.mts",
     "ai:profile:add": "tsx scripts/add-ai-profile.mts",
+    "authority:grant": "tsx scripts/grant-standing-authority.mts",
+    "authority:revoke": "tsx scripts/revoke-standing-authority.mts",
     "capacity:seed-examples": "tsx scripts/seed-example-capacity.mts",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:context && pnpm test && pnpm build",
     "check:env": "tsx scripts/check-env.mts",

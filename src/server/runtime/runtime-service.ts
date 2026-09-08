@@ -1,7 +1,5 @@
 import { DomainError, NotFoundError } from "@/domain/shared/errors";
-import { assertCurrentAttempt } from "@/domain/runtime/recovery-rules";
 import { assertRoleGranted } from "@/domain/runtime/fleet-rules";
-import { ledgerUsage } from "@/domain/runtime/usage-rules";
 import {
   CHIEF_OF_STAFF_ROLE,
   TODAY_BRIEFING_INSTRUCTION,
@@ -11,14 +9,9 @@ import {
   type Run,
   type Runtime,
 } from "@/domain/runtime/runtime";
-import type { CompleteRunInput } from "@/domain/runtime/runtime-schema";
-import { completeRunSchema } from "@/domain/runtime/runtime-schema";
 import {
   assertRuntimeEnabled,
   claimQueuedJob,
-  completeRunningJob,
-  emptyUsage,
-  finishRun,
   heartbeatRunningRun,
   proposedNoteCaptureBody,
   resolveApproval,
@@ -29,17 +22,20 @@ import type { Database } from "@/server/db/client";
 import { getTodayData } from "@/server/items/item-service";
 import { getExpiringSoon } from "@/server/kitchen/inventory-service";
 import { captureNote } from "@/server/notes/note-service";
-import * as capacityRepo from "./capacity-repository";
 import * as fleetRepo from "./fleet-repository";
+import { assertRunOwnedBy, requireJob, requireRun, requireRuntime } from "./runtime-lookups";
 import * as repo from "./runtime-repository";
 import { projectTodayContext } from "./today-context";
+
+export { completeRun, completeValidatedAiRun } from "./complete-run";
 
 /**
  * Runtime use cases.
  *
  * Orchestrates: load state, ask the domain, write the patch. Completing a
- * run never writes a note — that happens only when Tyler accepts, through
- * the ordinary note service. Identity is an instance, not a kind singleton.
+ * run writes a note only when standing authority matches, and then only
+ * through `noteService.captureNote` — the same path as Tyler accepting.
+ * Otherwise the proposal waits. Identity is an instance, not a kind singleton.
  */
 
 export async function enqueueTodayBriefing(db: Database): Promise<Job> {
@@ -109,55 +105,6 @@ export async function heartbeatRun(
   });
 }
 
-export async function completeRun(
-  db: Database,
-  runId: string,
-  runtimeId: string,
-  input: CompleteRunInput,
-  now = new Date(),
-): Promise<void> {
-  const parsed = completeRunSchema.parse(input);
-  await db.transaction(async (tx) => {
-    const runtime = await requireRuntime(tx, runtimeId);
-    const run = await requireRun(tx, runId);
-    assertRunOwnedBy(run, runtime.id);
-    const job = await requireJob(tx, run.jobId);
-    assertCurrentAttempt(job, run);
-
-    const outcome = parsed.status;
-    const usage = ledgerUsage(parsed.usage ?? emptyUsage());
-    const jobPatch = completeRunningJob(job, run, outcome, parsed.proposal !== undefined);
-    const runPatch = finishRun(run, outcome, now, parsed.resultSummary, usage);
-
-    await repo.updateRun(tx, run.id, runPatch);
-    await repo.updateJob(tx, job.id, { status: jobPatch.jobStatus });
-    await capacityRepo.insertUsageEntry(tx, {
-      runId: run.id,
-      runtimeId: runtime.id,
-      provider: usage.provider,
-      product: parsed.usage?.product ?? null,
-      poolKey: parsed.usage?.poolKey ?? null,
-      model: usage.model,
-      inputTokens: usage.inputTokens,
-      cachedInputTokens: usage.cachedInputTokens,
-      outputTokens: usage.outputTokens,
-      estimatedCostUsd: usage.estimatedCostUsd,
-      recordedAt: now,
-    });
-    await repo.touchRuntimeLastSeen(tx, runtime.id, now);
-
-    if (outcome === "succeeded" && parsed.proposal) {
-      await repo.insertApproval(tx, {
-        runId: run.id,
-        jobId: job.id,
-        kind: parsed.proposal.kind,
-        title: parsed.proposal.title,
-        body: parsed.proposal.body,
-      });
-    }
-  });
-}
-
 export async function getTodayContext(db: Database, now = new Date()): Promise<TodayContext> {
   const [{ today, view }, expiring] = await Promise.all([
     getTodayData(db, now),
@@ -200,24 +147,6 @@ export async function dismissApproval(db: Database, id: string, now = new Date()
   });
 }
 
-async function requireRun(db: Database, id: string): Promise<Run> {
-  const run = await repo.findRunById(db, id);
-  if (run === null) throw new NotFoundError("Run", id);
-  return run;
-}
-
-async function requireRuntime(db: Database, id: string): Promise<Runtime> {
-  const runtime = await repo.findRuntimeById(db, id);
-  if (runtime === null) throw new NotFoundError("Runtime", id);
-  return runtime;
-}
-
-async function requireJob(db: Database, id: string): Promise<Job> {
-  const job = await repo.findJobById(db, id);
-  if (job === null) throw new NotFoundError("Job", id);
-  return job;
-}
-
 async function ownPendingApproval(
   db: Database,
   id: string,
@@ -234,10 +163,4 @@ async function ownPendingApproval(
   }
 
   return owned;
-}
-
-function assertRunOwnedBy(run: Run, runtimeId: string): void {
-  if (run.runtimeId !== runtimeId) {
-    throw new DomainError("invalid_transition", "This attempt belongs to a different runtime.");
-  }
 }

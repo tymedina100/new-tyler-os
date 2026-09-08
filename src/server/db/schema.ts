@@ -498,9 +498,34 @@ export const runs = pgTable(
 );
 
 /**
+ * What Tyler has explicitly delegated. Absent a matching enabled row,
+ * proposals wait on Tyler. Migrations do not seed this table. See ADR 039.
+ */
+export const standingAuthorities = pgTable(
+  "standing_authorities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    role: orgRoleEnum("role").notNull(),
+    jobKind: jobKindEnum("job_kind").notNull(),
+    action: approvalKindEnum("action").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [uniqueIndex("standing_authorities_key_unique_idx").on(table.key)],
+);
+
+/**
  * A proposed side effect the user resolves. One row per proposal, the same
  * shape as `item_suggestions`: applying one goes through the ordinary note
  * (or later, item) service, so a worker can never write personal state.
+ *
+ * `auto_executed` is standing-authority execution, not a Tyler Accept.
+ * The authority key is denormalised so audit survives a later revoke.
  */
 export const approvals = pgTable(
   "approvals",
@@ -517,6 +542,10 @@ export const approvals = pgTable(
     title: text("title").notNull(),
     body: text("body").notNull(),
     acceptedNoteId: uuid("accepted_note_id").references(() => notes.id, { onDelete: "set null" }),
+    standingAuthorityId: uuid("standing_authority_id").references(() => standingAuthorities.id, {
+      onDelete: "set null",
+    }),
+    standingAuthorityKey: text("standing_authority_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   },
@@ -818,10 +847,18 @@ export const runsRelations = relations(runs, ({ one, many }) => ({
   usageEntries: many(usageEntries),
 }));
 
+export const standingAuthoritiesRelations = relations(standingAuthorities, ({ many }) => ({
+  approvals: many(approvals),
+}));
+
 export const approvalsRelations = relations(approvals, ({ one }) => ({
   run: one(runs, { fields: [approvals.runId], references: [runs.id] }),
   job: one(jobs, { fields: [approvals.jobId], references: [jobs.id] }),
   acceptedNote: one(notes, { fields: [approvals.acceptedNoteId], references: [notes.id] }),
+  standingAuthority: one(standingAuthorities, {
+    fields: [approvals.standingAuthorityId],
+    references: [standingAuthorities.id],
+  }),
 }));
 
 export const runtimeCredentialsRelations = relations(runtimeCredentials, ({ one }) => ({
@@ -868,6 +905,7 @@ export type ScheduleRow = typeof schedules.$inferSelect;
 export type JobRow = typeof jobs.$inferSelect;
 export type RunRow = typeof runs.$inferSelect;
 export type ApprovalRow = typeof approvals.$inferSelect;
+export type StandingAuthorityRow = typeof standingAuthorities.$inferSelect;
 export type RuntimeCredentialRow = typeof runtimeCredentials.$inferSelect;
 export type UsageEntryRow = typeof usageEntries.$inferSelect;
 export type CapacityPoolRow = typeof capacityPools.$inferSelect;
