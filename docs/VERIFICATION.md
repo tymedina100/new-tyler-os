@@ -997,3 +997,28 @@ that the database is initialized). Test-created `ed-` records are cleaned up.
 No native UI code, production data, paid API, deployment or authority changed.
 This prevents lost item edits across clients; it does not yet provide offline
 merging or version-check every other editable entity.
+
+### Morning operations — approved production rollout · 2026-09-09
+
+Tyler approved pushing, opening PRs, merging after checks, and deploying the exact
+morning-operations commits. App PR #11 merged as `b754b88` after GitHub CI passed;
+worker PR #88 merged as `b14898c` after all 27 tests passed under the installed Xcode
+Python 3.9 executable. The later cross-device editor commit was excluded.
+
+Vercel deployment `dpl_FotLoyFzB4qznZprU49PkkJDhSyF` is READY, production, commit
+`b754b88`, build duration 33 seconds, alias `https://tyler-os-ashen.vercel.app`.
+Authenticated runtime Today context returned the new operations object. Logged
+worker polls returned HTTP 200 after the existing LaunchAgent restarted. Its
+installed worker SHA-256 is
+`d47b1827845697d3afe4582fbff34c6867c125559a1bfe9acce2f4048b6466be`.
+
+The service was sampled in its idle select-based sleep with no TCP connection
+before stopping it. Verified worker bytes were installed atomically with a private
+backup. Helper, private credentials and 30-second polling configuration were kept.
+No AI/scheduler flags, grants, paid calls or synthetic production records added.
+
+The post-release deployment log view showed zero warnings, errors or fatal entries.
+One manual context probe omitted its required role header (400); corrected probes
+passed. No drains are configured. Authenticated production browser/mobile-session
+verification was not available in this session; local web/native end-to-end tests
+remain the interaction evidence. No updated physical iPhone binary was installed.

@@ -403,7 +403,7 @@ Recorded so they do not get proposed again as improvements:
 
 ---
 
-## Implemented · Morning operations (release pending)
+## Released · Morning operations web/worker (native installation pending)
 
 Today now shows pending decisions and last-24-hour failed jobs and saved briefing
 notes. The Python briefing worker includes the same counts beside tasks and food;

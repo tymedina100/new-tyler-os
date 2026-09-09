@@ -47,11 +47,14 @@ No domain is complete just because a specialist role name exists.
 
 Native verification: 11 unit tests plus full authenticated Simulator UI flow,
 including canonical operations and Miles navigation. Busy-decision regression
-covered. This milestone is verified locally, not released.
+covered. Web and Python worker released through app PR #11 and worker PR #88.
+Native UI is verified in Simulator; this release did not install an updated phone binary.
 
 ## Release and operating dependencies
 
-Protected-branch merges and deployments require explicit approval for this work.
+Protected-branch merges and deployments require explicit approval. Tyler approved
+the morning-operations release on September 9; web and worker rollout completed.
+Later local editor changes remain outside that approval.
 No paid inference, purchases, messages or other external actions were performed.
 Plugin Management search/suggestion capabilities were not callable in this
 session after tool discovery; installed connectors remain usable individually.
@@ -71,3 +74,16 @@ editor suite covers failed-save preservation, normalized clean saves, sequential
 saves, typing during an in-flight save, and stale web draft rejection/recovery
 after a real mobile API edit. This is local verification, release pending; it does
 not claim offline sync or conflict protection for notes and other entity types.
+
+## Morning operations release receipt · 2026-09-09
+
+- App PR #11 merged as `b754b88`; GitHub CI passed. Vercel production deployment
+  `dpl_FotLoyFzB4qznZprU49PkkJDhSyF` is READY at the existing production domain.
+- Worker PR #88 merged as `b14898c`. Approved worker bytes installed in the existing
+  Mac LaunchAgent; credentials, helper, polling interval and authority unchanged.
+- Authenticated production runtime context includes canonical operations; worker
+  polls return HTTP 200 after restart. No synthetic production task or note added.
+- Native changes are in main and locally tested, but no new phone binary installed.
+- Post-release runtime log view showed zero warnings/errors/fatal entries. One
+  verification request omitted its role header and received the expected 400;
+  corrected requests passed. No log drains are configured; no paid monitoring added.
