@@ -125,3 +125,21 @@ its existing briefing material; counts alone do not trigger a scheduled briefing
 Database coverage checks December/January boundaries and absence of private meal
 text. Worker tests cover valid counts, legacy/invalid input and quiet scheduling.
 This is local integration, not a deployment or restaurant recommendation engine.
+
+## Cumulative release receipt · 2026-09-09
+
+User approved the exact cumulative release. App PR12 merged as `a5e9065` after
+GitHub CI passed; production deployment `dpl_5VUEC1eMuDFHAwwoPqYqWwcVjshv` is READY
+on the existing domain. Staged production migration0012/build succeeded before
+primary-domain traffic moved. Authenticated staged and primary runtime checks
+return the previous-day consumption summary. No synthetic production log added.
+
+Worker PR89 merged as `cb67a93`; a rebase resolved the prior-squash conflict with
+an identical source tree and 30 passing tests. Approved worker bytes installed
+at a verified idle point with config/helper/interval unchanged. Post-restart
+server logs show HTTP200 polls. Source health, web draft protection, food/drink
+tracking and consumption briefing totals are now released on web/runtime. Native
+source is merged and Simulator verified; the installed physical phone version
+is not verified or updated by this release. The earlier signed package remains
+the morning-operations version. Restaurant recommendations, ordering and durable
+Notion preference synchronization remain incomplete.
