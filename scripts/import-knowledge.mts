@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir, rename, copyFile, access } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { knowledgeSnapshotSchema, type KnowledgeEntry } from "../src/domain/knowledge/knowledge";
+import {
+  knowledgeMetadata,
+  knowledgeSnapshotSchema,
+  type KnowledgeEntry,
+} from "../src/domain/knowledge/knowledge";
 
 // Tool fetch exports are kept outside Git. Originals are never modified.
 // Usage: pnpm exec tsx scripts/import-knowledge.mts /private/knowledge.json source.json ...
@@ -53,9 +57,18 @@ for (const source of sources) {
       .replace(/<callout[^>]*>|<\/callout>/g, "")
       .trim();
     const sourceHash = createHash("sha256").update(block.text).digest("hex");
-    if (entries.get(id)?.sourceHash === sourceHash) continue;
+    const metadata = knowledgeMetadata(properties);
+    const existing = entries.get(id);
+    if (
+      existing?.sourceHash === sourceHash &&
+      Object.entries(metadata).every(
+        ([key, value]) => existing[key as keyof KnowledgeEntry] === value,
+      )
+    )
+      continue;
     entries.set(id, {
       id,
+      ...metadata,
       title: String(properties.Topic),
       body,
       sourceUrl: url,

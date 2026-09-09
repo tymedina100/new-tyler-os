@@ -21,6 +21,10 @@ export const knowledgeEntrySchema = z.object({
   lastReviewed: z.string().nullable(),
   freshness: z.string().max(100),
   sensitivity: z.enum(["Normal", "Personal", "Sensitive"]),
+  domain: z.string().max(100).optional(),
+  knowledgeType: z.string().max(100).optional(),
+  steward: z.string().max(100).optional(),
+  status: z.string().max(100).optional(),
   sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
@@ -42,4 +46,25 @@ export function searchKnowledge(entries: KnowledgeEntry[], query: string): Knowl
   return entries.filter((entry) =>
     words.every((word) => `${entry.title} ${entry.body}`.toLocaleLowerCase().includes(word)),
   );
+}
+
+/** Select by canonical properties, never by words in an arbitrary note title. */
+export function palatePreferences<T extends KnowledgeEntry>(entries: T[]): T[] {
+  return entries.filter(
+    (entry) =>
+      entry.domain === "Food & Drink" &&
+      entry.knowledgeType === "Preference" &&
+      entry.steward === "Palate" &&
+      entry.status === "Active",
+  );
+}
+export function knowledgeMetadata(properties: Record<string, unknown>) {
+  const value = (key: string) =>
+    typeof properties[key] === "string" ? (properties[key] as string) : undefined;
+  return {
+    domain: value("Domain"),
+    knowledgeType: value("Knowledge Type"),
+    steward: value("Steward"),
+    status: value("Status"),
+  };
 }

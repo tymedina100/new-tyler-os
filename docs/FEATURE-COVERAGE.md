@@ -160,3 +160,20 @@ personal team/profile and its exported signature verified. It includes the relea
 food/source-health/morning interfaces. The paired phone remains unavailable; no
 physical installation or voice verification is claimed. Installation instructions,
 source/profile metadata and checksum are delivered outside source control.
+
+## Saved Palate preferences (local follow-through)
+
+Food now displays active Food & Drink / Preference records stewarded by Palate
+from the saved Second Brain import, selected by canonical metadata. Importer
+retains these properties and upgrades legacy entries even when the content hash
+has not changed; repeated imports are idempotent. The profile retains original
+review dates, displays import age and review status, and links to Notion. Missing
+or unreadable imports show an explicit dependency without hiding the food ledger.
+Meal feedback remains separate evidence and does not rewrite canonical preferences.
+
+Full check: 1,034 tests across 76 files, including real PostgreSQL race checks.
+Browser tests cover capture/search/feedback plus profile selection, unreadable
+import and recovery. Synthetic fixtures only; no personal preference prose in
+source. This is local, not released. Production needs a refreshed metadata-bearing
+snapshot as well as a future approved release. Live canonical synchronization,
+archived-record reconciliation, recommendations and ordering remain incomplete.

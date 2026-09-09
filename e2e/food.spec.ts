@@ -90,3 +90,55 @@ test("food capture persists across web and mobile, with reversible feedback and 
     await request.delete("/api/mobile/session", { headers });
   }
 });
+
+test("food shows canonical taste preferences with source age and recovers from unavailable imports", async ({
+  page,
+}) => {
+  const { readFile, writeFile } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+  const { knowledgeFixture } = await import("../tests/support/knowledge-fixtures");
+  const path = resolve("../work/knowledge-e2e.json");
+  const original = await readFile(path);
+  const fixture = knowledgeFixture();
+  const preference = {
+    ...fixture.entries[0]!,
+    id: "synthetic-palate",
+    title: "Synthetic taste profile",
+    body: "Prefer synthetic crunchy meals. Omit synthetic garnish.",
+    domain: "Food & Drink",
+    knowledgeType: "Preference",
+    steward: "Palate",
+    status: "Active",
+  };
+  try {
+    await writeFile(
+      path,
+      JSON.stringify({ ...fixture, entries: [...fixture.entries, preference] }),
+    );
+    await page.goto("/login");
+    await page.getByLabel("Passphrase").fill(E2E_AUTH_PASSPHRASE);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL("**/");
+    await page.goto("/food");
+    const profile = page.getByRole("region", { name: "Palate preferences" });
+    await expect(profile).toContainText(preference.title);
+    await expect(profile).not.toContainText("Synthetic household routine");
+    await profile.getByText("Read saved preferences", { exact: true }).click();
+    await expect(profile.getByText(preference.body)).toBeVisible();
+    await expect(profile).toContainText("Review due since 2020-01-08");
+    await expect(profile.getByRole("link", { name: "Open canonical preferences" })).toHaveAttribute(
+      "href",
+      preference.sourceUrl,
+    );
+    await writeFile(path, "invalid snapshot");
+    await page.reload();
+    await expect(profile).toContainText("Personal knowledge could not be loaded");
+    await expect(profile).not.toContainText(preference.title);
+    await expect(page.getByRole("heading", { name: "Recent logs" })).toBeVisible();
+    await writeFile(path, JSON.stringify({ ...fixture, entries: [preference] }));
+    await page.reload();
+    await expect(profile).toContainText(preference.title);
+  } finally {
+    await writeFile(path, original);
+  }
+});
