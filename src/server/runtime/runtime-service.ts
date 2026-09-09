@@ -1,3 +1,4 @@
+import { claimJobKindsSchema } from "@/domain/runtime/runtime-schema";
 import { DomainError, NotFoundError } from "@/domain/shared/errors";
 import { assertRoleGranted } from "@/domain/runtime/fleet-rules";
 import {
@@ -50,16 +51,17 @@ export async function enqueueTodayBriefing(db: Database): Promise<Job> {
 
 export async function claimNextJob(
   db: Database,
-  identity: { runtimeId: string; role: Role },
+  identity: { runtimeId: string; role: Role; allowedJobKinds?: Job["kind"][] },
   now = new Date(),
 ): Promise<{ job: Job; run: Run } | null> {
+  const allowedJobKinds = claimJobKindsSchema.parse(identity.allowedJobKinds);
   return db.transaction(async (tx) => {
     const runtime = await requireRuntime(tx, identity.runtimeId);
     assertRuntimeEnabled(runtime.status);
     const grants = await fleetRepo.listRoleGrants(tx, runtime.id);
     assertRoleGranted(grants, identity.role);
 
-    const job = await repo.lockNextQueuedJob(tx, identity.role, runtime.kind);
+    const job = await repo.lockNextQueuedJob(tx, identity.role, runtime.kind, allowedJobKinds);
     if (job === null) return null;
 
     const patch = claimQueuedJob(

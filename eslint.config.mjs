@@ -137,6 +137,7 @@ const eslintConfig = defineConfig([
   // first, with an error naming neither the cause nor the fix.
   globalIgnores([
     ".next/**",
+    ".next-mobile-e2e/**",
     "out/**",
     "build/**",
     "coverage/**",

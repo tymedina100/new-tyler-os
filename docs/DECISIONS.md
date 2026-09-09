@@ -1575,3 +1575,71 @@ auto-exec status; putting the check in the provider adapter or worker;
 auto-executing the 06:20 deterministic briefing under the AI-note grant.
 
 ---
+
+---
+
+## 040 · Native iPhone command interface over canonical services
+
+**Accepted** · native mobile release, explicitly authorized by Tyler
+
+SwiftUI cannot invoke Next.js Server Actions as a supported native protocol.
+Tyler explicitly requested secure mobile APIs as an exception to ADR 004.
+`/api/mobile/*` is therefore a thin human command boundary. Browser components
+continue to use Server Actions. `/api/runtime/*` remains a separate machine
+boundary; neither credential can impersonate the other.
+
+**One brain.** All captures, edits, notes, Today reads, jobs and approval
+resolutions use the existing services and Postgres tables. Notion remains the
+shared work/policy authority. The knowledge endpoint reads a reversible,
+source-dated snapshot; it does not create a second task board or write back
+personal claims. iPhone state is presentation, draft and retry state only.
+
+**Explicit access, including development.** Sign-in requires guarded
+`AUTH_PASSPHRASE` and `SESSION_SECRET`. Open development is never mobile
+access. A successful passphrase exchange issues a random 256-bit opaque
+`tym1_` token for seven days, without rolling renewal. Only its SHA-256 hash
+is stored. Every protected request checks that row, expiry and a server
+configuration fingerprint. Sign-out deletes the row; rotating either auth
+secret invalidates all mobile sessions after server restart. Runtime system
+and instance credentials, web cookies and invented tokens cannot authenticate
+mobile access. Use HTTPS beyond loopback and iOS Keychain on device.
+
+**A durable sign-in budget.** Postgres atomically permits twenty sign-in
+attempts per fifteen-minute window across the deployment. It does not trust
+client IP headers. This is deliberately global for one user; an attacker can
+consume the budget and temporarily prevent sign-in, but cannot bypass it by
+rotating forged IP headers. Existing sessions continue to function.
+
+**Transport is bounded and explicit.** Success is `{data: ...}`; failure is
+`{error: {code, message}}`, with no-store headers. Streamed JSON bodies are
+limited to 48 KB even without Content-Length. Zod validates all mutations,
+including unknown-field rejection. IDs are UUIDs; search terms are bounded.
+No privileged credential, provider key or environment value is returned.
+
+**Durable retries.** Every capture, request, edit and approval decision carries
+a client-generated request UUID retained through uncertain network outcomes.
+A unique Postgres receipt reserves that UUID inside the same transaction as
+the service mutation and its result. A committed retry returns that result;
+a reused ID with different intent returns conflict; failed transactions leave
+no receipt. The receipts are technical audit state, not personal truth.
+Mobile item edits also require the last observed `updatedAt`, lock the canonical
+row, and reject stale versions before updating. Status changes use the existing
+`setItemStatus`, so completing a repeat advances one occurrence. The mobile
+version advances at least one millisecond even for very fast edits. This guards
+mobile edits against already-persisted changes; the existing web editor does
+not yet carry a version and can still submit a stale draft after a mobile
+write. Fields the phone does not edit
+(project, tags, recurrence, kind) are preserved.
+
+**Miles stays Miles.** The only enqueue kind exposed in this release is the
+existing deterministic `today_briefing`, owned by Miles with `observe`
+authorization. No model or paid API is called. Existing runtime instances
+claim and execute the job; iPhone reads the canonical board. Accept and
+dismiss call the same runtime services as the web. Pending proposals cannot
+write personal state before acceptance. Existing exact-match standing
+authorities remain unchanged; this API cannot grant or expand them.
+
+**Considered and rejected:** embedding runtime tokens in the app; direct
+mobile Postgres access; a second task or memory backend; native model calls;
+server-action wire-protocol emulation; treating open-dev as authenticated;
+in-memory-only deduplication; silently replaying an edit over newer state.

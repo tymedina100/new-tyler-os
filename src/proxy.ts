@@ -35,6 +35,9 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   // Cookie-exempt, not unauthenticated. The handler checks RUNTIME_TOKEN.
   if (isMachineRoute(pathname)) return NextResponse.next();
 
+  // Native human sessions are checked independently in every mobile handler (ADR 040).
+  if (pathname === "/api/mobile" || pathname.startsWith("/api/mobile/")) return NextResponse.next();
+
   const config = authConfig();
 
   if (config.mode === "misconfigured") {

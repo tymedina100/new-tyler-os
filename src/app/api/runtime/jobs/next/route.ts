@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { claimJobKindsSchema } from "@/domain/runtime/runtime-schema";
 import { getDb } from "@/server/db/client";
 import { authenticateRuntime, isAuthed, machineError } from "@/server/runtime/runtime-http";
 import { claimNextJob, markRuntimeSeen } from "@/server/runtime/runtime-service";
@@ -17,8 +18,16 @@ export async function GET(request: Request) {
   if (!isAuthed(auth)) return auth;
 
   try {
+    const query = new URL(request.url).searchParams;
+    const allowedJobKinds = claimJobKindsSchema.parse(
+      query.has("kind") ? query.getAll("kind") : undefined,
+    );
     await markRuntimeSeen(db, auth.runtime);
-    const claimed = await claimNextJob(db, { runtimeId: auth.runtime.id, role: auth.role });
+    const claimed = await claimNextJob(db, {
+      runtimeId: auth.runtime.id,
+      role: auth.role,
+      allowedJobKinds,
+    });
     if (claimed === null) return NextResponse.json({ job: null, run: null });
     return NextResponse.json(claimed);
   } catch (error) {

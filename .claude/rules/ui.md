@@ -8,12 +8,13 @@ paths:
 
 # Working in `src/app/` and `src/components/`
 
-TylerOS has no client state library and no human-facing API layer. The server
+TylerOS browser UI has no client state library or fetch-based API layer. The server
 renders, server actions mutate for Tyler, and the URL holds view state. Adding
 a store or a fetch layer for the UI is a recorded decision to _not_ do — see
 ADRs 004 and 006. The first `route.ts` handlers (`src/app/api/runtime/`) are
 **machine-only**: a Python (or later Grok) poller acting as a role, not the
-browser. UI still must not `fetch("/api/...")`.
+browser. Native SwiftUI uses the separate `/api/mobile` exception (ADR 040).
+Browser UI still must not `fetch("/api/...")`.
 
 ## Invariants
 

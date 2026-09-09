@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Separate local verification builds from the daily-use development server.
+  distDir: process.env.TYLEROS_MOBILE_E2E === "1" ? ".next-mobile-e2e" : ".next",
   // Nothing about this app needs announcing to anyone.
   poweredByHeader: false,
 

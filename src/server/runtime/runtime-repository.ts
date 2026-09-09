@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import type { Approval, Job, Run, Runtime, RuntimeKind, Role } from "@/domain/runtime/runtime";
 import type { Database } from "@/server/db/client";
 import { approvals, jobs, runtimes, runs } from "@/server/db/schema";
@@ -95,6 +95,7 @@ export async function lockNextQueuedJob(
   db: Database,
   role: Role,
   runtimeKind: RuntimeKind,
+  allowedJobKinds?: Job["kind"][],
 ): Promise<Job | null> {
   const [row] = await db
     .select()
@@ -102,6 +103,7 @@ export async function lockNextQueuedJob(
     .where(
       and(
         eq(jobs.status, "queued"),
+        allowedJobKinds === undefined ? undefined : inArray(jobs.kind, allowedJobKinds),
         eq(jobs.assignedRole, role),
         or(isNull(jobs.requestedRuntimeKind), eq(jobs.requestedRuntimeKind, runtimeKind)),
       ),

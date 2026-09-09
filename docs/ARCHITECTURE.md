@@ -116,9 +116,9 @@ straight through where a `Database` is expected.
 
 ### `src/app/` — routes
 
-Server Components fetch, Server Actions mutate for humans. There is **no
-human-facing REST or tRPC layer** (ADR 004): a single user does not need a
-network boundary inside their own app. `/api/runtime` is the exception, for
+Server Components fetch and Server Actions mutate for the browser (ADR 004).
+Native SwiftUI uses `/api/mobile`, the explicit human transport exception in
+ADR 040, over the same services and canonical state. `/api/runtime` is for
 machine pollers only — a thin wrapper over the same services, not a session
 cookie. Instance credentials identify a runtime; the system `RUNTIME_TOKEN`
 ticks schedules and bootstraps instances. See ADRs 035, 037 and 038. Because
@@ -392,7 +392,7 @@ existing action gained it without a single action file being touched. The one
 action that must run with **no** session — signing in — does not call
 `runAction`; see `src/server/actions/auth-actions.ts`.
 
-**A session is a signed cookie, not a database row.** `src/server/auth/session.ts`
+**A browser session is a signed cookie, not a database row.** `src/server/auth/session.ts`
 signs `{ expiresAt, nonce }` with `node:crypto`'s `createHmac`, over
 `SESSION_SECRET`. No identity is in the payload — there is exactly one subject,
 so naming it would record a fact, not establish one. `src/proxy.ts` verifies it
@@ -501,3 +501,29 @@ the model never decides that. See ADRs 038 and 039.
 | A route reachable with no session | `src/proxy.ts` + `runAction`, both proven by `src/proxy.test.ts`                                                        |
 | A secret in the client bundle     | Server-only modules; verified absent from `.next/static/`                                                               |
 | Auth as an excuse for accounts    | One passphrase, no `user_id`, no provider library — ADR 030                                                             |
+
+## Native mobile boundary
+
+`src/app/api/mobile/[[...path]]/route.ts` is cookie-exempt in the proxy and
+checks its own fail-closed configuration and bearer session on every call.
+`src/server/mobile/` owns bounded HTTP decoding, auth, canonical service
+orchestration and SQL for technical session/receipt state. Domain input schemas
+live in `src/domain/mobile/`. No phone request authenticates as a runtime.
+
+- `POST /api/mobile/session`: passphrase exchange; `DELETE`: revoke current session.
+- `GET /api/mobile/today`, `/items`, `/notes`, `/search`, `/knowledge`, `/jobs`:
+  canonical reads plus a labeled Notion snapshot. Notes/search/knowledge accept `q`.
+- `POST /api/mobile/capture`: existing item parsing or `note:` capture.
+- `PATCH /api/mobile/items/:id`: version-checked edit; preserves hidden relations.
+- `POST /api/mobile/requests`: only deterministic `today_briefing`.
+- `POST /api/mobile/approvals/:id`: accept/dismiss via existing runtime services.
+
+All success payloads are wrapped in `data`; all failures in `error` with code
+and message. Date timestamps serialize as ISO-8601; calendar due dates remain
+`YYYY-MM-DD`. Successful mobile mutations revalidate the web layout. The phone
+refreshes canonical reads after mutations and on foreground activation.
+
+Migration 0011 adds hashed seven-day `mobile_sessions`, transactional
+`mobile_mutation_receipts`, and a global durable `mobile_login_limits` budget.
+These are technical state, with no user IDs or second personal data model.
+ADR 040 describes revocation, rotation, replay and standing-authority boundaries.

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.next*
+.playwright
+playwright-report
+test-results
+*.tsbuildinfo
+node_modules
+.git
+.vercel
+*.log
