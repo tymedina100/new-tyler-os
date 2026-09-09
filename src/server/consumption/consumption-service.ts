@@ -1,6 +1,5 @@
 import {
   consumptionDay,
-  consumptionFeedback,
   consumptionPatch,
   type consumptionInputSchema,
   type consumptionActionSchema,
@@ -30,11 +29,12 @@ export async function getConsumptionSummary(db: Database, now = new Date()) {
   return { day, timeZone, ...(await repo.consumptionCounts(db, day)) };
 }
 export async function getConsumptionHistory(db: Database, now = new Date()) {
-  const [entries, today] = await Promise.all([
+  const [entries, feedback, today] = await Promise.all([
     repo.recentConsumption(db),
+    repo.consumptionFeedbackHistory(db),
     getConsumptionSummary(db, now),
   ]);
-  return { entries, today, feedback: consumptionFeedback(entries) };
+  return { entries, today, feedback };
 }
 export async function changeConsumption(
   db: Database,
@@ -55,4 +55,8 @@ export async function getPreviousConsumptionSummary(db: Database, now = new Date
   previous.setUTCDate(previous.getUTCDate() - 1);
   const day = previous.toISOString().slice(0, 10);
   return { day, timeZone, ...(await repo.consumptionCounts(db, day)) };
+}
+
+export async function getConsumptionEntry(db: Database, id: string) {
+  return repo.findConsumption(db, id);
 }

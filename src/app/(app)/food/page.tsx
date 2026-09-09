@@ -1,9 +1,14 @@
+import Link from "next/link";
+import { readKnowledge } from "@/server/knowledge/knowledge-service";
+import { palatePreferences } from "@/domain/knowledge/knowledge";
+import { NoteMarkdown } from "@/components/notes/note-markdown";
 import { getDb } from "@/server/db/client";
 import { getConsumptionHistory } from "@/server/consumption/consumption-service";
 import { EntryControls } from "@/components/consumption/entry-controls";
 export const dynamic = "force-dynamic";
 export default async function FoodPage() {
-  const history = await getConsumptionHistory(getDb());
+  const [history, knowledge] = await Promise.all([getConsumptionHistory(getDb()), readKnowledge()]);
+  const preferences = palatePreferences(knowledge.entries);
   return (
     <div className="mx-auto grid max-w-3xl gap-6">
       <header className="space-y-2">
@@ -23,10 +28,45 @@ export default async function FoodPage() {
         </p>
         <p className="text-muted-foreground text-xs">Day boundary: {history.today.timeZone}</p>
       </section>
+      <section aria-label="Palate preferences" className="grid gap-3 rounded-xl border p-4">
+        <h2 className="text-lg font-medium">Your taste profile</h2>
+        <p className="text-muted-foreground text-sm">
+          Canonical preferences from your saved Second Brain. Meal feedback below remains separate
+          evidence.
+        </p>
+        {preferences.length ? (
+          preferences.map((entry) => (
+            <div key={entry.id} className="grid gap-2">
+              <h3 className="font-medium">{entry.title}</h3>
+              <details>
+                <summary>Read saved preferences</summary>
+                <NoteMarkdown body={entry.body} />
+              </details>
+              <p className="text-muted-foreground text-xs">
+                {entry.sourceHealth.importMessage}. {entry.sourceHealth.reviewMessage}
+              </p>
+              <a
+                href={entry.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm underline"
+              >
+                Open canonical preferences ↗
+              </a>
+            </div>
+          ))
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            {knowledge.health.status === "available"
+              ? "No active Palate preference record is present in this import."
+              : knowledge.health.message}
+          </p>
+        )}
+      </section>
       <section className="grid gap-3">
         <h2 className="text-lg font-medium">Your feedback</h2>
         <p className="text-muted-foreground text-sm">
-          Explicit feedback from the latest 100 logs. Matching descriptions are grouped; eating
+          Explicit feedback across your food history. Matching descriptions are grouped; eating
           something alone is not a preference.
         </p>
         {history.feedback.length === 0 ? (
@@ -34,7 +74,15 @@ export default async function FoodPage() {
         ) : (
           history.feedback.map((entry, index) => (
             <p key={index}>
-              {entry.description}: {entry.likes} likes · {entry.dislikes} dislikes
+              <span>
+                {entry.description}: {entry.likes} likes · {entry.dislikes} dislikes
+              </span>{" "}
+              <Link
+                className="text-sm underline"
+                href={`/search?q=${encodeURIComponent(entry.description)}`}
+              >
+                Review logs
+              </Link>
             </p>
           ))
         )}

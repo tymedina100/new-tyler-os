@@ -1,0 +1,1 @@
+ALTER TYPE "public"."job_kind" ADD VALUE 'today_briefing_codex';

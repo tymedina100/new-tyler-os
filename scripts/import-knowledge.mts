@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir, rename, copyFile, access } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { knowledgeSnapshotSchema, type KnowledgeEntry } from "../src/domain/knowledge/knowledge";
+import {
+  knowledgeMetadata,
+  knowledgeEntrySchema,
+  knowledgeSnapshotSchema,
+  type KnowledgeEntry,
+} from "../src/domain/knowledge/knowledge";
 
 // Tool fetch exports are kept outside Git. Originals are never modified.
 // Usage: pnpm exec tsx scripts/import-knowledge.mts /private/knowledge.json source.json ...
@@ -42,22 +47,36 @@ for (const source of sources) {
     const contentMatch = page.text.match(/<content>\s*([\s\S]*?)\s*<\/content>/);
     if (!propertiesMatch || !contentMatch) throw new Error("Missing source properties or content.");
     const properties = JSON.parse(propertiesMatch[1]!) as Record<string, unknown>;
-    if (properties.Status !== "Active" || !properties.Topic)
-      throw new Error("Only active Second Brain entries may be imported.");
+    if (!["Active", "Archived"].includes(String(properties.Status)) || !properties.Topic)
+      throw new Error("Expected an Active or Archived Second Brain entry.");
     if (properties.Sensitivity === "Sensitive")
       throw new Error("Sensitive records require a separately reviewed import.");
     const url = String(properties.url);
     const id = url.split("/").at(-1)!;
+    knowledgeEntrySchema.shape.sourceUrl.parse(url);
+    knowledgeEntrySchema.shape.sourceEditedAt.parse(page.page_last_edited_at);
+    const existing = entries.get(id);
+    if (existing && Date.parse(page.page_last_edited_at) < Date.parse(existing.sourceEditedAt))
+      throw new Error("Refusing source revision older than the saved record.");
     const body = contentMatch[1]!
       .replace(/<mention-page url="([^"]+)"\s*\/>/g, "[Open source]($1)")
       .replace(/<callout[^>]*>|<\/callout>/g, "")
       .trim();
     const sourceHash = createHash("sha256").update(block.text).digest("hex");
-    if (entries.get(id)?.sourceHash === sourceHash) continue;
+    const metadata = knowledgeMetadata(properties);
+    if (
+      existing?.sourceHash === sourceHash &&
+      Object.entries(metadata).every(
+        ([key, value]) => existing[key as keyof KnowledgeEntry] === value,
+      )
+    )
+      continue;
     entries.set(id, {
       id,
+      ...metadata,
       title: String(properties.Topic),
-      body,
+      // Archived entries retain revision identity so stale exports cannot resurrect them.
+      body: properties.Status === "Archived" ? "" : body,
       sourceUrl: url,
       sourceEditedAt: page.page_last_edited_at,
       importedAt,

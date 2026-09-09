@@ -62,6 +62,25 @@ test("food capture persists across web and mobile, with reversible feedback and 
       food: before.today.food + 1,
       drink: before.today.drink + 1,
     });
+    const results = await request.get("/api/mobile/search?q=" + encodeURIComponent(name), {
+      headers,
+    });
+    expect(results.status()).toBe(200);
+    const hit = (await results.json()).data.groups.find(
+      (group: { domain: string }) => group.domain === "consumption",
+    ).hits[0];
+    await page.goto("/search?q=" + encodeURIComponent(name));
+    await page.locator(`a[href="${hit.href}"]`).click();
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Remove log", exact: true }).click();
+    await expect(page.getByText(/Removed \(not counted\)/)).toBeVisible();
+    await page.goto("/search?q=" + encodeURIComponent(name));
+    await expect(page.locator(`a[href="${hit.href}"]`)).toHaveCount(0);
+    await page.goto(hit.href);
+    await page.getByRole("button", { name: "Restore", exact: true }).click();
+    await expect(page.getByText("Your feedback: like", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Removed \(not counted\)/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Like", exact: true })).toBeEnabled();
     await page.setViewportSize({ width: 390, height: 844 });
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
@@ -69,5 +88,64 @@ test("food capture persists across web and mobile, with reversible feedback and 
     await page.screenshot({ path: testInfo.outputPath("food-phone-width.png"), fullPage: true });
   } finally {
     await request.delete("/api/mobile/session", { headers });
+  }
+});
+
+test("food shows canonical taste preferences with source age and recovers from unavailable imports", async ({
+  page,
+}) => {
+  const { readFile, writeFile } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+  const { knowledgeFixture } = await import("../tests/support/knowledge-fixtures");
+  const path = resolve("../work/knowledge-e2e.json");
+  const original = await readFile(path);
+  const fixture = knowledgeFixture();
+  const preference = {
+    ...fixture.entries[0]!,
+    id: "synthetic-palate",
+    title: "Synthetic taste profile",
+    body: "Prefer synthetic crunchy meals. Omit synthetic garnish.",
+    domain: "Food & Drink",
+    knowledgeType: "Preference",
+    steward: "Palate",
+    status: "Active",
+  };
+  try {
+    await writeFile(
+      path,
+      JSON.stringify({ ...fixture, entries: [...fixture.entries, preference] }),
+    );
+    await page.goto("/login");
+    await page.getByLabel("Passphrase").fill(E2E_AUTH_PASSPHRASE);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL("**/");
+    await page.goto("/food");
+    const profile = page.getByRole("region", { name: "Palate preferences" });
+    await expect(profile).toContainText(preference.title);
+    await expect(profile).not.toContainText("Synthetic household routine");
+    await profile.getByText("Read saved preferences", { exact: true }).click();
+    await expect(profile.getByText(preference.body)).toBeVisible();
+    await expect(profile).toContainText("Review due since 2020-01-08");
+    await expect(profile.getByRole("link", { name: "Open canonical preferences" })).toHaveAttribute(
+      "href",
+      preference.sourceUrl,
+    );
+    await writeFile(
+      path,
+      JSON.stringify({ ...fixture, entries: [{ ...preference, status: "Archived", body: "" }] }),
+    );
+    await page.reload();
+    await expect(profile).not.toContainText(preference.title);
+    await expect(profile).toContainText("No active Palate preference record");
+    await writeFile(path, "invalid snapshot");
+    await page.reload();
+    await expect(profile).toContainText("Personal knowledge could not be loaded");
+    await expect(profile).not.toContainText(preference.title);
+    await expect(page.getByRole("heading", { name: "Recent logs" })).toBeVisible();
+    await writeFile(path, JSON.stringify({ ...fixture, entries: [preference] }));
+    await page.reload();
+    await expect(profile).toContainText(preference.title);
+  } finally {
+    await writeFile(path, original);
   }
 });

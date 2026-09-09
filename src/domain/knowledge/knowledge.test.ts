@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { knowledgeEntrySchema, knowledgeSnapshotSchema, searchKnowledge } from "./knowledge";
+import {
+  knowledgeEntrySchema,
+  knowledgeSnapshotSchema,
+  searchKnowledge,
+  knowledgeMetadata,
+  palatePreferences,
+} from "./knowledge";
 
 const entry = {
   id: "synthetic-source",
@@ -34,5 +40,33 @@ describe("knowledge source boundary", () => {
     expect(
       knowledgeEntrySchema.safeParse({ ...entry, sourceUrl: "javascript:alert(1)" }).success,
     ).toBe(false);
+  });
+});
+
+describe("canonical Palate selection", () => {
+  const metadata = {
+    domain: "Food & Drink",
+    knowledgeType: "Preference",
+    steward: "Palate",
+    status: "Active",
+  };
+  it("preserves canonical properties through snapshot parsing", () => {
+    const mapped = knowledgeMetadata({
+      Domain: "Food & Drink",
+      "Knowledge Type": "Preference",
+      Steward: "Palate",
+      Status: "Active",
+    });
+    expect(mapped).toEqual(metadata);
+    const parsed = knowledgeEntrySchema.parse({ ...entry, ...mapped });
+    expect(palatePreferences([parsed])).toEqual([parsed]);
+  });
+  it("does not treat titles or incomplete metadata as authority", () => {
+    expect(palatePreferences([{ ...entry, title: "Food & Drink Palate" }])).toEqual([]);
+    for (const field of Object.keys(metadata)) {
+      expect(palatePreferences([{ ...entry, ...metadata, [field]: "Other" }])).toEqual([]);
+    }
+    expect(palatePreferences([{ ...entry, ...metadata, status: "Archived" }])).toEqual([]);
+    expect(knowledgeMetadata({ Domain: { select: "Food & Drink" } }).domain).toBeUndefined();
   });
 });

@@ -34,6 +34,7 @@ function byDomain(groups: Partial<Record<SearchDomain, readonly SearchHit[]>>) {
     note: groups.note ?? [],
     project: groups.project ?? [],
     kitchen: groups.kitchen ?? [],
+    consumption: groups.consumption ?? [],
   };
 }
 

@@ -122,13 +122,28 @@ struct FoodLogView: View {
                     Button("Log drink") { beginCapture("drink") }.accessibilityIdentifier("logDrink")
                 }.buttonStyle(.bordered)
             }
+            Section("Your taste profile") {
+                Text("Saved canonical preferences. Meal feedback remains separate evidence.").font(.caption).foregroundStyle(.secondary)
+                let preferences = (store.knowledge?.entries ?? []).filter { $0.isPalatePreference }
+                if preferences.isEmpty {
+                    Text(store.knowledgeUnavailable ? "Personal knowledge could not be refreshed." : store.knowledge?.health?.status == "available" ? "No active Palate preference record is present in this import." : store.knowledge?.health?.message ?? "Taste preferences have not loaded yet.").font(.caption).accessibilityIdentifier("palateHealth")
+                }
+                ForEach(preferences) { entry in
+                    DisclosureGroup(entry.title) {
+                        NoteBody(text: entry.body)
+                        Text(entry.sourceHealth?.reviewMessage ?? "Review timing unverified. Check the source in Notion.").font(.caption).foregroundStyle(.secondary)
+                        if let imported = entry.sourceHealth?.importMessage { Text(imported).font(.caption).foregroundStyle(.secondary) }
+                        if let source = entry.sourceUrl, let url = URL(string: source), url.scheme == "https" { Link("Open canonical preferences", destination: url) }
+                    }.accessibilityIdentifier("palateProfile")
+                }
+            }
             if let error { Text(error).foregroundStyle(.red).accessibilityIdentifier("foodError") }
             if let history {
                 Section("Logged today · \(history.today.day)") {
                     Text("\(history.today.food) food entries · \(history.today.drink) drink entries")
                     Text(history.today.timeZone).font(.caption).foregroundStyle(.secondary)
                 }
-                Section("Your feedback · latest 100 logs") {
+                Section("Your feedback") {
                     Text("Only explicit likes and dislikes count. Logging something does not mean you liked it.").font(.caption).foregroundStyle(.secondary)
                     ForEach(Array(history.feedback.enumerated()), id: \.offset) { _, feedback in Text("\(feedback.description): \(feedback.likes) likes · \(feedback.dislikes) dislikes") }
                 }
@@ -147,7 +162,7 @@ struct FoodLogView: View {
                     }
                 }
             } else if error == nil { ProgressView("Loading food log") }
-        }.navigationTitle("Food & drink").task { await load() }.refreshable { await load() }.onChange(of: store.refreshedAt) { _, _ in Task { await load() } }
+        }.navigationTitle("Food & drink").task { await load() }.refreshable { await store.refresh(); await load() }.onChange(of: store.refreshedAt) { _, _ in Task { await load() } }
     }
     private func beginCapture(_ kind: String) {
         // Never replace an existing unsent draft just to select a capture mode.

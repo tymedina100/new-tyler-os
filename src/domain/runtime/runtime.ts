@@ -75,7 +75,7 @@ export const RUNTIME_KIND_LABELS: Record<RuntimeKind, string> = {
   api: "Official API",
 };
 
-export const JOB_KINDS = ["today_briefing", "today_briefing_ai"] as const;
+export const JOB_KINDS = ["today_briefing", "today_briefing_ai", "today_briefing_codex"] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
 /**
@@ -130,6 +130,7 @@ export const SLICE_RUNTIME_KIND: RuntimeKind = "python";
 export const JOB_KIND_LABELS: Record<JobKind, string> = {
   today_briefing: "Today briefing",
   today_briefing_ai: "AI Today briefing",
+  today_briefing_codex: "Subscription Today briefing",
 };
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {

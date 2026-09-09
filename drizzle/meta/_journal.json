@@ -92,6 +92,20 @@
       "when": 1788986728259,
       "tag": "0012_abandoned_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788991706450,
+      "tag": "0013_fearless_killer_shrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788991781356,
+      "tag": "0014_mean_pepper_potts",
+      "breakpoints": true
     }
   ]
 }

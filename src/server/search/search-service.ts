@@ -1,7 +1,14 @@
+import { searchConsumption } from "@/server/consumption/consumption-repository";
 import { buildSearchGroups } from "@/domain/search/search-ranking";
 import type { SearchResults } from "@/domain/search/search-result";
 import { EMPTY_SEARCH_RESULTS, SEARCH_LIMITS } from "@/domain/search/search-result";
-import { itemHit, kitchenHit, noteHit, projectHit } from "@/domain/search/search-sources";
+import {
+  consumptionHit,
+  itemHit,
+  kitchenHit,
+  noteHit,
+  projectHit,
+} from "@/domain/search/search-sources";
 import { todayIsoDate } from "@/domain/shared/date";
 import type { Database } from "@/server/db/client";
 import { searchItems } from "@/server/items/item-repository";
@@ -52,17 +59,19 @@ export async function searchEverything(
 
   // Concurrent because they are genuinely independent: no domain's query needs
   // another's answer, so paying for them in sequence would buy nothing.
-  const [items, notes, projects, food] = await Promise.all([
+  const [items, notes, projects, food, consumption] = await Promise.all([
     searchItems(db, query, SEARCH_LIMITS.item),
     searchNotes(db, query, SEARCH_LIMITS.note),
     searchProjects(db, query, SEARCH_LIMITS.project),
     searchInventory(db, query, SEARCH_LIMITS.kitchen),
+    searchConsumption(db, query, SEARCH_LIMITS.consumption),
   ]);
 
   const groups = buildSearchGroups({
     item: items.map((item) => itemHit(item, today, query)),
     note: notes.map((note) => noteHit(note, query)),
     project: projects.map((project) => projectHit(project, query)),
+    consumption: consumption.map((entry) => consumptionHit(entry, query)),
     kitchen: food.map((entry) => kitchenHit(entry, today, query)),
   });
 

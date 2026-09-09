@@ -960,3 +960,15 @@ export const consumptionEntries = pgTable(
     index("consumption_recent_idx").on(table.occurredAt),
   ],
 );
+
+/** Frozen subscription prompt, keyed to a durable runtime attempt. */
+export const subscriptionRequests = pgTable("subscription_requests", {
+  runId: uuid("run_id")
+    .primaryKey()
+    .references(() => runs.id, { onDelete: "cascade" }),
+  model: text("model").notNull(),
+  effort: text("effort").notNull(),
+  prompt: text("prompt").notNull(),
+  today: date("today").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

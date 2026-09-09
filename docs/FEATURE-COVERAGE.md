@@ -8,29 +8,29 @@ and the September 9 comprehensive goal. Shared tasks and policies remain in
 Status distinguishes existing implementation from verification in this milestone.
 No domain is complete just because a specialist role name exists.
 
-| Capability                             | Current evidence / gap                                                                    | Next integrated work or dependency                                                                      |
-| -------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Morning briefing                       | Existing deterministic/explicit AI jobs; new canonical operations counts verified locally | Release web and Python changes under approval; richer sourced domain context                            |
-| Capture, tasks, routines               | Capture, recurrence, Today; cross-device item conflicts locally verified                  | Release version checks; add completion history                                                          |
-| Email                                  | Existing bot Google helpers not revalidated here                                          | Verify scopes and provider-supported access; draft/approval integration before external actions         |
-| Calendar                               | Existing Google helpers not revalidated here                                              | Read events/conflicts, explicit scheduling policy                                                       |
-| Finance                                | Ledger role and separate Worthlane project exist; finance integration not verified here   | Authorized data source, freshness and approval-gated actions                                            |
-| Career                                 | Archer and canonical policy exist                                                         | Audit current bot workflow and assigned opportunities; preserve assignment/submission gates             |
-| eBay / Marketplace                     | Mercury ownership and inventory authority documented in HQ                                | Verify actual inventory and provider access; no invented listings or sales                              |
-| Household                              | Kitchen inventory, shopping bridge, recurrence exist                                      | Bring routines and completion outcomes into briefings                                                   |
-| Food/drink tracking                    | Local structured log, daily counts and explicit reversible feedback across web/native     | Native physical voice verification, canonical preference sync, recommendations and ordering             |
-| Preferences / restaurants / ordering   | Durable context in Notion; no verified ordering flow                                      | Confidence and recent-meal evidence; authorized merchant, budget and ordering mechanism                 |
-| Sports / gaming / entertainment / news | Role/context only in this audit                                                           | Current sources and preferences, useful changes only                                                    |
-| Second brain                           | Notes/search; independent source health and review timing implemented                     | Source-health locally verified; release and live Notion sync remain open                                |
-| Autonomous project development         | Existing workflow/bot code; local implementation and tests work                           | Audit actual worker execution, resumable milestones, measured outcomes                                  |
-| Provider independence                  | Roles distinct from runtimes, explicit profiles                                           | Supported subscription execution adapters; no subscription-to-API assumption                            |
-| Quota / cost                           | Capacity ledger, usage accounting; automatic selection absent                             | Deterministic eligibility, fresh quota evidence, approved cost ceiling                                  |
-| Native mobile / voice                  | Canonical iOS source; prior release record says physical install completed                | Native operations verified in Simulator; physical production login, voice and notification verification |
-| Coordinated devices                    | Runtime instance/grant model exists                                                       | Verify host availability and failover; no assumed always-on Windows node                                |
-| Game-style world                       | No verified implementation in this audit                                                  | Render real job/role/health state; no synthetic activity                                                |
-| Smart home                             | Future scope                                                                              | Hardware, local control and explicit authority prerequisites                                            |
-| AI advancement monitoring              | Scout role exists                                                                         | Source-backed capability changes, bounded evaluations with approved compute                             |
-| Tested self-improvement                | Tests and review gates exist                                                              | Capture before/after outcome/cost evidence and gate adoption                                            |
+| Capability                             | Current evidence / gap                                                                  | Next integrated work or dependency                                                              |
+| -------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Morning briefing                       | Released deterministic briefing with operations and previous-day consumption counts     | Richer sourced domain context and measured daily usefulness                                     |
+| Capture, tasks, routines               | Released capture, recurrence, Today and cross-device item conflict protection           | Add completion history and integrated routines                                                  |
+| Email                                  | Existing bot Google helpers not revalidated here                                        | Verify scopes and provider-supported access; draft/approval integration before external actions |
+| Calendar                               | Existing Google helpers not revalidated here                                            | Read events/conflicts, explicit scheduling policy                                               |
+| Finance                                | Ledger role and separate Worthlane project exist; finance integration not verified here | Authorized data source, freshness and approval-gated actions                                    |
+| Career                                 | Archer and canonical policy exist                                                       | Audit current bot workflow and assigned opportunities; preserve assignment/submission gates     |
+| eBay / Marketplace                     | Mercury ownership and inventory authority documented in HQ                              | Verify actual inventory and provider access; no invented listings or sales                      |
+| Household                              | Kitchen inventory, shopping bridge, recurrence exist                                    | Bring routines and completion outcomes into briefings                                           |
+| Food/drink tracking                    | Released structured log, daily counts and explicit feedback; native Simulator verified  | Native physical voice verification, canonical preference sync, recommendations and ordering     |
+| Preferences / restaurants / ordering   | Durable context in Notion; no verified ordering flow                                    | Confidence and recent-meal evidence; authorized merchant, budget and ordering mechanism         |
+| Sports / gaming / entertainment / news | Role/context only in this audit                                                         | Current sources and preferences, useful changes only                                            |
+| Second brain                           | Notes/search; independent source health and review timing implemented                   | Source health released; live Notion sync and automatic reviews remain open                      |
+| Autonomous project development         | Existing workflow/bot code; local implementation and tests work                         | Audit actual worker execution, resumable milestones, measured outcomes                          |
+| Provider independence                  | Roles distinct from runtimes, explicit profiles                                         | Supported subscription execution adapters; no subscription-to-API assumption                    |
+| Quota / cost                           | Capacity ledger, usage accounting; automatic selection absent                           | Deterministic eligibility, fresh quota evidence, approved cost ceiling                          |
+| Native mobile / voice                  | Released native source; current installed phone version unverified                      | Signed package; physical production login, voice and notification verification                  |
+| Coordinated devices                    | Runtime instance/grant model exists                                                     | Verify host availability and failover; no assumed always-on Windows node                        |
+| Game-style world                       | No verified implementation in this audit                                                | Render real job/role/health state; no synthetic activity                                        |
+| Smart home                             | Future scope                                                                            | Hardware, local control and explicit authority prerequisites                                    |
+| AI advancement monitoring              | Scout role exists                                                                       | Source-backed capability changes, bounded evaluations with approved compute                     |
+| Tested self-improvement                | Tests and review gates exist                                                            | Capture before/after outcome/cost evidence and gate adoption                                    |
 
 ## Current milestone evidence
 
@@ -125,3 +125,112 @@ its existing briefing material; counts alone do not trigger a scheduled briefing
 Database coverage checks December/January boundaries and absence of private meal
 text. Worker tests cover valid counts, legacy/invalid input and quiet scheduling.
 This is local integration, not a deployment or restaurant recommendation engine.
+
+## Cumulative release receipt · 2026-09-09
+
+User approved the exact cumulative release. App PR12 merged as `a5e9065` after
+GitHub CI passed; production deployment `dpl_5VUEC1eMuDFHAwwoPqYqWwcVjshv` is READY
+on the existing domain. Staged production migration0012/build succeeded before
+primary-domain traffic moved. Authenticated staged and primary runtime checks
+return the previous-day consumption summary. No synthetic production log added.
+
+Worker PR89 merged as `cb67a93`; a rebase resolved the prior-squash conflict with
+an identical source tree and 30 passing tests. Approved worker bytes installed
+at a verified idle point with config/helper/interval unchanged. Post-restart
+server logs show HTTP200 polls. Source health, web draft protection, food/drink
+tracking and consumption briefing totals are now released on web/runtime. Native
+source is merged and Simulator verified; the installed physical phone version
+is not verified or updated by this release. The earlier signed package remains
+the morning-operations version. Restaurant recommendations, ordering and durable
+Notion preference synchronization remain incomplete.
+
+## Food-history retrieval (local follow-through)
+
+Universal search now includes a separate Food & drink history group. Queries match
+all literal words in any order, escape SQL wildcard characters, and exclude removed
+logs. Search reaches beyond the latest100 history window; direct authenticated
+entry pages show date/kind/explicit feedback and allow remove/restore. Mobile search
+returns the same links to the existing native web-results view. This does not add
+meal prose to model context or mutate canonical Notion preferences.
+
+### Native package follow-through
+
+Build2 IPA from released `a5e9065` has been archived/exported with the existing
+personal team/profile and its exported signature verified. It includes the released
+food/source-health/morning interfaces. The paired phone remains unavailable; no
+physical installation or voice verification is claimed. Installation instructions,
+source/profile metadata and checksum are delivered outside source control.
+
+## Saved Palate preferences (local follow-through)
+
+Food now displays active Food & Drink / Preference records stewarded by Palate
+from the saved Second Brain import, selected by canonical metadata. Importer
+retains these properties and upgrades legacy entries even when the content hash
+has not changed; repeated imports are idempotent. The profile retains original
+review dates, displays import age and review status, and links to Notion. Missing
+or unreadable imports show an explicit dependency without hiding the food ledger.
+Meal feedback remains separate evidence and does not rewrite canonical preferences.
+
+Full check: 1,034 tests across 76 files, including real PostgreSQL race checks.
+Browser tests cover capture/search/feedback plus profile selection, unreadable
+import and recovery. Synthetic fixtures only; no personal preference prose in
+source. This is local, not released. Production needs a refreshed metadata-bearing
+snapshot as well as a future approved release. Live canonical synchronization, recommendations and ordering remain incomplete.
+Explicit Archived imports now retain revision identity with an empty body and
+are excluded from knowledge search and the taste profile. Older source revisions
+are rejected atomically; a newer Active revision restores visibility. Tests cover
+archive, idempotency, backup, stale replay rejection and reactivation.
+
+## Durable explicit food feedback (local follow-through)
+
+Feedback aggregation now queries the full ledger rather than the latest 100 logs.
+Food and drink stay distinct; normalized matching descriptions retain both likes
+and dislikes. Removed entries are excluded, restore reinstates evidence, and clear
+removes a signal. Web feedback links back to searchable source logs. Native uses
+the same API response and its label now reflects all history. No inferred tastes
+or automatic canonical preference edits. Integration tests put rated meals behind
+101 newer unrated rows and verify grouping, removal, restoration and clearing.
+
+## Native saved taste profile (local follow-through)
+
+The native Food & drink screen now selects the same Active Food & Drink /
+Preference / Palate metadata as the web screen, using its existing authenticated
+knowledge endpoint. Expanded profile displays saved content, review timing,
+import age and the canonical link. Missing metadata on older backends stays
+compatible and is not inferred from a title. Pull-to-refresh reloads knowledge
+alongside food records. This does not implement autonomous Palate decision jobs:
+current worker job kinds remain morning briefings only.
+
+Native verification: 14 unit tests and authenticated Simulator profile expansion,
+food capture, Like, Remove, Restore and relaunch/persistence flow passed. Screenshots
+inspected. Test selectors corrected for disclosure children and bottom-bar overlap;
+fixture setup replaces its synthetic record on retry. Physical installation of version1.0.0 build3 on the connected iPhone16ProMax
+and signed package verification completed. Physical voice and notifications remain unverified.
+
+## Subscription briefing queue (locally integrated)
+
+Explicit Codex ChatGPT profiles enqueue a separate subscription briefing job kind.
+Old API/deterministic workers do not claim it. The authenticated preparation route
+freezes bounded Today context by run ID; empty days complete without inference.
+The one-shot Python consumer uses the durable local adapter receipt, then submits
+structured Miles judgment for server validation and the existing note-approval
+flow. Raw worker note proposals remain disallowed for AI job kinds. Server controls
+provider/model/product attribution; dollar cost remains unknown, not inferred zero.
+
+Live local evidence: isolated PostgreSQL migrations0013/0014, real runtime credential,
+HTTP claim and frozen preparation, supported ChatGPT CLI execution, HTTP validated
+completion, mobile approval and replay, exactly one saved note. Recorded usage:
+8,691 input tokens,144 output tokens,31 reasoning output tokens. No production
+migration, worker update, schedule enablement or paid API call. Local run recovery
+reuses a receipt after a failed completion transport. Supported app-server quota
+refresh now gates each new claim; unknown or exhausted capacity leaves jobs queued.
+Global quota reservation, reconciliation UI and specialist decision jobs remain open.
+
+Recovery now includes read-only private ledger inspection and an explicit
+delivery-only consumer mode which cannot invoke inference. Preparation acknowledges
+an already successful run to its owning runtime, reporting the current job status
+so pending approval is not confused with a saved note. Lost completion responses
+therefore do not require resubmitting a proposal. Tests cover one usage entry,
+one approval and one accepted note after acknowledgement, wrong-runtime rejection,
+and failed attempts remaining failed. A crashed local model attempt still holds
+the account ledger; explicit resolution and unattended scheduling remain unfinished.

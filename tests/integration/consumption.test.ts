@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import { items, kitchenInventory } from "@/server/db/schema";
+import { consumptionEntries, items, kitchenInventory } from "@/server/db/schema";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 import { captureMobile } from "@/server/mobile/mobile-service";
 import { createMobileSession } from "@/server/mobile/mobile-auth";
@@ -131,4 +131,90 @@ it("briefing context counts yesterday across a year boundary without exposing de
     drink: 0,
   });
   expect(JSON.stringify(context)).not.toContain("PRIVATE");
+});
+
+it("retrieves old meal records with literal terms and excludes removed evidence", async () => {
+  const { searchEverything } = await import("@/server/search/search-service");
+  const { getConsumptionEntry } = await import("@/server/consumption/consumption-service");
+  const old = await logConsumption(
+    harness.db,
+    { kind: "food", description: "100% spicy burrito" },
+    new Date("2025-01-01T20:00:00Z"),
+  );
+  await harness.db.insert(consumptionEntries).values(
+    Array.from({ length: 101 }, (_, i) => ({
+      kind: "drink" as const,
+      description: `New water ${i}`,
+      loggedOn: "2026-09-09",
+    })),
+  );
+  expect((await getConsumptionHistory(harness.db)).entries.some((e) => e.id === old.id)).toBe(
+    false,
+  );
+  await changeConsumption(harness.db, old.id, "like");
+  const found = await searchEverything(harness.db, "burrito 100%");
+  const hit = found.groups.find((g) => g.domain === "consumption")?.hits[0];
+  expect(hit).toMatchObject({
+    id: old.id,
+    href: `/food/${old.id}`,
+    context: "food · 2025-01-01 · Feedback: like",
+  });
+  expect((await getConsumptionEntry(harness.db, old.id))?.description).toBe(old.description);
+  expect((await searchEverything(harness.db, "100_")).groups).toEqual([]);
+  await changeConsumption(harness.db, old.id, "remove");
+  expect((await searchEverything(harness.db, "burrito")).groups).toEqual([]);
+  await changeConsumption(harness.db, old.id, "restore");
+  expect((await searchEverything(harness.db, "burrito")).total).toBe(1);
+});
+
+it("keeps durable feedback beyond recent logs and aggregates only explicit active signals", async () => {
+  const old = new Date("2025-01-01T12:00:00Z");
+  const meal = await logConsumption(
+    harness.db,
+    { kind: "food", description: "Spicy Noodles" },
+    old,
+  );
+  await changeConsumption(harness.db, meal.id, "like", old);
+  const repeated = await logConsumption(
+    harness.db,
+    { kind: "food", description: " spicy   NOODLES " },
+    old,
+  );
+  await changeConsumption(harness.db, repeated.id, "dislike", old);
+  const drink = await logConsumption(
+    harness.db,
+    { kind: "drink", description: "Spicy Noodles" },
+    old,
+  );
+  await changeConsumption(harness.db, drink.id, "like", old);
+  await harness.db.insert(consumptionEntries).values(
+    Array.from({ length: 101 }, (_, i) => ({
+      kind: "food" as const,
+      description: `Unrated recent meal ${i}`,
+      occurredAt: new Date("2026-09-09T12:00:00Z"),
+      loggedOn: "2026-09-09",
+    })),
+  );
+  const history = await getConsumptionHistory(harness.db);
+  expect(history.entries).toHaveLength(100);
+  expect(history.entries.some((row) => row.id === meal.id)).toBe(false);
+  expect(history.feedback).toHaveLength(2);
+  expect(history.feedback).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ likes: 1, dislikes: 1 }),
+      expect.objectContaining({ likes: 1, dislikes: 0 }),
+    ]),
+  );
+  await changeConsumption(harness.db, repeated.id, "remove");
+  expect(
+    (await getConsumptionHistory(harness.db)).feedback.every((row) => row.dislikes === 0),
+  ).toBe(true);
+  await changeConsumption(harness.db, repeated.id, "restore");
+  expect((await getConsumptionHistory(harness.db)).feedback.some((row) => row.dislikes === 1)).toBe(
+    true,
+  );
+  await changeConsumption(harness.db, repeated.id, "clear");
+  expect(
+    (await getConsumptionHistory(harness.db)).feedback.every((row) => row.dislikes === 0),
+  ).toBe(true);
 });

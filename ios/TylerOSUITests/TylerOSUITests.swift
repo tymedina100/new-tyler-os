@@ -127,11 +127,23 @@ final class TylerOSUITests: XCTestCase {
     }
 
     @MainActor func testFoodCaptureFeedbackAndRestore() throws {
-        struct Configuration: Decodable { let server: String; let passphrase: String }
+        struct Configuration: Decodable { let server: String; let passphrase: String; let knowledgeFixturePath: String? }
         let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("work/ios-ui-configuration.json")
         guard let data = try? Data(contentsOf: file) else { throw XCTSkip("Configure isolated food test server.") }
         let config = try JSONDecoder().decode(Configuration.self, from: data)
         guard let host = URL(string: config.server)?.host, ["localhost", "127.0.0.1"].contains(host) else { XCTFail("Food test requires a local fixture server."); return }
+        guard let fixturePath = config.knowledgeFixturePath, fixturePath.hasSuffix("/work/knowledge-e2e.json") else { throw XCTSkip("Configure synthetic knowledge fixture.") }
+        let fixtureURL = URL(fileURLWithPath: fixturePath)
+        let original = try Data(contentsOf: fixtureURL)
+        defer { try? original.write(to: fixtureURL, options: .atomic) }
+        var snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: original) as? [String: Any])
+        var entries = try XCTUnwrap(snapshot["entries"] as? [[String: Any]])
+        var profile = try XCTUnwrap(entries.first)
+        profile["id"] = "synthetic-palate-native"; profile["title"] = "Synthetic native taste profile"; profile["body"] = "Synthetic crunchy meal preference."
+        profile["domain"] = "Food & Drink"; profile["knowledgeType"] = "Preference"; profile["steward"] = "Palate"; profile["status"] = "Active"
+        entries.removeAll { ($0["id"] as? String) == "synthetic-palate-native" }
+        entries.append(profile); snapshot["entries"] = entries
+        try JSONSerialization.data(withJSONObject: snapshot).write(to: fixtureURL, options: .atomic)
         let app = XCUIApplication(); app.launch()
         if app.textFields["serverURL"].waitForExistence(timeout: 3) {
             let server = app.textFields["serverURL"]; server.tap()
@@ -146,6 +158,11 @@ final class TylerOSUITests: XCTestCase {
             if link.exists && link.frame.minY < 150 { app.swipeDown() } else { app.swipeUp() }
         }
         XCTAssertTrue(link.waitForExistence(timeout: 15)); link.tap()
+        let profileButton = app.buttons.matching(NSPredicate(format: "identifier == %@ AND label == %@", "palateProfile", "Synthetic native taste profile")).firstMatch
+        XCTAssertTrue(profileButton.waitForExistence(timeout: 15)); profileButton.tap()
+        XCTAssertTrue(app.staticTexts["Synthetic crunchy meal preference."].waitForExistence(timeout: 10))
+        let profileShot = XCTAttachment(screenshot: app.screenshot()); profileShot.name = "TylerOS-Palate"; profileShot.lifetime = .keepAlways; add(profileShot)
+        profileButton.tap()
         XCTAssertTrue(app.buttons["logFood"].waitForExistence(timeout: 15)); app.buttons["logFood"].tap()
         let editor = app.textViews["captureText"]
         XCTAssertTrue(editor.waitForExistence(timeout: 10)); XCTAssertEqual(editor.value as? String, ""); XCTAssertEqual(app.staticTexts["captureKind"].label, "Logging food")
@@ -153,7 +170,7 @@ final class TylerOSUITests: XCTestCase {
         editor.tap(); editor.typeText(description); XCTAssertEqual(editor.value as? String, description); app.buttons["saveCapture"].tap()
         XCTAssertTrue(editor.waitForNonExistence(timeout: 15))
         let row = app.descendants(matching: .any)["foodEntry-" + description].firstMatch
-        for _ in 0..<5 { if row.buttons["Like"].isHittable { break }; app.swipeUp() }
+        for _ in 0..<8 { let like = row.buttons["Like"]; if like.isHittable && like.isEnabled && like.frame.minY > 150 && like.frame.maxY < app.frame.height - 200 { break }; app.swipeUp() }
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.buttons["Like"].tap()
         XCTAssertTrue(row.staticTexts["Feedback: like"].waitForExistence(timeout: 15))
         row.buttons["Remove log"].tap(); XCTAssertTrue(row.buttons["Restore"].waitForExistence(timeout: 15))
@@ -164,7 +181,7 @@ final class TylerOSUITests: XCTestCase {
             if link.exists && link.isHittable && link.frame.minY > 150 && link.frame.maxY < app.frame.height - 160 { break }
             if link.exists && link.frame.minY < 150 { app.swipeDown() } else { app.swipeUp() }
         }; link.tap()
-        for _ in 0..<5 { if row.isHittable { break }; app.swipeUp() }
+        for _ in 0..<8 { if row.staticTexts["Feedback: like"].isHittable { break }; app.swipeUp() }
         XCTAssertTrue(row.staticTexts["Feedback: like"].waitForExistence(timeout: 15))
     }
 
