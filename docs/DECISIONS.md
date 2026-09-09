@@ -1725,3 +1725,30 @@ failure clears the inaccessible knowledge cache and labels that failure while
 keeping canonical notes/tasks. New fields are optional in native decoding for older
 backends. This does not create live Notion synchronization, background reviews,
 notifications, changed freshness policies or permission to update the originals.
+
+## 044 · Explicit consumption capture and reversible feedback
+
+Food and drink are reported events, separate from pantry stock and task planning.
+Anchored `food:` and `drink:` prefixes route web/mobile capture into the same
+consumption service, before task dates, tags or projects can change the description.
+Native quick modes preserve existing drafts and use the existing capture/dictation
+surface. The selected mode is encrypted with the draft separately from its text;
+the prefix is added to the API payload, preventing cursor position from changing
+the chosen record type. Legacy drafts decode with no selected mode. No nutrition, portions, price or preference is guessed from a description.
+
+Migration 0012 stores event time and its calendar day in `TYLEROS_TIME_ZONE`
+(default America/Phoenix). Daily counts use all non-removed events, while history
+and explicit feedback cover the latest 100 logs. Like/dislike evidence groups exact
+normalized descriptions by kind; consumption alone is never a positive preference.
+Remove/restore retains the original entry and feedback, excluding removed records
+from counts/evidence. A correction currently means remove and capture again.
+This is app event state, not a new canonical Notion preferences database.
+
+Web writes retain session auth and action validation. Mobile mutations use the
+existing durable request receipt, rejecting changed intent on replay. Mobile reads
+require the same device session. Additive Today fields are optional in native
+models, so older backends do not expose unsupported quick modes.
+
+This milestone does not infer nutrition, implement historical backdating or
+pagination, synchronize preferences into Notion, recommend restaurants, or order
+anything. Raw consumption descriptions are not added to runtime/model context.

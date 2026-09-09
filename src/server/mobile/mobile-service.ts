@@ -1,3 +1,5 @@
+import { matchConsumptionPrefix, consumptionInputSchema } from "@/domain/consumption/consumption";
+import { logConsumption } from "@/server/consumption/consumption-service";
 import { assertItemVersion } from "@/domain/items/item-version";
 import * as versions from "@/server/items/item-version-repository";
 import { matchNotePrefix } from "@/domain/capture/note-prefix";
@@ -37,6 +39,11 @@ export async function mobileMutation(
   });
 }
 export async function captureMobile(db: Database, text: string) {
+  const meal = matchConsumptionPrefix(text);
+  if (meal) {
+    const entry = await logConsumption(db, consumptionInputSchema.parse(meal));
+    return { id: entry.id, entityType: "consumption" };
+  }
   const body = matchNotePrefix(text);
   if (body !== null) {
     const id = await noteService.captureNote(db, captureNoteSchema.parse({ body }));

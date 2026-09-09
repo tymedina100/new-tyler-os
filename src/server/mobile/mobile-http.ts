@@ -1,3 +1,9 @@
+import {
+  getConsumptionHistory,
+  getConsumptionSummary,
+  changeConsumption,
+} from "@/server/consumption/consumption-service";
+import { consumptionActionSchema } from "@/domain/consumption/consumption";
 import { z, ZodError } from "zod";
 import { DomainError } from "@/domain/shared/errors";
 import {
@@ -107,11 +113,23 @@ export async function handleMobileRequest(
       data = { revoked: true };
     } else if (route === "today" && method === "GET") {
       const now = new Date();
-      const [today, operations] = await Promise.all([
+      const [today, operations, consumption] = await Promise.all([
         getTodayData(db, now),
         getOperationsSummary(db, now),
+        getConsumptionSummary(db, now),
       ]);
-      data = { ...today, operations };
+      data = { ...today, operations, consumption };
+    } else if (route === "consumption" && method === "GET") {
+      data = await getConsumptionHistory(db);
+    } else if (path.length === 2 && path[0] === "consumption" && method === "PATCH") {
+      const id = z.uuid().parse(path[1]);
+      const input = z
+        .object({ requestId: z.uuid(), action: consumptionActionSchema })
+        .strict()
+        .parse(await readBody(request));
+      data = await mobileMutation(db, input.requestId, [route, input.action], (tx) =>
+        changeConsumption(tx, id, input.action),
+      );
     } else if (route === "items" && method === "GET") {
       data = { items: await listItemsForView(db, {}) };
     } else if (route === "notes" && method === "GET") {

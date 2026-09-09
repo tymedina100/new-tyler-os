@@ -1,3 +1,4 @@
+import { getConsumptionSummary } from "@/server/consumption/consumption-service";
 import Link from "next/link";
 import { ItemList } from "@/components/items/item-list";
 import { ItemSection } from "@/components/items/item-section";
@@ -23,10 +24,11 @@ import { OperationsStrip } from "@/components/runtime/operations-strip";
 export default async function TodayPage() {
   const db = getDb();
   const now = new Date();
-  const [{ today, view }, expiring, operations] = await Promise.all([
+  const [{ today, view }, expiring, operations, consumption] = await Promise.all([
     getTodayData(db, now),
     getExpiringSoon(db, now),
     getOperationsSummary(db, now),
+    getConsumptionSummary(db, now),
   ]);
 
   // Food about to be wasted is the only inventory Today shows, and it does not
@@ -38,6 +40,10 @@ export default async function TodayPage() {
     <>
       <PageHeader title="Today" description={formatLongDate(today)} />
       <OperationsStrip summary={operations} />
+      <Link href="/food" className="text-muted-foreground text-sm">
+        Food & drink · {consumption.food} food entries, {consumption.drink} drink entries logged
+        today
+      </Link>
 
       {nothingToDo ? (
         <EmptyState

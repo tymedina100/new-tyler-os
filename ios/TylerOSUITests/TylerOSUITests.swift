@@ -126,4 +126,46 @@ final class TylerOSUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Synthetic household routine"].waitForExistence(timeout: 15))
     }
 
+    @MainActor func testFoodCaptureFeedbackAndRestore() throws {
+        struct Configuration: Decodable { let server: String; let passphrase: String }
+        let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("work/ios-ui-configuration.json")
+        guard let data = try? Data(contentsOf: file) else { throw XCTSkip("Configure isolated food test server.") }
+        let config = try JSONDecoder().decode(Configuration.self, from: data)
+        guard let host = URL(string: config.server)?.host, ["localhost", "127.0.0.1"].contains(host) else { XCTFail("Food test requires a local fixture server."); return }
+        let app = XCUIApplication(); app.launch()
+        if app.textFields["serverURL"].waitForExistence(timeout: 3) {
+            let server = app.textFields["serverURL"]; server.tap()
+            server.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (server.value as? String)?.count ?? 0) + config.server)
+            app.secureTextFields["passphrase"].tap(); app.secureTextFields["passphrase"].typeText(config.passphrase)
+            app.buttons["connect"].tap()
+        }
+        XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 30)); app.tabBars.buttons["Today"].tap()
+        let link = app.buttons["foodLog"]
+        for _ in 0..<5 {
+            if link.exists && link.isHittable && link.frame.minY > 150 && link.frame.maxY < app.frame.height - 160 { break }
+            if link.exists && link.frame.minY < 150 { app.swipeDown() } else { app.swipeUp() }
+        }
+        XCTAssertTrue(link.waitForExistence(timeout: 15)); link.tap()
+        XCTAssertTrue(app.buttons["logFood"].waitForExistence(timeout: 15)); app.buttons["logFood"].tap()
+        let editor = app.textViews["captureText"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 10)); XCTAssertEqual(editor.value as? String, ""); XCTAssertEqual(app.staticTexts["captureKind"].label, "Logging food")
+        let description = "Synthetic native lunch " + UUID().uuidString.prefix(8)
+        editor.tap(); editor.typeText(description); XCTAssertEqual(editor.value as? String, description); app.buttons["saveCapture"].tap()
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 15))
+        let row = app.descendants(matching: .any)["foodEntry-" + description].firstMatch
+        for _ in 0..<5 { if row.buttons["Like"].isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.buttons["Like"].tap()
+        XCTAssertTrue(row.staticTexts["Feedback: like"].waitForExistence(timeout: 15))
+        row.buttons["Remove log"].tap(); XCTAssertTrue(row.buttons["Restore"].waitForExistence(timeout: 15))
+        row.buttons["Restore"].tap(); XCTAssertTrue(row.staticTexts["Feedback: like"].waitForExistence(timeout: 15))
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "TylerOS-food-restored"; screenshot.lifetime = .keepAlways; add(screenshot)
+        app.terminate(); app.launch(); XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 15))
+        for _ in 0..<5 {
+            if link.exists && link.isHittable && link.frame.minY > 150 && link.frame.maxY < app.frame.height - 160 { break }
+            if link.exists && link.frame.minY < 150 { app.swipeDown() } else { app.swipeUp() }
+        }; link.tap()
+        for _ in 0..<5 { if row.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(row.staticTexts["Feedback: like"].waitForExistence(timeout: 15))
+    }
+
 }

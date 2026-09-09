@@ -58,7 +58,7 @@ import SwiftUI
     func capture() async -> Bool {
         var saved = false
         await perform {
-            let _: CaptureResult = try await self.api.request("capture", method: "POST", body: ["requestId": self.draft.requestId, "text": self.draft.text])
+            let _: CaptureResult = try await self.api.request("capture", method: "POST", body: ["requestId": self.draft.requestId, "text": self.draft.captureText])
             self.draft = Draft(); self.saveDraft(); self.notice = "Captured in TylerOS."; saved = true
         }
         if saved { await refresh() }; return saved

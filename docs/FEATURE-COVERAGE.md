@@ -18,7 +18,7 @@ No domain is complete just because a specialist role name exists.
 | Career                                 | Archer and canonical policy exist                                                         | Audit current bot workflow and assigned opportunities; preserve assignment/submission gates             |
 | eBay / Marketplace                     | Mercury ownership and inventory authority documented in HQ                                | Verify actual inventory and provider access; no invented listings or sales                              |
 | Household                              | Kitchen inventory, shopping bridge, recurrence exist                                      | Bring routines and completion outcomes into briefings                                                   |
-| Food/drink tracking                    | Palate exists; kitchen is stock, not a meal log                                           | Structured consumption and feedback linked to second brain                                              |
+| Food/drink tracking                    | Local structured log, daily counts and explicit reversible feedback across web/native     | Native physical voice verification, canonical preference sync, recommendations and ordering             |
 | Preferences / restaurants / ordering   | Durable context in Notion; no verified ordering flow                                      | Confidence and recent-meal evidence; authorized merchant, budget and ordering mechanism                 |
 | Sports / gaming / entertainment / news | Role/context only in this audit                                                           | Current sources and preferences, useful changes only                                                    |
 | Second brain                           | Notes/search; independent source health and review timing implemented                     | Source-health locally verified; release and live Notion sync remain open                                |
@@ -101,3 +101,17 @@ separate missing capabilities. Release is not authorized by the earlier approval
 Verification: 1,018 repository tests and full gate passed; authenticated browser
 source-failure/recovery flow passed; 12 native unit tests and source-recovery UI
 flow passed. Web and native screenshots inspected. No production changes.
+
+## Food/drink milestone (locally verified)
+
+Explicit `food:`/`drink:` captures share persistent web and native history and Today
+counts. Native quick capture reuses the existing dictation surface. Likes/dislikes
+remain explicit evidence from recent logs; removing/restoring an entry adjusts both
+counts and evidence. No stock mutation or invented nutrition. Migration 0012 has
+only been applied to the isolated local fixture database. No release authorized.
+
+1,027 repository tests and authenticated PostgreSQL/Chromium/mobile HTTP flow pass.
+13 native unit tests and the authenticated capture/feedback/restore/relaunch UI
+flow pass. Web and native screenshots inspected. Physical microphone
+verification, historical backdating, canonical Notion preference integration,
+restaurant recommendations and authorized ordering remain incomplete.

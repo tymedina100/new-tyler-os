@@ -933,3 +933,30 @@ export const mobileLoginLimits = pgTable("mobile_login_limits", {
   windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
   attempts: integer("attempts").notNull(),
 });
+
+/** Consumption is evidence of what was logged, not pantry movement or inferred nutrition. */
+export const consumptionEntries = pgTable(
+  "consumption_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").$type<"food" | "drink">().notNull(),
+    description: text("description").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    loggedOn: date("logged_on", { mode: "string" }).notNull(),
+    feedback: text("feedback").$type<"like" | "dislike">(),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("consumption_kind_check", sql`${table.kind} in ('food','drink')`),
+    check(
+      "consumption_feedback_check",
+      sql`${table.feedback} is null or ${table.feedback} in ('like','dislike')`,
+    ),
+    check(
+      "consumption_description_check",
+      sql`length(trim(${table.description})) between 1 and 1000`,
+    ),
+    index("consumption_day_idx").on(table.loggedOn),
+    index("consumption_recent_idx").on(table.occurredAt),
+  ],
+);
