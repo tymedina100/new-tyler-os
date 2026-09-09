@@ -532,3 +532,11 @@ Migration 0011 adds hashed seven-day `mobile_sessions`, transactional
 `mobile_mutation_receipts`, and a global durable `mobile_login_limits` budget.
 These are technical state, with no user IDs or second personal data model.
 ADR 040 describes revocation, rotation, replay and standing-authority boundaries.
+
+### Morning operations
+
+`runtime/operations-service` reads SQL aggregates through `operations-repository`.
+The same summary is rendered by Today, returned in the authenticated mobile Today
+response, and added to runtime Today context. Only aggregate counts leave this
+boundary; approval bodies and runtime-reported prose do not. ADR 041 defines the
+window and the protection against recursive briefing generation.

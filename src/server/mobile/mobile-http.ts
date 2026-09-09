@@ -10,6 +10,7 @@ import {
 import type { AuthConfig } from "@/server/auth/auth-config";
 import type { Database } from "@/server/db/client";
 import { getTodayData, listItemsForView } from "@/server/items/item-service";
+import { getOperationsSummary } from "@/server/runtime/operations-service";
 import { findNotes, listNotes } from "@/server/notes/note-service";
 import { enqueueTodayBriefing, listRuntimeBoard } from "@/server/runtime/runtime-service";
 import { readWorkBoard } from "@/server/knowledge/work-board-service";
@@ -105,7 +106,12 @@ export async function handleMobileRequest(
       await revokeSession(db, sessionHash);
       data = { revoked: true };
     } else if (route === "today" && method === "GET") {
-      data = await getTodayData(db);
+      const now = new Date();
+      const [today, operations] = await Promise.all([
+        getTodayData(db, now),
+        getOperationsSummary(db, now),
+      ]);
+      data = { ...today, operations };
     } else if (route === "items" && method === "GET") {
       data = { items: await listItemsForView(db, {}) };
     } else if (route === "notes" && method === "GET") {

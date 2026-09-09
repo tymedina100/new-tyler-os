@@ -13,16 +13,25 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(displayDate.formatted(.dateTime.weekday(.wide).month(.wide).day()).uppercased()).font(.caption.weight(.semibold)).tracking(1.2).foregroundStyle(.secondary)
                     Text("Make room for\nwhat matters.").font(.largeTitle.bold())
-                    HStack(spacing: 22) { metric("Due today", count: store.today?.view.dueToday.count ?? 0); metric("To review", count: store.jobs.filter { $0.pendingApproval != nil }.count); metric("Inbox", count: store.today?.view.needsTriage.count ?? 0) }
+                    HStack(spacing: 22) { metric("Due today", count: store.today?.view.dueToday.count ?? 0); metric("To review", count: store.today?.operations?.pendingApprovals ?? store.jobs.filter { $0.pendingApproval != nil }.count); metric("Inbox", count: store.today?.view.needsTriage.count ?? 0) }
                     Button { showCapture = true } label: { Label("Capture a thought", systemImage: "plus.circle.fill").font(.headline).frame(maxWidth: .infinity).padding(9) }.buttonStyle(.borderedProminent)
                 }.padding(.vertical, 14)
             }.listRowBackground(Color.clear).listRowSeparator(.hidden)
+            if let operations = store.today?.operations, operations.hasActivity {
+                Section("Since yesterday") {
+                    if operations.savedNotes > 0 { Label("Briefing notes saved: \(operations.savedNotes)", systemImage: "checkmark.circle").accessibilityIdentifier("operationsSaved") }
+                    if operations.pendingApprovals > 0 { Label("Awaiting your decision: \(operations.pendingApprovals)", systemImage: "checkmark.shield").accessibilityIdentifier("operationsPending") }
+                    if operations.failedJobs > 0 { Label("Jobs failed: \(operations.failedJobs)", systemImage: "exclamationmark.circle") }
+                    Text("Outcomes from the last 24 hours. Waiting decisions include older requests.").font(.caption).foregroundStyle(.secondary)
+                    NavigationLink("Review Miles activity") { MilesView() }.accessibilityIdentifier("operationsReview")
+                }
+            }
             if let view = store.today?.view {
                 bucket("Needs attention", items: view.overdue)
                 bucket("Today’s focus", items: view.dueToday)
                 bucket("On the horizon", items: view.upcoming)
                 bucket("Make space for these", items: view.needsTriage)
-                if view.totalSurfaced == 0 { EmptyCard(title: "A little breathing room", detail: "Nothing is due or waiting in your inbox. Capture what is on your mind.", symbol: "sun.horizon").listRowBackground(Color.clear).listRowInsets(EdgeInsets()) }
+                if view.totalSurfaced == 0 && !(store.today?.operations?.needsAttention ?? false) { EmptyCard(title: "A little breathing room", detail: "Nothing is due or waiting in your inbox. Capture what is on your mind.", symbol: "sun.horizon").listRowBackground(Color.clear).listRowInsets(EdgeInsets()) }
             } else { EmptyCard(title: "Your day is loading", detail: "Pull to refresh your canonical TylerOS state.").listRowBackground(Color.clear) }
             Section {
                 Button { Task { await store.requestBriefing() } } label: { Label("Ask Miles for today’s briefing", systemImage: "sparkle") }.disabled(store.busy)

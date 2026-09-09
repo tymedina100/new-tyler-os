@@ -1643,3 +1643,34 @@ authorities remain unchanged; this API cannot grant or expand them.
 mobile Postgres access; a second task or memory backend; native model calls;
 server-action wire-protocol emulation; treating open-dev as authenticated;
 in-memory-only deduplication; silently replaying an edit over newer state.
+
+---
+
+## 041 · Morning operations from canonical outcomes
+
+Today and briefing context previously omitted pending decisions and actual runtime
+outcomes. They now share an aggregate read of canonical jobs, approvals and notes.
+The mobile Today response includes the same additive `operations` object; older
+clients ignore it. Native Today renders the same counts with a link to Miles.
+
+Pending decisions include all still-pending proposals on jobs awaiting approval,
+without a recent-job limit. The activity board retains all jobs awaiting approval
+alongside its 50 most recent jobs, so these decisions remain reachable. Failed jobs are distinct current failed jobs with a
+failed attempt finished in the rolling half-open window [now - 24h, now). Saved
+notes require an accepted or auto-executed approval resolved in that window and a
+still-existing canonical note. Drafts, dismissed proposals, quiet runs and deleted
+notes do not count as saved work. Timestamps are included in the DTO.
+
+No personal prose is added to model context: only three counts and the window.
+Operations alone do not trigger briefing generation or an AI call. Otherwise a
+briefing's own proposal would trigger another briefing indefinitely. The Today
+screen still surfaces pending decisions and recent failures even with no tasks.
+This is a read surface, not a new notification, execution or authority grant.
+
+No new dependency, migration, paid call, scheduler setting or deployment is needed
+to implement this slice. The Python worker must be released alongside the web
+change to include the section in deterministic briefing notes.
+
+Native approval review suspends periodic job polling. A busy or failed decision
+returns failure and leaves its sheet open; only a successful canonical decision
+closes it. A background refresh must never look like an accepted proposal.

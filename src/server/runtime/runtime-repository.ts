@@ -345,14 +345,20 @@ export interface JobBoardRow {
 }
 
 export async function listRecentJobs(db: Database, limit = 50): Promise<JobBoardRow[]> {
+  // A still-pending decision must remain reachable even after newer work runs.
+  const recentIds = db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .orderBy(desc(jobs.createdAt))
+    .limit(limit);
   const rows = await db.query.jobs.findMany({
+    where: or(eq(jobs.status, "needs_approval"), inArray(jobs.id, recentIds)),
     with: {
       claimedByRuntime: true,
       runs: { orderBy: [desc(runs.startedAt)], limit: 1 },
       approvals: { orderBy: [desc(approvals.createdAt)], limit: 1 },
     },
     orderBy: [desc(jobs.createdAt)],
-    limit,
   });
 
   return rows.map((row) => {

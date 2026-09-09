@@ -192,3 +192,7 @@ Explicit AI profiles, one Anthropic adapter. ADRs 035–038.
 (role + job kind + action). First grant: Miles `today_briefing_ai`
 `create_note`. Auto-exec still uses `noteService`. Audit is `auto_executed`,
 not a fake Accept. ADR 039.
+
+**Implemented — morning operations, release pending.** Today and runtime/mobile
+context share canonical pending/saved/failed counts. Operations alone do not
+trigger another briefing. ADR 041; coverage in `docs/FEATURE-COVERAGE.md`.
