@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { readKnowledge } from "@/server/knowledge/knowledge-service";
 import { palatePreferences } from "@/domain/knowledge/knowledge";
 import { NoteMarkdown } from "@/components/notes/note-markdown";
@@ -65,7 +66,7 @@ export default async function FoodPage() {
       <section className="grid gap-3">
         <h2 className="text-lg font-medium">Your feedback</h2>
         <p className="text-muted-foreground text-sm">
-          Explicit feedback from the latest 100 logs. Matching descriptions are grouped; eating
+          Explicit feedback across your food history. Matching descriptions are grouped; eating
           something alone is not a preference.
         </p>
         {history.feedback.length === 0 ? (
@@ -73,7 +74,15 @@ export default async function FoodPage() {
         ) : (
           history.feedback.map((entry, index) => (
             <p key={index}>
-              {entry.description}: {entry.likes} likes · {entry.dislikes} dislikes
+              <span>
+                {entry.description}: {entry.likes} likes · {entry.dislikes} dislikes
+              </span>{" "}
+              <Link
+                className="text-sm underline"
+                href={`/search?q=${encodeURIComponent(entry.description)}`}
+              >
+                Review logs
+              </Link>
             </p>
           ))
         )}

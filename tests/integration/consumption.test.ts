@@ -166,3 +166,55 @@ it("retrieves old meal records with literal terms and excludes removed evidence"
   await changeConsumption(harness.db, old.id, "restore");
   expect((await searchEverything(harness.db, "burrito")).total).toBe(1);
 });
+
+it("keeps durable feedback beyond recent logs and aggregates only explicit active signals", async () => {
+  const old = new Date("2025-01-01T12:00:00Z");
+  const meal = await logConsumption(
+    harness.db,
+    { kind: "food", description: "Spicy Noodles" },
+    old,
+  );
+  await changeConsumption(harness.db, meal.id, "like", old);
+  const repeated = await logConsumption(
+    harness.db,
+    { kind: "food", description: " spicy   NOODLES " },
+    old,
+  );
+  await changeConsumption(harness.db, repeated.id, "dislike", old);
+  const drink = await logConsumption(
+    harness.db,
+    { kind: "drink", description: "Spicy Noodles" },
+    old,
+  );
+  await changeConsumption(harness.db, drink.id, "like", old);
+  await harness.db.insert(consumptionEntries).values(
+    Array.from({ length: 101 }, (_, i) => ({
+      kind: "food" as const,
+      description: `Unrated recent meal ${i}`,
+      occurredAt: new Date("2026-09-09T12:00:00Z"),
+      loggedOn: "2026-09-09",
+    })),
+  );
+  const history = await getConsumptionHistory(harness.db);
+  expect(history.entries).toHaveLength(100);
+  expect(history.entries.some((row) => row.id === meal.id)).toBe(false);
+  expect(history.feedback).toHaveLength(2);
+  expect(history.feedback).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ likes: 1, dislikes: 1 }),
+      expect.objectContaining({ likes: 1, dislikes: 0 }),
+    ]),
+  );
+  await changeConsumption(harness.db, repeated.id, "remove");
+  expect(
+    (await getConsumptionHistory(harness.db)).feedback.every((row) => row.dislikes === 0),
+  ).toBe(true);
+  await changeConsumption(harness.db, repeated.id, "restore");
+  expect((await getConsumptionHistory(harness.db)).feedback.some((row) => row.dislikes === 1)).toBe(
+    true,
+  );
+  await changeConsumption(harness.db, repeated.id, "clear");
+  expect(
+    (await getConsumptionHistory(harness.db)).feedback.every((row) => row.dislikes === 0),
+  ).toBe(true);
+});

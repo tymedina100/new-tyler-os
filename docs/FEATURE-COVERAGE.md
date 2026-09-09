@@ -180,3 +180,13 @@ Explicit Archived imports now retain revision identity with an empty body and
 are excluded from knowledge search and the taste profile. Older source revisions
 are rejected atomically; a newer Active revision restores visibility. Tests cover
 archive, idempotency, backup, stale replay rejection and reactivation.
+
+## Durable explicit food feedback (local follow-through)
+
+Feedback aggregation now queries the full ledger rather than the latest 100 logs.
+Food and drink stay distinct; normalized matching descriptions retain both likes
+and dislikes. Removed entries are excluded, restore reinstates evidence, and clear
+removes a signal. Web feedback links back to searchable source logs. Native uses
+the same API response and its label now reflects all history. No inferred tastes
+or automatic canonical preference edits. Integration tests put rated meals behind
+101 newer unrated rows and verify grouping, removal, restoration and clearing.

@@ -66,3 +66,20 @@ export async function searchConsumption(db: Database, query: string, limit = 20)
     .orderBy(desc(consumptionEntries.occurredAt), desc(consumptionEntries.id))
     .limit(limit);
 }
+
+/** Aggregate explicit feedback across the ledger, independent of recent-log pagination. */
+export async function consumptionFeedbackHistory(db: Database) {
+  const normalized = sql`lower(btrim(regexp_replace(${consumptionEntries.description}, '[[:space:]]+', ' ', 'g')))`;
+  return db
+    .select({
+      description: sql<string>`min(${consumptionEntries.description})`,
+      likes: sql<number>`count(*) filter (where ${consumptionEntries.feedback} = 'like')::int`,
+      dislikes: sql<number>`count(*) filter (where ${consumptionEntries.feedback} = 'dislike')::int`,
+    })
+    .from(consumptionEntries)
+    .where(
+      and(isNull(consumptionEntries.voidedAt), sql`${consumptionEntries.feedback} is not null`),
+    )
+    .groupBy(consumptionEntries.kind, normalized)
+    .orderBy(sql`max(${consumptionEntries.occurredAt}) desc`, consumptionEntries.kind, normalized);
+}
