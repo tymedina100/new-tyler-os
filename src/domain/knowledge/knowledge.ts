@@ -43,8 +43,10 @@ export type KnowledgeEntry = z.infer<typeof knowledgeEntrySchema>;
 
 export function searchKnowledge(entries: KnowledgeEntry[], query: string): KnowledgeEntry[] {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  return entries.filter((entry) =>
-    words.every((word) => `${entry.title} ${entry.body}`.toLocaleLowerCase().includes(word)),
+  return entries.filter(
+    (entry) =>
+      entry.status !== "Archived" &&
+      words.every((word) => `${entry.title} ${entry.body}`.toLocaleLowerCase().includes(word)),
   );
 }
 

@@ -130,6 +130,13 @@ test("food shows canonical taste preferences with source age and recovers from u
       "href",
       preference.sourceUrl,
     );
+    await writeFile(
+      path,
+      JSON.stringify({ ...fixture, entries: [{ ...preference, status: "Archived", body: "" }] }),
+    );
+    await page.reload();
+    await expect(profile).not.toContainText(preference.title);
+    await expect(profile).toContainText("No active Palate preference record");
     await writeFile(path, "invalid snapshot");
     await page.reload();
     await expect(profile).toContainText("Personal knowledge could not be loaded");

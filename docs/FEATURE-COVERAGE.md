@@ -175,5 +175,8 @@ Full check: 1,034 tests across 76 files, including real PostgreSQL race checks.
 Browser tests cover capture/search/feedback plus profile selection, unreadable
 import and recovery. Synthetic fixtures only; no personal preference prose in
 source. This is local, not released. Production needs a refreshed metadata-bearing
-snapshot as well as a future approved release. Live canonical synchronization,
-archived-record reconciliation, recommendations and ordering remain incomplete.
+snapshot as well as a future approved release. Live canonical synchronization, recommendations and ordering remain incomplete.
+Explicit Archived imports now retain revision identity with an empty body and
+are excluded from knowledge search and the taste profile. Older source revisions
+are rejected atomically; a newer Active revision restores visibility. Tests cover
+archive, idempotency, backup, stale replay rejection and reactivation.

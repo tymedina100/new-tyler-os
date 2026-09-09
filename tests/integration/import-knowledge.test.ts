@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, it } from "vitest";
+import { searchKnowledge } from "@/domain/knowledge/knowledge";
 import { knowledgeFixture } from "../support/knowledge-fixtures";
 
 it("upgrades unchanged legacy imports with canonical metadata and then stays idempotent", () => {
@@ -49,6 +50,27 @@ it("upgrades unchanged legacy imports with canonical metadata and then stays ide
     });
     expect(run()).toContain("No changes");
     expect(readFileSync(target, "utf8")).toBe(updated);
+    const revision = JSON.parse(text);
+    revision.page_last_edited_at = "2026-09-09T00:00:00Z";
+    revision.text = revision.text.replace('"Status":"Active"', '"Status":"Archived"');
+    writeFileSync(source, JSON.stringify({ content: [{ text: JSON.stringify(revision) }] }));
+    expect(run()).toContain("Imported 1 source revisions");
+    const archived = readFileSync(target, "utf8");
+    const archivedEntries = JSON.parse(archived).entries;
+    expect(archivedEntries[0]).toMatchObject({ status: "Archived", body: "" });
+    expect(searchKnowledge(archivedEntries, "")).toEqual([]);
+    expect(readdirSync(directory).some((name) => name.startsWith("snapshot.json.backup-"))).toBe(
+      true,
+    );
+    expect(run()).toContain("No changes");
+    writeFileSync(source, JSON.stringify({ content: [{ text }] }));
+    expect(() => run()).toThrow();
+    expect(readFileSync(target, "utf8")).toBe(archived);
+    revision.page_last_edited_at = "2026-09-10T00:00:00Z";
+    revision.text = revision.text.replace('"Status":"Archived"', '"Status":"Active"');
+    writeFileSync(source, JSON.stringify({ content: [{ text: JSON.stringify(revision) }] }));
+    expect(run()).toContain("Imported 1 source revisions");
+    expect(searchKnowledge(JSON.parse(readFileSync(target, "utf8")).entries, "")).toHaveLength(1);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
