@@ -73,3 +73,15 @@ UI configuration, pointing to the synthetic `work/knowledge-e2e.json` used by th
 loopback fixture server. It corrupts and restores that named fixture. Run only with
 an isolated local backend, never personal production imports. The test confirms
 source detail, failure labeling, canonical Today access and recovery after repair.
+
+### Current signed daily companion · build 2
+
+The separately delivered build2 package matches released commit `a5e9065` and
+includes food/drink capture, explicit feedback, source health and morning
+operations. The capture type is stored separately from text in the encrypted
+draft, preventing cursor placement from changing its intent. Thirteen native
+unit tests and the authenticated food capture/feedback/remove/restore/relaunch
+Simulator flow passed. Archive/export and exported signature verification passed.
+The existing profile still expires March18,2027 with one registered device.
+Physical installation, microphone recognition and notifications remain unverified
+because the paired phone is unavailable. Pending food-search code is separate.
