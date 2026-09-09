@@ -6,11 +6,12 @@
  * may call. Secrets never live here. See ADR 038.
  */
 
-export const AI_PROVIDERS = ["anthropic"] as const;
+export const AI_PROVIDERS = ["anthropic", "codex_chatgpt"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
   anthropic: "Anthropic",
+  codex_chatgpt: "Codex · ChatGPT subscription",
 };
 
 export const AI_PROFILE_KEY_PATTERN = /^[a-z][a-z0-9-]{1,62}$/;

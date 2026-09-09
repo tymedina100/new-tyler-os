@@ -206,3 +206,21 @@ food capture, Like, Remove, Restore and relaunch/persistence flow passed. Screen
 inspected. Test selectors corrected for disclosure children and bottom-bar overlap;
 fixture setup replaces its synthetic record on retry. Physical installation and
 updated signed package remain pending.
+
+## Subscription briefing queue (locally integrated)
+
+Explicit Codex ChatGPT profiles enqueue a separate subscription briefing job kind.
+Old API/deterministic workers do not claim it. The authenticated preparation route
+freezes bounded Today context by run ID; empty days complete without inference.
+The one-shot Python consumer uses the durable local adapter receipt, then submits
+structured Miles judgment for server validation and the existing note-approval
+flow. Raw worker note proposals remain disallowed for AI job kinds. Server controls
+provider/model/product attribution; dollar cost remains unknown, not inferred zero.
+
+Live local evidence: isolated PostgreSQL migrations0013/0014, real runtime credential,
+HTTP claim and frozen preparation, supported ChatGPT CLI execution, HTTP validated
+completion, mobile approval and replay, exactly one saved note. Recorded usage:
+8,691 input tokens,144 output tokens,31 reasoning output tokens. No production
+migration, worker update, schedule enablement or paid API call. Local run recovery
+reuses a receipt after a failed completion transport. Global quota reservation,
+reconciliation UI, automatic quota refresh and specialist decision jobs remain open.

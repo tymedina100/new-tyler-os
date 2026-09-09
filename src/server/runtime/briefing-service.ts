@@ -36,9 +36,15 @@ export async function enqueueTodayBriefingAi(db: Database, profileId: string): P
   assertAiProfileEnabled(profile);
 
   return runtimeRepo.insertJob(db, {
-    kind: "today_briefing_ai",
-    title: TODAY_BRIEFING_AI_TITLE,
-    instruction: TODAY_BRIEFING_AI_INSTRUCTION,
+    kind: profile.provider === "codex_chatgpt" ? "today_briefing_codex" : "today_briefing_ai",
+    title:
+      profile.provider === "codex_chatgpt"
+        ? "Subscription Today briefing"
+        : TODAY_BRIEFING_AI_TITLE,
+    instruction:
+      profile.provider === "codex_chatgpt"
+        ? "Prepare frozen Today context, run the selected Codex ChatGPT subscription profile once, and submit structured Miles judgment for server validation and note approval. Empty days complete without inference."
+        : TODAY_BRIEFING_AI_INSTRUCTION,
     authorization: "observe",
     assignedRole: CHIEF_OF_STAFF_ROLE,
     aiExecutionProfileId: profile.id,

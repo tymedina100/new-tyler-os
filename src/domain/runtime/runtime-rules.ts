@@ -102,7 +102,10 @@ export function proposalAllowedForCompletion<T>(
   source: RunCompletionSource,
 ): T | undefined {
   if (proposal === undefined) return undefined;
-  if (jobKind === "today_briefing_ai" && source !== "validated_ai") {
+  if (
+    (jobKind === "today_briefing_ai" || jobKind === "today_briefing_codex") &&
+    source !== "validated_ai"
+  ) {
     throw new DomainError(
       "invalid_transition",
       "An AI briefing can only propose a note after TylerOS validates Miles judgment.",
