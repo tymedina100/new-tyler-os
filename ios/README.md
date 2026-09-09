@@ -85,3 +85,10 @@ Simulator flow passed. Archive/export and exported signature verification passed
 The existing profile still expires March18,2027 with one registered device.
 Physical installation, microphone recognition and notifications remain unverified
 because the paired phone is unavailable. Pending food-search code is separate.
+
+### Saved Palate profile (local, not packaged)
+
+Food & drink expands active canonical Palate preferences with source review timing,
+import age and a Notion link. It uses the existing knowledge session; no extra
+credentials or model calls. Legacy responses without metadata still decode and
+show an explicit missing-profile state. Pull-to-refresh reloads both sources.

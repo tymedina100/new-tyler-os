@@ -79,4 +79,15 @@ final class APITests: XCTestCase {
   XCTAssertEqual(try JSONDecoder().decode(WorkBoard.self, from: Data(current.utf8)).health?.status, "unavailable")
  }
 
+ func testPalateSelectionRequiresCanonicalMetadataAndKeepsLegacyDecode() throws {
+  let base: [String: Any] = ["id": "synthetic", "title": "Food & Drink Palate", "body": "Synthetic preference"]
+  func decode(_ properties: [String: Any]) throws -> KnowledgeEntry { try JSONDecoder().decode(KnowledgeEntry.self, from: JSONSerialization.data(withJSONObject: properties)) }
+  XCTAssertFalse(try decode(base).isPalatePreference)
+  let fields = ["domain": "Food & Drink", "knowledgeType": "Preference", "steward": "Palate", "status": "Active"]
+  let current = base.merging(fields) { _, new in new }
+  XCTAssertTrue(try decode(current).isPalatePreference)
+  for key in fields.keys { var wrong = current; wrong[key] = "Other"; XCTAssertFalse(try decode(wrong).isPalatePreference) }
+  var archived = current; archived["status"] = "Archived"; XCTAssertFalse(try decode(archived).isPalatePreference)
+ }
+
 }

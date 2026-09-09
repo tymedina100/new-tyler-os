@@ -190,3 +190,19 @@ removes a signal. Web feedback links back to searchable source logs. Native uses
 the same API response and its label now reflects all history. No inferred tastes
 or automatic canonical preference edits. Integration tests put rated meals behind
 101 newer unrated rows and verify grouping, removal, restoration and clearing.
+
+## Native saved taste profile (local follow-through)
+
+The native Food & drink screen now selects the same Active Food & Drink /
+Preference / Palate metadata as the web screen, using its existing authenticated
+knowledge endpoint. Expanded profile displays saved content, review timing,
+import age and the canonical link. Missing metadata on older backends stays
+compatible and is not inferred from a title. Pull-to-refresh reloads knowledge
+alongside food records. This does not implement autonomous Palate decision jobs:
+current worker job kinds remain morning briefings only.
+
+Native verification: 14 unit tests and authenticated Simulator profile expansion,
+food capture, Like, Remove, Restore and relaunch/persistence flow passed. Screenshots
+inspected. Test selectors corrected for disclosure children and bottom-bar overlap;
+fixture setup replaces its synthetic record on retry. Physical installation and
+updated signed package remain pending.

@@ -12,7 +12,9 @@ struct TodayBuckets: Decodable { let overdue: [Item]; let dueToday: [Item]; let 
 struct Note: Decodable, Identifiable { let id: String; let title: String; let body: String; let updatedAt: String }
 struct Notes: Decodable { let notes: [Note] }
 struct Knowledge: Decodable { let entries: [KnowledgeEntry]; let mode: String; let asOf: String?; let health: SnapshotHealth? }
-struct KnowledgeEntry: Decodable, Identifiable { let id: String; let title: String; let body: String; let sourceUrl: String?; let sourceEditedAt: String?; let importedAt: String?; let lastReviewed: String?; let freshness: String?; let sensitivity: String?; let sourceHealth: KnowledgeSourceHealth? }
+struct KnowledgeEntry: Decodable, Identifiable { let id: String; let title: String; let body: String; let sourceUrl: String?; let sourceEditedAt: String?; let importedAt: String?; let lastReviewed: String?; let freshness: String?; let sensitivity: String?; let sourceHealth: KnowledgeSourceHealth?; let domain: String?; let knowledgeType: String?; let steward: String?; let status: String?
+    var isPalatePreference: Bool { domain == "Food & Drink" && knowledgeType == "Preference" && steward == "Palate" && status == "Active" }
+}
 struct Jobs: Decodable { let jobs: [JobRow] }
 struct JobRow: Decodable, Identifiable { var id: String { job.id }; let job: Job; let latestRun: Run?; let pendingApproval: Approval?; let latestApproval: Approval? }
 struct Job: Decodable, Identifiable { let id: String; let title: String; let status: String; let authorization: String }
