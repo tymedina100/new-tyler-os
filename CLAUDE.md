@@ -51,7 +51,7 @@ own table rather than widening the spine. ADRs 019, 027, 033, 035.
 
 ```
 src/app/     Routes, React Server Components. Humans mutate via Server Actions;
-             machines via `/api/runtime` (ADR 035)
+             machines via `/api/runtime` (ADR 035), native via `/api/mobile` (ADR 040)
    |
    v
 src/server/  Repositories, services, actions. Drizzle lives here and nowhere else
@@ -120,8 +120,9 @@ failing page is far more often a missing `DATABASE_URL` than a bug.
 - **Naming:** files `kebab-case`; components `PascalCase` named exports; database
   `snake_case` plural. Say what a thing is — `item-repository.ts`, not `utils.ts`.
 - **Do not add** a client store, multi-tenancy, a plugin system, or a
-  human-facing REST/tRPC layer. `/api/runtime` is the machine exception to
-  ADR 004 — see ADR 035. Do not collapse Miles into a job queue.
+  general human-facing REST/tRPC layer. `/api/runtime` is the machine exception
+  (ADR 035); `/api/mobile` is the native iPhone exception (ADR 040). Browser
+  mutations remain Server Actions. Do not collapse Miles into a job queue.
 - **AI may only propose.** It never overwrites, never blocks a flow, and is never
   required. Everything works with it switched off, which is the default.
 

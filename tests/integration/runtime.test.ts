@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import * as itemService from "@/server/items/item-service";
 import * as noteService from "@/server/notes/note-service";
 import * as runtimeService from "@/server/runtime/runtime-service";
-import { insertJob } from "@/server/runtime/runtime-repository";
+import { findJobById, insertJob } from "@/server/runtime/runtime-repository";
 import { registerMilesRuntime } from "../support/runtime-fixtures";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 
@@ -42,6 +42,43 @@ describe("enqueue and claim", () => {
     expect(claimed?.run.role).toBe("miles");
     expect(claimed?.run.runtimeId).toBe(python.id);
     expect(claimed?.run.trigger).toBe("manual");
+  });
+
+  it("leaves AI work queued when a deterministic worker claims its supported kind", async () => {
+    const ai = await insertJob(db(), {
+      kind: "today_briefing_ai",
+      title: "Synthetic AI briefing",
+      instruction: "Synthetic fixture",
+      authorization: "observe",
+      assignedRole: "miles",
+    });
+    const today = await runtimeService.enqueueTodayBriefing(db());
+    const python = await registerMilesRuntime(db(), "deterministic-python");
+    const identity = {
+      runtimeId: python.id,
+      role: "miles" as const,
+      allowedJobKinds: ["today_briefing" as const],
+    };
+    const claimed = await runtimeService.claimNextJob(db(), identity);
+    expect(claimed?.job.id).toBe(today.id);
+    expect(await runtimeService.claimNextJob(db(), identity)).toBeNull();
+    expect((await findJobById(db(), ai.id))?.status).toBe("queued");
+    // Omitted filter preserves existing clients and can claim the remaining AI job.
+    const legacy = await runtimeService.claimNextJob(db(), { runtimeId: python.id, role: "miles" });
+    expect(legacy?.job.id).toBe(ai.id);
+  });
+
+  it("rejects an empty explicit capability filter without claiming work", async () => {
+    const today = await runtimeService.enqueueTodayBriefing(db());
+    const python = await registerMilesRuntime(db(), "deterministic-python");
+    await expect(
+      runtimeService.claimNextJob(db(), {
+        runtimeId: python.id,
+        role: "miles",
+        allowedJobKinds: [],
+      }),
+    ).rejects.toThrow();
+    expect((await findJobById(db(), today.id))?.status).toBe("queued");
   });
 
   it("lets a Grok runtime claim the same unpinned Miles job", async () => {

@@ -6,6 +6,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -911,3 +912,24 @@ export type UsageEntryRow = typeof usageEntries.$inferSelect;
 export type CapacityPoolRow = typeof capacityPools.$inferSelect;
 export type CapacityUpdateRow = typeof capacityUpdates.$inferSelect;
 export type AiExecutionProfileRow = typeof aiExecutionProfiles.$inferSelect;
+
+/** Native sessions and mutation receipts are access/audit state, never a second brain. */
+export const mobileSessions = pgTable("mobile_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  configHash: text("config_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const mobileMutationReceipts = pgTable("mobile_mutation_receipts", {
+  requestId: uuid("request_id").primaryKey(),
+  payloadHash: text("payload_hash").notNull(),
+  response: jsonb("response").$type<unknown>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const mobileLoginLimits = pgTable("mobile_login_limits", {
+  key: text("key").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").notNull(),
+});

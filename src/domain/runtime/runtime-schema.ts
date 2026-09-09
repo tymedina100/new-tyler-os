@@ -25,6 +25,8 @@ import {
 export const roleSchema = z.enum(ROLES);
 export const runtimeKindSchema = z.enum(RUNTIME_KINDS);
 export const jobKindSchema = z.enum(JOB_KINDS);
+/** Optional worker capability filter; omission preserves the legacy claim protocol. */
+export const claimJobKindsSchema = z.array(jobKindSchema).min(1).max(JOB_KINDS.length).optional();
 export const approvalKindSchema = z.enum(APPROVAL_KINDS);
 export const runTriggerSchema = z.enum(RUN_TRIGGERS);
 
