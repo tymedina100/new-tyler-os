@@ -204,8 +204,8 @@ current worker job kinds remain morning briefings only.
 Native verification: 14 unit tests and authenticated Simulator profile expansion,
 food capture, Like, Remove, Restore and relaunch/persistence flow passed. Screenshots
 inspected. Test selectors corrected for disclosure children and bottom-bar overlap;
-fixture setup replaces its synthetic record on retry. Physical installation and
-updated signed package remain pending.
+fixture setup replaces its synthetic record on retry. Physical installation of version1.0.0 build3 on the connected iPhone16ProMax
+and signed package verification completed. Physical voice and notifications remain unverified.
 
 ## Subscription briefing queue (locally integrated)
 
@@ -222,5 +222,15 @@ HTTP claim and frozen preparation, supported ChatGPT CLI execution, HTTP validat
 completion, mobile approval and replay, exactly one saved note. Recorded usage:
 8,691 input tokens,144 output tokens,31 reasoning output tokens. No production
 migration, worker update, schedule enablement or paid API call. Local run recovery
-reuses a receipt after a failed completion transport. Global quota reservation,
-reconciliation UI, automatic quota refresh and specialist decision jobs remain open.
+reuses a receipt after a failed completion transport. Supported app-server quota
+refresh now gates each new claim; unknown or exhausted capacity leaves jobs queued.
+Global quota reservation, reconciliation UI and specialist decision jobs remain open.
+
+Recovery now includes read-only private ledger inspection and an explicit
+delivery-only consumer mode which cannot invoke inference. Preparation acknowledges
+an already successful run to its owning runtime, reporting the current job status
+so pending approval is not confused with a saved note. Lost completion responses
+therefore do not require resubmitting a proposal. Tests cover one usage entry,
+one approval and one accepted note after acknowledgement, wrong-runtime rejection,
+and failed attempts remaining failed. A crashed local model attempt still holds
+the account ledger; explicit resolution and unattended scheduling remain unfinished.

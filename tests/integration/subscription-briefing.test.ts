@@ -111,6 +111,14 @@ it("freezes context, rejects wrong execution paths, validates and creates one pe
   expect(await completeSubscriptionBriefing(h.db, run.id, runtime.id, input, now)).toEqual({
     jobStatus: "needs_approval",
   });
+  expect(await prepareSubscriptionBriefing(h.db, run.id, runtime.id, now)).toEqual({
+    status: "succeeded",
+    jobStatus: "needs_approval",
+  });
+  await expect(prepareSubscriptionBriefing(h.db, run.id, other.id, now)).rejects.toThrow(
+    /different runtime/,
+  );
+  expect(await h.db.select().from(usageEntries)).toHaveLength(1);
   expect(await h.db.select().from(notes)).toHaveLength(0);
   const pending = await h.db.select().from(approvals);
   expect(pending).toHaveLength(1);
@@ -129,6 +137,13 @@ it("freezes context, rejects wrong execution paths, validates and creates one pe
   });
   await acceptApproval(h.db, pending[0]!.id, now);
   expect(await h.db.select().from(notes)).toHaveLength(1);
+  expect(await prepareSubscriptionBriefing(h.db, run.id, runtime.id, now)).toEqual({
+    status: "succeeded",
+    jobStatus: "succeeded",
+  });
+  expect(await h.db.select().from(approvals)).toHaveLength(1);
+  expect(await h.db.select().from(usageEntries)).toHaveLength(1);
+  expect(await h.db.select().from(notes)).toHaveLength(1);
 });
 it("completes an empty day without preparing any model input", async () => {
   const { runtime, run } = await setup();
@@ -137,4 +152,21 @@ it("completes an empty day without preparing any model input", async () => {
   });
   expect(await h.db.select().from(subscriptionRequests)).toHaveLength(0);
   expect(await h.db.select().from(approvals)).toHaveLength(0);
+});
+
+it("does not acknowledge a failed attempt as completed", async () => {
+  const { runtime, run } = await setup();
+  await completeRun(
+    h.db,
+    run.id,
+    runtime.id,
+    {
+      status: "failed",
+      resultSummary: "Synthetic interruption",
+    },
+    now,
+  );
+  await expect(prepareSubscriptionBriefing(h.db, run.id, runtime.id, now)).rejects.toThrow(
+    /no longer the current claim/,
+  );
 });

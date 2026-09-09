@@ -37,6 +37,14 @@ export async function prepareSubscriptionBriefing(
   runtimeId: string,
   now = new Date(),
 ) {
+  // A completion response can be lost after its transaction commits. Acknowledge
+  // that durable run before requiring a live claim; never resubmit its proposal.
+  const run = await requireRun(db, runId);
+  assertRunOwnedBy(run, runtimeId);
+  const job = await requireJob(db, run.jobId);
+  if (job.kind !== "today_briefing_codex")
+    throw new DomainError("invalid_transition", "A subscription briefing is required.");
+  if (run.status === "succeeded") return { status: "succeeded" as const, jobStatus: job.status };
   const profile = await requireSubscriptionRun(db, runId, runtimeId);
   const saved = await findSubscriptionRequest(db, runId);
   if (saved) return { status: "prepared" as const, request: saved };
