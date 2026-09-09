@@ -409,3 +409,11 @@ Today now shows pending decisions and last-24-hour failed jobs and saved briefin
 notes. The Python briefing worker includes the same counts beside tasks and food;
 the mobile Today API and native Today view expose the same summary. Canonical outcomes, no
 simulated specialist work. See ADR 041 and `docs/FEATURE-COVERAGE.md`.
+
+## Implemented · Cross-device item drafts (release pending)
+
+Full browser edits now reject stale versions just as mobile edits do. Failed and
+in-flight drafts remain intact; successful saves advance the editor's base for
+subsequent typing. Explicit discard/reload recovers a conflict. Database, concurrent
+PostgreSQL and browser regression coverage verify both clients share canonical
+state. Notes and other entity types are separate follow-through, not claimed here.

@@ -66,7 +66,7 @@ async function save(page: Page) {
  */
 async function openEditor(page: Page, title: string) {
   await page.goto("/");
-  const box = page.getByLabel("Capture");
+  const box = page.getByLabel("Capture", { exact: true });
   await box.fill(title);
   await box.press("Enter");
   await expect(box).toHaveValue("");
@@ -167,4 +167,46 @@ test("several saves in one sitting each land", async ({ page }) => {
 
   await page.reload();
   await expect(page.getByLabel("Notes")).toHaveValue("third");
+});
+
+test("a stale web draft cannot overwrite a phone edit and stays available until discarded", async ({
+  page,
+  request,
+}, testInfo) => {
+  const title = named("cross device");
+  await openEditor(page, title);
+  const id = new URL(page.url()).pathname.split("/").at(-1)!;
+  const version = await page.locator('input[name="expectedUpdatedAt"]').inputValue();
+  await page.getByLabel("Title").fill(named("unsaved web draft"));
+  const { E2E_AUTH_PASSPHRASE } = await import("./auth-fixtures");
+  const login = await request.post("/api/mobile/session", {
+    data: { passphrase: E2E_AUTH_PASSPHRASE },
+  });
+  expect(login.status()).toBe(200);
+  const headers = { Authorization: `Bearer ${(await login.json()).data.token}` };
+  const response = await request.patch(`/api/mobile/items/${id}`, {
+    headers,
+    data: {
+      requestId: crypto.randomUUID(),
+      expectedUpdatedAt: version,
+      title: named("phone edit"),
+    },
+  });
+  expect(response.status()).toBe(200);
+  await save(page);
+  await expect(page.getByRole("alert").filter({ hasText: "changed elsewhere" })).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveValue(named("unsaved web draft"));
+  // A second attempt must remain stale; failure cannot silently advance the base.
+  await save(page);
+  await expect(page.getByRole("alert").filter({ hasText: "changed elsewhere" })).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveValue(named("unsaved web draft"));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "Discard draft and reload" })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("conflict-preserved.png"), fullPage: true });
+  await page.getByRole("button", { name: "Discard draft and reload" }).click();
+  await expect(page.getByLabel("Title")).toHaveValue(named("phone edit"));
+  await page.getByLabel("Title").fill(named("reconciled"));
+  await save(page);
+  await page.reload();
+  await expect(page.getByLabel("Title")).toHaveValue(named("reconciled"));
 });

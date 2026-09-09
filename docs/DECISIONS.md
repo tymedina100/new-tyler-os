@@ -1674,3 +1674,28 @@ change to include the section in deterministic briefing notes.
 Native approval review suspends periodic job polling. A busy or failed decision
 returns failure and leaves its sheet open; only a successful canonical decision
 closes it. A background refresh must never look like an accepted proposal.
+
+---
+
+## 042 · Cross-device item drafts share one version check
+
+A mobile edit already rejected an outdated snapshot, but a web editor could save
+its entire old draft over that newer phone edit. Full browser drafts now require
+an ISO `expectedUpdatedAt`. The service locks the canonical item row, compares
+versions, writes the item/tags/recurrence in the transaction, advances its version
+by at least one millisecond, and returns the saved canonical item. Native and web
+share the version rule and repository. An overlapping save has one winner; the
+other receives a conflict without changing any fields or relations.
+
+The browser keeps its draft dirty through failed saves and while a save is in
+flight. A successful response advances the base version. It only remounts fields
+with normalized server values if no typing occurred during the save; otherwise
+those newer keystrokes survive and can be saved using the returned version. Older
+revalidation responses cannot roll the base backward. On conflict the user can
+keep/copy the draft, or explicitly discard it and reload the latest item. No
+silent force-save or automatic merge is exposed.
+
+This is optimistic concurrency for full item drafts, not offline synchronization
+or protection for every entity type. Existing targeted quick actions retain their
+semantics. No schema migration, new dependency, account connection, external call
+or authority change is required.

@@ -1,3 +1,5 @@
+import { assertItemVersion } from "@/domain/items/item-version";
+import * as versions from "@/server/items/item-version-repository";
 import { matchNotePrefix } from "@/domain/capture/note-prefix";
 import { captureItemSchema, updateItemSchema } from "@/domain/items/item-schema";
 import { captureNoteSchema } from "@/domain/notes/note-schema";
@@ -46,11 +48,9 @@ export async function captureMobile(db: Database, text: string) {
 export async function editMobileItem(db: Database, id: string, input: MobileEdit) {
   return db.transaction(async (tx) => {
     // Lock the canonical row while checking the version and changing its state.
-    const row = await repo.lockItem(tx, id);
+    const row = await versions.lockItem(tx, id);
     if (!row) throw new NotFoundError("Item", id);
-    if (row.updatedAt.getTime() !== Date.parse(input.expectedUpdatedAt)) {
-      throw new DomainError("conflict", "This item changed elsewhere. Refresh before editing.");
-    }
+    assertItemVersion(row.updatedAt, input.expectedUpdatedAt);
     const item = await itemService.getItem(tx, id);
     if (!item) throw new NotFoundError("Item", id);
     if (input.title !== undefined || input.body !== undefined || input.dueOn !== undefined) {
@@ -65,7 +65,7 @@ export async function editMobileItem(db: Database, id: string, input: MobileEdit
     }
     // The established status use case completes one recurring occurrence.
     if (input.status !== undefined) await itemService.setItemStatus(tx, id, input.status);
-    await repo.advanceItemVersion(tx, id, row.updatedAt);
+    await versions.advanceItemVersion(tx, id, row.updatedAt);
     return itemService.getItem(tx, id);
   });
 }

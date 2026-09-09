@@ -976,3 +976,24 @@ was inspected. Old pending approvals remain reachable beyond 50 newer jobs.
 Measured interaction change: pending decisions and saved-note outcomes can now be
 read directly on Today, removing the separate activity-board navigation for that
 check. Actual daily time saved awaits approved release and user operation.
+
+### Cross-device item drafts — local integration · 2026-09-09
+
+Full `pnpm check` passed: 1,009 tests in 71 files, typecheck, lint, formatting,
+context validation and production build. `TYLEROS_REQUIRE_PG_RACE=1` with the local
+fixture PostgreSQL enabled the two-connection race test: exactly one overlapping
+web/mobile edit committed and the loser returned a conflict.
+
+All five authenticated Chromium editor tests passed using the dedicated local
+`tyleros_operations_test` database. The cross-device case calls the actual mobile
+HTTP API, verifies two stale web saves preserve the draft, explicitly discards it,
+loads the phone's edit, and successfully saves the reconciled draft. Existing
+in-flight typing, normalized clean-save, validation-error and repeated-save cases
+also pass. The cross-device case passed again at 390px with the conflict screenshot
+inspected. Run `pnpm exec playwright test e2e/editor-draft.spec.ts` with a migrated
+local fixture database containing at least one synthetic item (global setup checks
+that the database is initialized). Test-created `ed-` records are cleaned up.
+
+No native UI code, production data, paid API, deployment or authority changed.
+This prevents lost item edits across clients; it does not yet provide offline
+merging or version-check every other editable entity.

@@ -540,3 +540,13 @@ The same summary is rendered by Today, returned in the authenticated mobile Toda
 response, and added to runtime Today context. Only aggregate counts leave this
 boundary; approval bodies and runtime-reported prose do not. ADR 041 defines the
 window and the protection against recursive briefing generation.
+
+## Item draft concurrency
+
+Web full-editor saves and mobile patches share the item version rule and row-lock
+repository under `server/items`. A full browser draft must include the version
+that seeded it. `updateItemFromSnapshot` checks and writes within a transaction,
+then returns the canonical item and a monotonically advanced version. The editor
+adopts successful normalized values only if typing did not continue during the
+save; failed drafts stay intact. Conflicts require explicit reload/reconciliation,
+never an automatic overwrite. See ADR 042.

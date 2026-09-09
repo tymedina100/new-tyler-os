@@ -1,3 +1,5 @@
+import { assertItemVersion } from "@/domain/items/item-version";
+import * as versions from "@/server/items/item-version-repository";
 import { parseCapture } from "@/domain/capture/parse-capture";
 import type { ItemKind, ItemStatus, ItemWithRelations } from "@/domain/items/item";
 import type { ItemLifecycle } from "@/domain/items/item-rules";
@@ -78,6 +80,24 @@ export async function captureItem(
     );
     await attachTags(tx, id, parsed.tags);
     return id;
+  });
+}
+
+/** Full drafts must still match the snapshot that seeded the editor. */
+export async function updateItemFromSnapshot(
+  db: Database,
+  input: UpdateItemInput,
+  expectedUpdatedAt: string,
+): Promise<ItemWithRelations> {
+  return db.transaction(async (tx) => {
+    const row = await versions.lockItem(tx, input.id);
+    if (!row) throw new NotFoundError("Item", input.id);
+    assertItemVersion(row.updatedAt, expectedUpdatedAt);
+    await updateItem(tx, input);
+    await versions.advanceItemVersion(tx, input.id, row.updatedAt);
+    const saved = await getItem(tx, input.id);
+    if (!saved) throw new NotFoundError("Item", input.id);
+    return saved;
   });
 }
 

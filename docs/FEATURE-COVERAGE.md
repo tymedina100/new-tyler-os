@@ -11,7 +11,7 @@ No domain is complete just because a specialist role name exists.
 | Capability                             | Current evidence / gap                                                                    | Next integrated work or dependency                                                                      |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Morning briefing                       | Existing deterministic/explicit AI jobs; new canonical operations counts verified locally | Release web and Python changes under approval; richer sourced domain context                            |
-| Capture, tasks, routines               | Existing capture, recurrence, Today and Upcoming; full test gate passes                   | Cross-client stale web edit protection, completion history                                              |
+| Capture, tasks, routines               | Capture, recurrence, Today; cross-device item conflicts locally verified                  | Release version checks; add completion history                                                          |
 | Email                                  | Existing bot Google helpers not revalidated here                                          | Verify scopes and provider-supported access; draft/approval integration before external actions         |
 | Calendar                               | Existing Google helpers not revalidated here                                              | Read events/conflicts, explicit scheduling policy                                                       |
 | Finance                                | Ledger role and separate Worthlane project exist; finance integration not verified here   | Authorized data source, freshness and approval-gated actions                                            |
@@ -60,3 +60,14 @@ Account availability is not inferred from the installed plugin catalog.
 Physical device verification and individual account connections do not block
 independent local engineering. Existing production behavior is not changed by
 these local branches.
+
+## Cross-device item draft evidence
+
+The full browser editor and native item API now use the same locked version
+check. Database tests cover stale web drafts after phone edits, relation rollback,
+refreshed saves and stale phone drafts after web edits. A two-connection PostgreSQL
+race proves exactly one concurrent draft commits. The authenticated Chromium
+editor suite covers failed-save preservation, normalized clean saves, sequential
+saves, typing during an in-flight save, and stale web draft rejection/recovery
+after a real mobile API edit. This is local verification, release pending; it does
+not claim offline sync or conflict protection for notes and other entity types.
