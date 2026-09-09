@@ -1,3 +1,4 @@
+import type { ConsumptionEntry } from "@/domain/consumption/consumption";
 import { ITEM_KIND_LABELS, type ItemWithRelations } from "@/domain/items/item";
 import type { InventoryItem } from "@/domain/kitchen/inventory";
 import { KITCHEN_LOCATION_LABELS } from "@/domain/kitchen/inventory";
@@ -142,4 +143,17 @@ function kitchenContext(food: InventoryItem, today: IsoDate): string | null {
   }
 
   return parts.filter((part) => part.length > 0).join(" · ");
+}
+
+export function consumptionHit(entry: ConsumptionEntry, query: string): SearchHit {
+  return {
+    domain: "consumption",
+    id: entry.id,
+    title: entry.description,
+    context: [entry.kind, entry.loggedOn, entry.feedback ? `Feedback: ${entry.feedback}` : null]
+      .filter(Boolean)
+      .join(" · "),
+    href: `/food/${entry.id}`,
+    tier: matchTierFor(query, entry.description),
+  };
 }

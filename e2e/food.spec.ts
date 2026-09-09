@@ -62,6 +62,25 @@ test("food capture persists across web and mobile, with reversible feedback and 
       food: before.today.food + 1,
       drink: before.today.drink + 1,
     });
+    const results = await request.get("/api/mobile/search?q=" + encodeURIComponent(name), {
+      headers,
+    });
+    expect(results.status()).toBe(200);
+    const hit = (await results.json()).data.groups.find(
+      (group: { domain: string }) => group.domain === "consumption",
+    ).hits[0];
+    await page.goto("/search?q=" + encodeURIComponent(name));
+    await page.locator(`a[href="${hit.href}"]`).click();
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Remove log", exact: true }).click();
+    await expect(page.getByText(/Removed \(not counted\)/)).toBeVisible();
+    await page.goto("/search?q=" + encodeURIComponent(name));
+    await expect(page.locator(`a[href="${hit.href}"]`)).toHaveCount(0);
+    await page.goto(hit.href);
+    await page.getByRole("button", { name: "Restore", exact: true }).click();
+    await expect(page.getByText("Your feedback: like", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Removed \(not counted\)/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Like", exact: true })).toBeEnabled();
     await page.setViewportSize({ width: 390, height: 844 });
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),

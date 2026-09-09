@@ -19,7 +19,7 @@
  */
 
 /** The domains that participate in search, in the order ties are broken. */
-export const SEARCH_DOMAINS = ["item", "note", "project", "kitchen"] as const;
+export const SEARCH_DOMAINS = ["item", "note", "project", "kitchen", "consumption"] as const;
 export type SearchDomain = (typeof SEARCH_DOMAINS)[number];
 
 export const SEARCH_DOMAIN_LABELS: Record<SearchDomain, string> = {
@@ -27,6 +27,7 @@ export const SEARCH_DOMAIN_LABELS: Record<SearchDomain, string> = {
   note: "Notes",
   project: "Projects",
   kitchen: "Kitchen",
+  consumption: "Food & drink history",
 };
 
 /**
@@ -102,4 +103,5 @@ export const SEARCH_LIMITS: Record<SearchDomain, number> = {
   note: 50,
   project: 20,
   kitchen: 20,
+  consumption: 20,
 };

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import { items, kitchenInventory } from "@/server/db/schema";
+import { consumptionEntries, items, kitchenInventory } from "@/server/db/schema";
 import { createTestDatabase, type TestDatabase } from "../support/test-database";
 import { captureMobile } from "@/server/mobile/mobile-service";
 import { createMobileSession } from "@/server/mobile/mobile-auth";
@@ -131,4 +131,38 @@ it("briefing context counts yesterday across a year boundary without exposing de
     drink: 0,
   });
   expect(JSON.stringify(context)).not.toContain("PRIVATE");
+});
+
+it("retrieves old meal records with literal terms and excludes removed evidence", async () => {
+  const { searchEverything } = await import("@/server/search/search-service");
+  const { getConsumptionEntry } = await import("@/server/consumption/consumption-service");
+  const old = await logConsumption(
+    harness.db,
+    { kind: "food", description: "100% spicy burrito" },
+    new Date("2025-01-01T20:00:00Z"),
+  );
+  await harness.db.insert(consumptionEntries).values(
+    Array.from({ length: 101 }, (_, i) => ({
+      kind: "drink" as const,
+      description: `New water ${i}`,
+      loggedOn: "2026-09-09",
+    })),
+  );
+  expect((await getConsumptionHistory(harness.db)).entries.some((e) => e.id === old.id)).toBe(
+    false,
+  );
+  await changeConsumption(harness.db, old.id, "like");
+  const found = await searchEverything(harness.db, "burrito 100%");
+  const hit = found.groups.find((g) => g.domain === "consumption")?.hits[0];
+  expect(hit).toMatchObject({
+    id: old.id,
+    href: `/food/${old.id}`,
+    context: "food · 2025-01-01 · Feedback: like",
+  });
+  expect((await getConsumptionEntry(harness.db, old.id))?.description).toBe(old.description);
+  expect((await searchEverything(harness.db, "100_")).groups).toEqual([]);
+  await changeConsumption(harness.db, old.id, "remove");
+  expect((await searchEverything(harness.db, "burrito")).groups).toEqual([]);
+  await changeConsumption(harness.db, old.id, "restore");
+  expect((await searchEverything(harness.db, "burrito")).total).toBe(1);
 });

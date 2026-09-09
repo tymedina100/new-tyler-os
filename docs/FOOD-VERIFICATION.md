@@ -8,7 +8,9 @@ To correct a description, remove its entry and capture the corrected version.
 
 Daily totals use `TYLEROS_TIME_ZONE` (default America/Phoenix). History and explicit
 feedback cover the latest 100 logs. Records remain in PostgreSQL beyond that window;
-there is no older-history browser yet. A log does not alter kitchen stock. There is
+universal search can find older entries by description and open their individual
+records. Removed entries are excluded from search; an existing direct link still
+lets you restore one. There is no chronological older-history browser yet. A log does not alter kitchen stock. There is
 no nutrition calculation, automatic restaurant recommendation or ordering action.
 
 ## Isolated verification
@@ -22,7 +24,8 @@ DATABASE_URL=postgresql://tyleros_local@127.0.0.1:55432/tyleros_operations_test 
 ```
 
 The browser flow signs in, captures food, changes feedback, removes/restores it,
-replays a mobile drink capture, compares Today counters and checks phone width.
+replays a mobile drink capture, compares Today counters, finds its record through
+universal search, removes/restores it from that direct page and checks phone width.
 The native `testFoodCaptureFeedbackAndRestore` uses the private local fixture
 configuration described in ios/README.md. It verifies quick-mode draft text,
 authenticated capture, feedback, removal/restoration and persistence after relaunch.

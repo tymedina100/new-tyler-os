@@ -143,3 +143,12 @@ source is merged and Simulator verified; the installed physical phone version
 is not verified or updated by this release. The earlier signed package remains
 the morning-operations version. Restaurant recommendations, ordering and durable
 Notion preference synchronization remain incomplete.
+
+## Food-history retrieval (local follow-through)
+
+Universal search now includes a separate Food & drink history group. Queries match
+all literal words in any order, escape SQL wildcard characters, and exclude removed
+logs. Search reaches beyond the latest100 history window; direct authenticated
+entry pages show date/kind/explicit feedback and allow remove/restore. Mobile search
+returns the same links to the existing native web-results view. This does not add
+meal prose to model context or mutate canonical Notion preferences.

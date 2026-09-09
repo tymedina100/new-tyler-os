@@ -56,3 +56,7 @@ export async function getPreviousConsumptionSummary(db: Database, now = new Date
   const day = previous.toISOString().slice(0, 10);
   return { day, timeZone, ...(await repo.consumptionCounts(db, day)) };
 }
+
+export async function getConsumptionEntry(db: Database, id: string) {
+  return repo.findConsumption(db, id);
+}

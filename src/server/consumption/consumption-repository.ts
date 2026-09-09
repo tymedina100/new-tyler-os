@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ilike, sql } from "drizzle-orm";
 import type { Database } from "@/server/db/client";
 import { consumptionEntries } from "@/server/db/schema";
 export async function insertConsumption(
@@ -36,4 +36,33 @@ export async function patchConsumption(
     .where(eq(consumptionEntries.id, id))
     .returning();
   return row;
+}
+
+export async function findConsumption(db: Database, id: string) {
+  const [entry] = await db
+    .select()
+    .from(consumptionEntries)
+    .where(eq(consumptionEntries.id, id))
+    .limit(1);
+  return entry ?? null;
+}
+export async function searchConsumption(db: Database, query: string, limit = 20) {
+  const terms = query.trim().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  return db
+    .select()
+    .from(consumptionEntries)
+    .where(
+      and(
+        isNull(consumptionEntries.voidedAt),
+        ...terms.map((term) =>
+          ilike(
+            consumptionEntries.description,
+            `%${term.replace(/[\\%_]/g, (char) => `\\${char}`)}%`,
+          ),
+        ),
+      ),
+    )
+    .orderBy(desc(consumptionEntries.occurredAt), desc(consumptionEntries.id))
+    .limit(limit);
 }
