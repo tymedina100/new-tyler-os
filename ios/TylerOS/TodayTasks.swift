@@ -143,7 +143,7 @@ struct FoodLogView: View {
                     Text("\(history.today.food) food entries · \(history.today.drink) drink entries")
                     Text(history.today.timeZone).font(.caption).foregroundStyle(.secondary)
                 }
-                Section("Your feedback · all history") {
+                Section("Your feedback") {
                     Text("Only explicit likes and dislikes count. Logging something does not mean you liked it.").font(.caption).foregroundStyle(.secondary)
                     ForEach(Array(history.feedback.enumerated()), id: \.offset) { _, feedback in Text("\(feedback.description): \(feedback.likes) likes · \(feedback.dislikes) dislikes") }
                 }
