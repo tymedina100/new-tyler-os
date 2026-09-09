@@ -26,6 +26,12 @@ struct TodayView: View {
                     NavigationLink("Review Miles activity") { MilesView() }.accessibilityIdentifier("operationsReview")
                 }
             }
+            if let consumption = store.today?.consumption {
+                Section("Food & drink") {
+                    Text("Logged today: \(consumption.food) food entries · \(consumption.drink) drink entries").accessibilityIdentifier("consumptionSummary")
+                    NavigationLink("Open food & drink log") { FoodLogView(showCapture: $showCapture) }.accessibilityIdentifier("foodLog")
+                }
+            }
             if let view = store.today?.view {
                 bucket("Needs attention", items: view.overdue)
                 bucket("Today’s focus", items: view.dueToday)
@@ -55,9 +61,9 @@ struct TasksView: View {
             if filtered.isEmpty { EmptyCard(title: "Nothing here yet", detail: "Capture a task or change your search.") }
             Section("App tasks") { ForEach(filtered) { item in NavigationLink(value: item) { ItemRow(item: item) } } }
             if store.workBoardUnavailable { Text("Shared Notion tasks are unavailable. Pull to refresh; app tasks remain available.").font(.caption).foregroundStyle(.secondary) }
-            if let board = store.workBoard, !board.entries.isEmpty {
+            if let board = store.workBoard {
                 Section("Shared tasks · Notion snapshot") {
-                    Text("Read-only snapshot. Open the source to edit; refresh the snapshot through your existing system.").font(.caption).foregroundStyle(.secondary)
+                    Text(board.health?.message ?? "Read-only snapshot. Check the canonical task before acting.").font(.caption).foregroundStyle(.secondary)
                     if let date = board.asOf { Text("As of \(date)").font(.caption2).foregroundStyle(.secondary) }
                     ForEach(board.entries.filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) }) { entry in
                         VStack(alignment: .leading, spacing: 6) {
@@ -96,6 +102,70 @@ struct ItemEditor: View {
                 }.disabled(store.busy || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("saveItem")
             }
             ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { editing = false }.accessibilityIdentifier("finishEditing") }
+        }
+    }
+}
+
+
+struct FoodLogView: View {
+    @Environment(Store.self) private var store
+    @Binding var showCapture: Bool
+    @State private var history: ConsumptionHistory?
+    @State private var error: String?
+    @State private var saving = false
+    var body: some View {
+        List {
+            Section {
+                Text("Log what you had. Portions or the place can go in the description. Nutrition and pantry stock are not inferred.").font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button("Log food") { beginCapture("food") }.accessibilityIdentifier("logFood")
+                    Button("Log drink") { beginCapture("drink") }.accessibilityIdentifier("logDrink")
+                }.buttonStyle(.bordered)
+            }
+            if let error { Text(error).foregroundStyle(.red).accessibilityIdentifier("foodError") }
+            if let history {
+                Section("Logged today · \(history.today.day)") {
+                    Text("\(history.today.food) food entries · \(history.today.drink) drink entries")
+                    Text(history.today.timeZone).font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Your feedback · latest 100 logs") {
+                    Text("Only explicit likes and dislikes count. Logging something does not mean you liked it.").font(.caption).foregroundStyle(.secondary)
+                    ForEach(Array(history.feedback.enumerated()), id: \.offset) { _, feedback in Text("\(feedback.description): \(feedback.likes) likes · \(feedback.dislikes) dislikes") }
+                }
+                Section("Recent logs") {
+                    if history.entries.isEmpty { Text("No food or drinks logged yet.") }
+                    ForEach(history.entries) { entry in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(entry.description).font(.headline)
+                            Text("\(entry.kind) · \(entry.loggedOn)" + (entry.voidedAt == nil ? "" : " · Removed (not counted)")).font(.caption).foregroundStyle(.secondary)
+                            if entry.voidedAt == nil {
+                                HStack { Button("Like") { change(entry, "like") }; Button("Dislike") { change(entry, "dislike") }; Button("Clear") { change(entry, "clear") } }.buttonStyle(.bordered)
+                                if let feedback = entry.feedback { Text("Feedback: \(feedback)").font(.caption) }
+                                Button("Remove log") { change(entry, "remove") }.buttonStyle(.borderless)
+                            } else { Button("Restore") { change(entry, "restore") }.buttonStyle(.borderless) }
+                        }.disabled(saving).accessibilityElement(children: .contain).accessibilityIdentifier("foodEntry-" + entry.description)
+                    }
+                }
+            } else if error == nil { ProgressView("Loading food log") }
+        }.navigationTitle("Food & drink").task { await load() }.refreshable { await load() }.onChange(of: store.refreshedAt) { _, _ in Task { await load() } }
+    }
+    private func beginCapture(_ kind: String) {
+        // Never replace an existing unsent draft just to select a capture mode.
+        if store.draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { store.draft.consumptionKind = ConsumptionKind(rawValue: kind); store.saveDraft() }
+        showCapture = true
+    }
+    private func load() async {
+        do { history = try await store.api.request("consumption"); error = nil }
+        catch { self.error = "Food log could not be refreshed. Any displayed entries are from the previous load." }
+    }
+    private func change(_ entry: ConsumptionEntry, _ action: String) {
+        guard !saving else { return }; saving = true
+        Task {
+            defer { saving = false }
+            do {
+                let _: ConsumptionEntry = try await store.api.request("consumption/\(entry.id)", method: "PATCH", body: ["requestId": UUID().uuidString, "action": action])
+                await load(); await store.refresh()
+            } catch { self.error = error.localizedDescription }
         }
     }
 }

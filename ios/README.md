@@ -60,3 +60,16 @@ passed on a fresh iOS 18.3.1 test device, using isolated local PostgreSQL. The
 connection-screen test also passed on the initial clean-session run. Final
 operations screenshot was inspected. No updated physical installation or
 production deployment is claimed for this milestone.
+
+### Source health
+
+Knowledge displays each entry's import age and recorded review timing. A new import
+batch is not a new review. Broken/missing sources are labeled separately; app notes
+and tasks stay usable. Shared-task snapshot health is visible even when no cached
+tasks can be loaded. New fields are optional for older backends.
+
+The source-recovery UI test additionally needs `knowledgeFixturePath` in the private
+UI configuration, pointing to the synthetic `work/knowledge-e2e.json` used by the
+loopback fixture server. It corrupts and restores that named fixture. Run only with
+an isolated local backend, never personal production imports. The test confirms
+source detail, failure labeling, canonical Today access and recovery after repair.

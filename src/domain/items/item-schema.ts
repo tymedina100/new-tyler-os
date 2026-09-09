@@ -112,3 +112,6 @@ export const setItemDueDateSchema = z.object({
   id: z.uuid(),
   dueOn: dueOnSchema,
 });
+
+/** Every full browser draft carries the version it was based on. */
+export const itemVersionSchema = z.iso.datetime({ offset: true });

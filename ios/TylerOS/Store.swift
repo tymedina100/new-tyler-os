@@ -7,6 +7,7 @@ import SwiftUI
     var today: Today?; var items: [Item] = []; var notes: [Note] = []; var jobs: [JobRow] = []; var knowledge: Knowledge?
     var workBoard: WorkBoard?
     var workBoardUnavailable = false
+    var knowledgeUnavailable = false
     var pendingBriefingRequest: String? = Vault.read("briefingRequest")
     var error: String?; var notice: String?; var busy = false; var refreshedAt: Date?
     var connected: Bool { session?.server != nil }
@@ -31,10 +32,10 @@ import SwiftUI
             struct Revoked: Decodable { let revoked: Bool? }
             let _: Revoked = try await self.api.request("session", method: "DELETE")
             Vault.delete("session"); self.session = nil
-            self.today = nil; self.items = []; self.notes = []; self.jobs = []; self.knowledge = nil; self.refreshedAt = nil; self.workBoard = nil
+            self.today = nil; self.items = []; self.notes = []; self.jobs = []; self.knowledge = nil; self.refreshedAt = nil; self.workBoard = nil; self.knowledgeUnavailable = false; self.workBoardUnavailable = false
         }
     }
-    func forgetSession() { Vault.delete("session"); session = nil; today = nil; items = []; notes = []; jobs = []; knowledge = nil; refreshedAt = nil; workBoard = nil }
+    func forgetSession() { Vault.delete("session"); session = nil; today = nil; items = []; notes = []; jobs = []; knowledge = nil; refreshedAt = nil; workBoard = nil; knowledgeUnavailable = false; workBoardUnavailable = false }
     func refresh() async {
         guard connected, !busy else { return }
         await perform {
@@ -46,7 +47,7 @@ import SwiftUI
             let values = try await (today, items, notes, jobs)
             self.today = values.0; self.items = values.1.items; self.notes = values.2.notes; self.jobs = values.3.jobs; self.refreshedAt = .now
             do { self.workBoard = try await api.request("work-board"); self.workBoardUnavailable = false } catch { self.workBoard = nil; self.workBoardUnavailable = true }
-            do { self.knowledge = try await api.request("knowledge") } catch { self.notice = "Personal knowledge is unavailable. Notes and tasks are current." }
+            do { self.knowledge = try await api.request("knowledge"); self.knowledgeUnavailable = false } catch { self.knowledge = nil; self.knowledgeUnavailable = true }
         }
     }
     func refreshJobs() async {
@@ -57,7 +58,7 @@ import SwiftUI
     func capture() async -> Bool {
         var saved = false
         await perform {
-            let _: CaptureResult = try await self.api.request("capture", method: "POST", body: ["requestId": self.draft.requestId, "text": self.draft.text])
+            let _: CaptureResult = try await self.api.request("capture", method: "POST", body: ["requestId": self.draft.requestId, "text": self.draft.captureText])
             self.draft = Draft(); self.saveDraft(); self.notice = "Captured in TylerOS."; saved = true
         }
         if saved { await refresh() }; return saved

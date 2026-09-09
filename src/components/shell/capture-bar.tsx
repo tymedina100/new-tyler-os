@@ -11,6 +11,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { matchConsumptionPrefix } from "@/domain/consumption/consumption";
 import { matchNotePrefix } from "@/domain/capture/note-prefix";
 import { parseCapture } from "@/domain/capture/parse-capture";
 import type { ProjectRef } from "@/domain/projects/project";
@@ -95,14 +96,15 @@ export function CaptureBar({
   // Checked before anything item-shaped: a `note:` capture never reaches
   // `parseCapture` at all, the same "decide the domain first" split the
   // server action makes. See src/domain/capture/note-prefix.ts and ADR 033.
+  const consumption = useMemo(() => matchConsumptionPrefix(text), [text]);
   const noteBody = matchNotePrefix(text);
 
   const parsed = useMemo(
     () =>
-      noteBody !== null || text.trim().length === 0
+      noteBody !== null || consumption !== null || text.trim().length === 0
         ? null
         : parseCapture(text, { today, projects }),
-    [text, today, projects, noteBody],
+    [text, today, projects, noteBody, consumption],
   );
 
   const project = parsed?.projectId
@@ -111,6 +113,7 @@ export function CaptureBar({
 
   const error = state && !state.ok ? state.error : null;
   const hasPreview =
+    consumption !== null ||
     noteBody !== null ||
     (parsed !== null &&
       (parsed.dueOn !== null ||
@@ -163,6 +166,10 @@ export function CaptureBar({
       {error ? (
         <p role="alert" className="text-destructive px-1 text-xs">
           {error}
+        </p>
+      ) : consumption !== null ? (
+        <p id="capture-preview" aria-live="polite" className="text-muted-foreground text-xs">
+          Log {consumption.kind}: {consumption.description || "describe what you had"}
         </p>
       ) : noteBody !== null ? (
         <NotePreview body={noteBody} />

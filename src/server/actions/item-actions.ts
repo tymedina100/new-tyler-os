@@ -1,8 +1,10 @@
 "use server";
 
+import type { ItemWithRelations } from "@/domain/items/item";
 import { revalidatePath } from "next/cache";
 import {
   itemIdSchema,
+  itemVersionSchema,
   setItemDueDateSchema,
   setItemKindSchema,
   setItemStatusSchema,
@@ -31,14 +33,15 @@ import * as service from "@/server/items/item-service";
  */
 
 export async function updateItemAction(
-  _previous: ActionResult<{ id: string }> | null,
+  _previous: ActionResult<ItemWithRelations> | null,
   formData: FormData,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<ItemWithRelations>> {
   return runAction("updateItem", async () => {
     const input = updateItemSchema.parse({ ...readItemForm(formData), id: formData.get("id") });
-    const id = await service.updateItem(getDb(), input);
+    const version = itemVersionSchema.parse(formData.get("expectedUpdatedAt"));
+    const saved = await service.updateItemFromSnapshot(getDb(), input, version);
     revalidateEverything();
-    return { id };
+    return saved;
   });
 }
 

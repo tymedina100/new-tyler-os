@@ -976,3 +976,72 @@ was inspected. Old pending approvals remain reachable beyond 50 newer jobs.
 Measured interaction change: pending decisions and saved-note outcomes can now be
 read directly on Today, removing the separate activity-board navigation for that
 check. Actual daily time saved awaits approved release and user operation.
+
+### Cross-device item drafts — local integration · 2026-09-09
+
+Full `pnpm check` passed: 1,009 tests in 71 files, typecheck, lint, formatting,
+context validation and production build. `TYLEROS_REQUIRE_PG_RACE=1` with the local
+fixture PostgreSQL enabled the two-connection race test: exactly one overlapping
+web/mobile edit committed and the loser returned a conflict.
+
+All five authenticated Chromium editor tests passed using the dedicated local
+`tyleros_operations_test` database. The cross-device case calls the actual mobile
+HTTP API, verifies two stale web saves preserve the draft, explicitly discards it,
+loads the phone's edit, and successfully saves the reconciled draft. Existing
+in-flight typing, normalized clean-save, validation-error and repeated-save cases
+also pass. The cross-device case passed again at 390px with the conflict screenshot
+inspected. Run `pnpm exec playwright test e2e/editor-draft.spec.ts` with a migrated
+local fixture database containing at least one synthetic item (global setup checks
+that the database is initialized). Test-created `ed-` records are cleaned up.
+
+No native UI code, production data, paid API, deployment or authority changed.
+This prevents lost item edits across clients; it does not yet provide offline
+merging or version-check every other editable entity.
+
+### Morning operations — approved production rollout · 2026-09-09
+
+Tyler approved pushing, opening PRs, merging after checks, and deploying the exact
+morning-operations commits. App PR #11 merged as `b754b88` after GitHub CI passed;
+worker PR #88 merged as `b14898c` after all 27 tests passed under the installed Xcode
+Python 3.9 executable. The later cross-device editor commit was excluded.
+
+Vercel deployment `dpl_FotLoyFzB4qznZprU49PkkJDhSyF` is READY, production, commit
+`b754b88`, build duration 33 seconds, alias `https://tyler-os-ashen.vercel.app`.
+Authenticated runtime Today context returned the new operations object. Logged
+worker polls returned HTTP 200 after the existing LaunchAgent restarted. Its
+installed worker SHA-256 is
+`d47b1827845697d3afe4582fbff34c6867c125559a1bfe9acce2f4048b6466be`.
+
+The service was sampled in its idle select-based sleep with no TCP connection
+before stopping it. Verified worker bytes were installed atomically with a private
+backup. Helper, private credentials and 30-second polling configuration were kept.
+No AI/scheduler flags, grants, paid calls or synthetic production records added.
+
+The post-release deployment log view showed zero warnings, errors or fatal entries.
+One manual context probe omitted its required role header (400); corrected probes
+passed. No drains are configured. Authenticated production browser/mobile-session
+verification was not available in this session; local web/native end-to-end tests
+remain the interaction evidence. No updated physical iPhone binary was installed.
+
+### Independent knowledge source health — local integration · 2026-09-09
+
+Full `pnpm check` passed: 1,018 tests in 73 files, real PostgreSQL race harness,
+types, lint, formatting, context checks and production build. New source tests
+cover unknown/future/malformed review dates, cadence boundaries and month ends,
+per-entry import age, byte limits, unreadable files, invalid source URLs, independent
+source failures and recovery. Private input/error details are not returned.
+
+Authenticated Chromium against isolated local PostgreSQL passed the source flow:
+break Knowledge while shared tasks remain visible, repair Knowledge and break the
+Work Board, verify the same status/review metadata via mobile HTTP, repair both,
+and inspect the 390px layout with no horizontal overflow. Canonical notes/Today
+reads succeed during the source failure. Reproduce with `pnpm exec playwright test
+--config playwright.knowledge.config.ts` and the dedicated local
+`tyleros_operations_test` database. Only named synthetic source files are changed.
+
+Native: all 12 unit tests plus the authenticated source-health/recovery UI test
+passed on iOS 18.3.1 Simulator. It reads the due-review detail, corrupts the local
+fixture, verifies source failure labeling and Today navigation, then repairs and
+reloads the source. Both healthy and unavailable screenshots were inspected.
+Result bundle: `native-knowledge.xcresult`, outside Git. This is local verification;
+no production deployment, Notion write or updated physical installation occurred.

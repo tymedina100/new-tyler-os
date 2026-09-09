@@ -1674,3 +1674,81 @@ change to include the section in deterministic briefing notes.
 Native approval review suspends periodic job polling. A busy or failed decision
 returns failure and leaves its sheet open; only a successful canonical decision
 closes it. A background refresh must never look like an accepted proposal.
+
+---
+
+## 042 · Cross-device item drafts share one version check
+
+A mobile edit already rejected an outdated snapshot, but a web editor could save
+its entire old draft over that newer phone edit. Full browser drafts now require
+an ISO `expectedUpdatedAt`. The service locks the canonical item row, compares
+versions, writes the item/tags/recurrence in the transaction, advances its version
+by at least one millisecond, and returns the saved canonical item. Native and web
+share the version rule and repository. An overlapping save has one winner; the
+other receives a conflict without changing any fields or relations.
+
+The browser keeps its draft dirty through failed saves and while a save is in
+flight. A successful response advances the base version. It only remounts fields
+with normalized server values if no typing occurred during the save; otherwise
+those newer keystrokes survive and can be saved using the returned version. Older
+revalidation responses cannot roll the base backward. On conflict the user can
+keep/copy the draft, or explicitly discard it and reload the latest item. No
+silent force-save or automatic merge is exposed.
+
+This is optimistic concurrency for full item drafts, not offline synchronization
+or protection for every entity type. Existing targeted quick actions retain their
+semantics. No schema migration, new dependency, account connection, external call
+or authority change is required.
+
+---
+
+## 043 · Source health belongs to each cached source
+
+Knowledge and the shared Work Board are independent, recoverable Notion caches.
+A missing configuration, a broken configured import and a valid empty/search result
+must not mean the same thing. Each read now returns explicit `health` alongside the
+existing snapshot contract. File reads use a bounded regular-file handle; malformed,
+oversized or unreadable data becomes an unavailable source with no private error
+content exposed. A configured file never falls back silently to older inline data.
+The other source and canonical app records remain independently readable. Repairing
+the import recovers on the next read, without a restart or write to Notion.
+
+A batch import date does not establish the age of every entry in that batch.
+Knowledge entries retain and show their own `importedAt` age. Recorded review timing
+uses `lastReviewed` and recognized Daily/Weekly/Monthly/Quarterly/Yearly/Annually
+cadences, including calendar month ends. Missing, invalid or future review dates
+and unknown cadences remain unverified. An import never resets the review clock;
+a not-yet-due review does not assert that the source has no newer changes.
+
+Web and native clients render the server's same health messages. Native transport
+failure clears the inaccessible knowledge cache and labels that failure while
+keeping canonical notes/tasks. New fields are optional in native decoding for older
+backends. This does not create live Notion synchronization, background reviews,
+notifications, changed freshness policies or permission to update the originals.
+
+## 044 · Explicit consumption capture and reversible feedback
+
+Food and drink are reported events, separate from pantry stock and task planning.
+Anchored `food:` and `drink:` prefixes route web/mobile capture into the same
+consumption service, before task dates, tags or projects can change the description.
+Native quick modes preserve existing drafts and use the existing capture/dictation
+surface. The selected mode is encrypted with the draft separately from its text;
+the prefix is added to the API payload, preventing cursor position from changing
+the chosen record type. Legacy drafts decode with no selected mode. No nutrition, portions, price or preference is guessed from a description.
+
+Migration 0012 stores event time and its calendar day in `TYLEROS_TIME_ZONE`
+(default America/Phoenix). Daily counts use all non-removed events, while history
+and explicit feedback cover the latest 100 logs. Like/dislike evidence groups exact
+normalized descriptions by kind; consumption alone is never a positive preference.
+Remove/restore retains the original entry and feedback, excluding removed records
+from counts/evidence. A correction currently means remove and capture again.
+This is app event state, not a new canonical Notion preferences database.
+
+Web writes retain session auth and action validation. Mobile mutations use the
+existing durable request receipt, rejecting changed intent on replay. Mobile reads
+require the same device session. Additive Today fields are optional in native
+models, so older backends do not expose unsupported quick modes.
+
+This milestone does not infer nutrition, implement historical backdating or
+pagination, synchronize preferences into Notion, recommend restaurants, or order
+anything. Raw consumption descriptions are not added to runtime/model context.

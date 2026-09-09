@@ -24,10 +24,19 @@ struct CaptureView: View {
  @Environment(Store.self) private var store
  @Environment(\.dismiss) private var dismiss
  @State private var dictation = Dictation(); @State private var prefix = ""
+
  var body: some View { @Bindable var store = store
   NavigationStack { VStack(alignment: .leading, spacing: 18) {
    Text("Get it out of your head.").font(.title2.bold())
    Text("A task, an idea, a small thing to remember. Start with “note:” to save reference material.").font(.subheadline).foregroundStyle(.secondary)
+   if store.today?.consumption != nil {
+    HStack {
+     Button("Task / note") { selectKind(nil) }
+     Button("Food") { selectKind(.food) }.accessibilityIdentifier("captureFood")
+     Button("Drink") { selectKind(.drink) }.accessibilityIdentifier("captureDrink")
+    }.buttonStyle(.bordered).disabled(!store.draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+   }
+   if let kind = store.draft.consumptionKind { Text("Logging " + kind.rawValue).font(.headline).accessibilityIdentifier("captureKind") }
    TextEditor(text: $store.draft.text).padding(10).frame(minHeight: 150).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16)).scrollContentBackground(.hidden).accessibilityIdentifier("captureText")
    HStack { Button { if dictation.listening { dictation.stop() } else { prefix = store.draft.text; Task { await dictation.start { transcript in store.draft.text = prefix + (prefix.isEmpty ? "" : " ") + transcript; store.saveDraft() } } } } label: { Label(dictation.listening ? "Stop dictation" : "Dictate on device", systemImage: dictation.listening ? "stop.circle.fill" : "mic") }; Spacer() }
    if let error = dictation.error { Text(error).font(.caption).foregroundStyle(.secondary) }
@@ -35,6 +44,8 @@ struct CaptureView: View {
    Button { dictation.stop(); Task { if await store.capture() { dismiss() } } } label: { Text(store.busy ? "Saving…" : "Save to TylerOS").frame(maxWidth: .infinity).padding(10) }.buttonStyle(.borderedProminent).disabled(store.busy || store.draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("saveCapture")
   }.padding(24).background(Color(.systemGroupedBackground)).navigationTitle("Capture").navigationBarTitleDisplayMode(.inline).toolbar { Button("Close") { dismiss() } }.onChange(of: store.draft.text) { _, _ in store.saveDraft() }.onDisappear { dictation.stop() } }
  }
+ private func selectKind(_ kind: ConsumptionKind?) { store.draft.consumptionKind = kind; store.saveDraft() }
+
 }
 struct SettingsView: View {
  @Environment(Store.self) private var store

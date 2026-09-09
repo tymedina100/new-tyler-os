@@ -18,6 +18,13 @@ final class APITests: XCTestCase {
   let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [StubProtocol.self]; StubProtocol.handler = { _ in (409, Data(#"{"error":{"code":"conflict","message":"This item changed. Refresh before editing."}}"#.utf8)) }
   do { let _: Item = try await API(baseURL: URL(string: "https://example.com")!, session: URLSession(configuration: config)).request("items/fixture"); XCTFail("Expected conflict") } catch { XCTAssertEqual(error.localizedDescription, "This item changed. Refresh before editing.") }
  }
+ func testConsumptionModePersistsWithoutEditingDescription() throws {
+  let draft = Draft(text: "Lunch friday @cafe", requestId: "fixed", consumptionKind: .food)
+  let restored = try JSONDecoder().decode(Draft.self, from: JSONEncoder().encode(draft))
+  XCTAssertEqual(restored.text, "Lunch friday @cafe"); XCTAssertEqual(restored.captureText, "food: Lunch friday @cafe"); XCTAssertEqual(restored.requestId, "fixed")
+  let legacy = try JSONDecoder().decode(Draft.self, from: Data(#"{"text":"note: reference","requestId":"old"}"#.utf8))
+  XCTAssertNil(legacy.consumptionKind); XCTAssertEqual(legacy.captureText, "note: reference")
+ }
  func testDraftRoundTripRetainsIdempotencyKey() throws { var draft = Draft(); draft.text = "SYNTHETIC draft"; let restored = try JSONDecoder().decode(Draft.self, from: JSONEncoder().encode(draft)); XCTAssertEqual(restored.requestId, draft.requestId); XCTAssertEqual(restored.text, draft.text) }
  func testVaultRoundTripAndDeletion() throws { let key = "test-" + UUID().uuidString; defer { Vault.delete(key) }; try Vault.save(Draft(text: "SYNTHETIC", requestId: "fixed"), key: key); let value: Draft? = Vault.read(key); XCTAssertEqual(value?.requestId, "fixed"); Vault.delete(key); let deleted: Draft? = Vault.read(key); XCTAssertNil(deleted) }
  @MainActor func testSessionCannotSendTokenToChangedServer() throws {
@@ -60,6 +67,16 @@ final class APITests: XCTestCase {
   let saved = await store.decide(proposal, decision: "accept")
   XCTAssertFalse(saved); XCTAssertNotNil(store.error)
   XCTAssertNotEqual(store.notice, "Approved and saved as a note.")
+ }
+
+ func testKnowledgeHealthIsAdditiveAndDistinguishesUnavailableSources() throws {
+  let legacy = #"{"entries":[],"mode":"snapshot","asOf":null}"#
+  XCTAssertNil(try JSONDecoder().decode(Knowledge.self, from: Data(legacy.utf8)).health)
+  let current = #"{"entries":[],"mode":"snapshot","asOf":null,"health":{"status":"unavailable","message":"Source could not be loaded."}}"#
+  let knowledge = try JSONDecoder().decode(Knowledge.self, from: Data(current.utf8))
+  XCTAssertEqual(knowledge.health?.status, "unavailable")
+  XCTAssertEqual(knowledge.health?.message, "Source could not be loaded.")
+  XCTAssertEqual(try JSONDecoder().decode(WorkBoard.self, from: Data(current.utf8)).health?.status, "unavailable")
  }
 
 }

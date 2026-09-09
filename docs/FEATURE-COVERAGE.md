@@ -11,17 +11,17 @@ No domain is complete just because a specialist role name exists.
 | Capability                             | Current evidence / gap                                                                    | Next integrated work or dependency                                                                      |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Morning briefing                       | Existing deterministic/explicit AI jobs; new canonical operations counts verified locally | Release web and Python changes under approval; richer sourced domain context                            |
-| Capture, tasks, routines               | Existing capture, recurrence, Today and Upcoming; full test gate passes                   | Cross-client stale web edit protection, completion history                                              |
+| Capture, tasks, routines               | Capture, recurrence, Today; cross-device item conflicts locally verified                  | Release version checks; add completion history                                                          |
 | Email                                  | Existing bot Google helpers not revalidated here                                          | Verify scopes and provider-supported access; draft/approval integration before external actions         |
 | Calendar                               | Existing Google helpers not revalidated here                                              | Read events/conflicts, explicit scheduling policy                                                       |
 | Finance                                | Ledger role and separate Worthlane project exist; finance integration not verified here   | Authorized data source, freshness and approval-gated actions                                            |
 | Career                                 | Archer and canonical policy exist                                                         | Audit current bot workflow and assigned opportunities; preserve assignment/submission gates             |
 | eBay / Marketplace                     | Mercury ownership and inventory authority documented in HQ                                | Verify actual inventory and provider access; no invented listings or sales                              |
 | Household                              | Kitchen inventory, shopping bridge, recurrence exist                                      | Bring routines and completion outcomes into briefings                                                   |
-| Food/drink tracking                    | Palate exists; kitchen is stock, not a meal log                                           | Structured consumption and feedback linked to second brain                                              |
+| Food/drink tracking                    | Local structured log, daily counts and explicit reversible feedback across web/native     | Native physical voice verification, canonical preference sync, recommendations and ordering             |
 | Preferences / restaurants / ordering   | Durable context in Notion; no verified ordering flow                                      | Confidence and recent-meal evidence; authorized merchant, budget and ordering mechanism                 |
 | Sports / gaming / entertainment / news | Role/context only in this audit                                                           | Current sources and preferences, useful changes only                                                    |
-| Second brain                           | Notes, search, dated Notion imports exist                                                 | Source freshness and sync; native source snapshots are not live Notion                                  |
+| Second brain                           | Notes/search; independent source health and review timing implemented                     | Source-health locally verified; release and live Notion sync remain open                                |
 | Autonomous project development         | Existing workflow/bot code; local implementation and tests work                           | Audit actual worker execution, resumable milestones, measured outcomes                                  |
 | Provider independence                  | Roles distinct from runtimes, explicit profiles                                           | Supported subscription execution adapters; no subscription-to-API assumption                            |
 | Quota / cost                           | Capacity ledger, usage accounting; automatic selection absent                             | Deterministic eligibility, fresh quota evidence, approved cost ceiling                                  |
@@ -47,11 +47,14 @@ No domain is complete just because a specialist role name exists.
 
 Native verification: 11 unit tests plus full authenticated Simulator UI flow,
 including canonical operations and Miles navigation. Busy-decision regression
-covered. This milestone is verified locally, not released.
+covered. Web and Python worker released through app PR #11 and worker PR #88.
+Native UI is verified in Simulator; this release did not install an updated phone binary.
 
 ## Release and operating dependencies
 
-Protected-branch merges and deployments require explicit approval for this work.
+Protected-branch merges and deployments require explicit approval. Tyler approved
+the morning-operations release on September 9; web and worker rollout completed.
+Later local editor changes remain outside that approval.
 No paid inference, purchases, messages or other external actions were performed.
 Plugin Management search/suggestion capabilities were not callable in this
 session after tool discovery; installed connectors remain usable individually.
@@ -60,3 +63,65 @@ Account availability is not inferred from the installed plugin catalog.
 Physical device verification and individual account connections do not block
 independent local engineering. Existing production behavior is not changed by
 these local branches.
+
+## Cross-device item draft evidence
+
+The full browser editor and native item API now use the same locked version
+check. Database tests cover stale web drafts after phone edits, relation rollback,
+refreshed saves and stale phone drafts after web edits. A two-connection PostgreSQL
+race proves exactly one concurrent draft commits. The authenticated Chromium
+editor suite covers failed-save preservation, normalized clean saves, sequential
+saves, typing during an in-flight save, and stale web draft rejection/recovery
+after a real mobile API edit. This is local verification, release pending; it does
+not claim offline sync or conflict protection for notes and other entity types.
+
+## Morning operations release receipt · 2026-09-09
+
+- App PR #11 merged as `b754b88`; GitHub CI passed. Vercel production deployment
+  `dpl_FotLoyFzB4qznZprU49PkkJDhSyF` is READY at the existing production domain.
+- Worker PR #88 merged as `b14898c`. Approved worker bytes installed in the existing
+  Mac LaunchAgent; credentials, helper, polling interval and authority unchanged.
+- Authenticated production runtime context includes canonical operations; worker
+  polls return HTTP 200 after restart. No synthetic production task or note added.
+- Native changes are in main and locally tested, but no new phone binary installed.
+- Post-release runtime log view showed zero warnings/errors/fatal entries. One
+  verification request omitted its role header and received the expected 400;
+  corrected requests passed. No log drains are configured; no paid monitoring added.
+
+## Source-health milestone
+
+Knowledge and shared-task imports now report not-configured, unavailable or
+available independently. Each knowledge entry shows its own import age and review
+due date from recorded cadence; an import batch never resets old reviews. Web and
+native display the same server-calculated metadata. Local tests corrupt and repair
+one source while continuing to read the other and canonical app records. This
+remains a read-only snapshot system; live Notion sync and automated reviews are
+separate missing capabilities. Release is not authorized by the earlier approval.
+
+Verification: 1,018 repository tests and full gate passed; authenticated browser
+source-failure/recovery flow passed; 12 native unit tests and source-recovery UI
+flow passed. Web and native screenshots inspected. No production changes.
+
+## Food/drink milestone (locally verified)
+
+Explicit `food:`/`drink:` captures share persistent web and native history and Today
+counts. Native quick capture reuses the existing dictation surface. Likes/dislikes
+remain explicit evidence from recent logs; removing/restoring an entry adjusts both
+counts and evidence. No stock mutation or invented nutrition. Migration 0012 has
+only been applied to the isolated local fixture database. No release authorized.
+
+1,027 repository tests and authenticated PostgreSQL/Chromium/mobile HTTP flow pass.
+13 native unit tests and the authenticated capture/feedback/restore/relaunch UI
+flow pass. Web and native screenshots inspected. Physical microphone
+verification, historical backdating, canonical Notion preference integration,
+restaurant recommendations and authorized ordering remain incomplete.
+
+### Consumption in morning briefings
+
+Runtime Today context now includes yesterday's non-removed food/drink counts in
+Tyler's configured calendar zone. It contains no consumption descriptions or
+preference prose. The deterministic Python worker renders nonempty counts beside
+its existing briefing material; counts alone do not trigger a scheduled briefing.
+Database coverage checks December/January boundaries and absence of private meal
+text. Worker tests cover valid counts, legacy/invalid input and quiet scheduling.
+This is local integration, not a deployment or restaurant recommendation engine.

@@ -7,6 +7,7 @@ import {
   startTransition,
   useActionState,
   useEffect,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -45,7 +46,6 @@ export function ItemForm({
   /** From the server, so the repeat preview cannot disagree about the date. */
   today: IsoDate;
 }) {
-  const [state, formAction, isSaving] = useActionState(updateItemAction, null);
   const [isDeleting, startDeleting] = useTransition();
   const router = useRouter();
 
@@ -54,18 +54,35 @@ export function ItemForm({
   // counter is the identity of "which persisted snapshot the draft came from".
   const [draftGeneration, setDraftGeneration] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const edits = useRef(0);
+  const [state, formAction, isSaving] = useActionState(
+    async (previous: Awaited<ReturnType<typeof updateItemAction>> | null, data: FormData) => {
+      const submittedEdits = edits.current;
+      const result = await updateItemAction(previous, data);
+      if (result.ok) {
+        // Advance the base even if typing continued, without remounting that draft.
+        setSnapshot(result.data);
+        const changedWhileSaving = edits.current !== submittedEdits;
+        setDirty(changedWhileSaving);
+        if (!changedWhileSaving) setDraftGeneration((generation) => generation + 1);
+      }
+      return result;
+    },
+    null,
+  );
 
   // A state adjustment during render, not an effect: adopting in an effect would
   // paint the stale draft once first. The same pattern the capture bar uses to
   // clear itself after a successful capture.
   //
-  // Signatures rather than object identity, because every revalidation anywhere
-  // in the app hands this component a brand new `item` object. Comparing values
-  // means an unrelated save elsewhere cannot remount a form somebody is looking
-  // at, and a real change to this item still re-seeds it.
-  if (!dirty && persistedSignature(item) !== persistedSignature(snapshot)) {
+  // Adopt only a newer version while clean. An older revalidation must never
+  // undo the canonical snapshot returned by our own completed save. Version-only
+  // changes advance the base without remounting unchanged fields.
+  if (!dirty && !isSaving && item.updatedAt.getTime() > snapshot.updatedAt.getTime()) {
     setSnapshot(item);
-    setDraftGeneration((generation) => generation + 1);
+    if (persistedSignature(item) !== persistedSignature(snapshot)) {
+      setDraftGeneration((generation) => generation + 1);
+    }
   }
 
   useEffect(() => {
@@ -83,14 +100,14 @@ export function ItemForm({
    * from React's own state.
    *
    * Preventing the default is what turns it off: React then dispatches with a
-   * null action and skips `requestFormReset` entirely. The `action` prop stays
-   * on the form so a submit before hydration is still a plain server-action
-   * POST.
+   * null action and skips `requestFormReset` entirely. The action state still
+   * tracks pending/error feedback, while the successful snapshot controls when
+   * fields are deliberately re-seeded.
    */
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    setDirty(false);
+    setDirty(true);
     startTransition(() => formAction(formData));
   }
 
@@ -114,11 +131,13 @@ export function ItemForm({
         // One listener for the whole form: any field moving marks the draft
         // dirty, and nothing downstream has to remember to report it.
         onChange={() => {
+          edits.current += 1;
           if (!dirty) setDirty(true);
         }}
         className="grid gap-4"
       >
         <input type="hidden" name="id" value={item.id} />
+        <input type="hidden" name="expectedUpdatedAt" value={snapshot.updatedAt.toISOString()} />
 
         <ItemFields
           key={draftGeneration}
@@ -132,6 +151,12 @@ export function ItemForm({
           <p role="alert" className="text-destructive text-sm">
             {formError}
           </p>
+        ) : null}
+
+        {formError ? (
+          <Button type="button" variant="ghost" onClick={() => window.location.reload()}>
+            Discard draft and reload
+          </Button>
         ) : null}
 
         <div className="flex items-center gap-2">

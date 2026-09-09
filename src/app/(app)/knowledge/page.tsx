@@ -17,11 +17,14 @@ export default async function KnowledgePage({ searchParams }: PageProps<"/knowle
         <h1 className="text-2xl font-semibold tracking-tight">Knowledge</h1>
         <p className="text-muted-foreground text-sm">
           Source-linked Notion snapshot
-          {snapshot.asOf ? ` · imported ${snapshot.asOf.slice(0, 10)}` : ""}. Open the original for
-          current information or edits. Live balances, inventories and task status belong to their
-          canonical sources.
+          {snapshot.asOf ? ` · latest import batch ${snapshot.asOf.slice(0, 10)}` : ""}. Open the
+          original for current information or edits. Live balances, inventories and task status
+          belong to their canonical sources.
         </p>
       </header>
+      <p role="status" className="text-muted-foreground text-sm">
+        {snapshot.health.message}
+      </p>
       <form className="flex gap-2">
         <input
           aria-label="Search personal knowledge"
@@ -36,8 +39,16 @@ export default async function KnowledgePage({ searchParams }: PageProps<"/knowle
       </form>
       {snapshot.entries.length === 0 ? (
         <EmptyState
-          title="No matching knowledge"
-          description="Try another phrase, or connect a dated Second Brain snapshot on your server."
+          title={
+            snapshot.health.status === "available"
+              ? "No matching knowledge"
+              : "Personal knowledge unavailable"
+          }
+          description={
+            snapshot.health.status === "available"
+              ? "Try another phrase. Your shared Work Board is shown separately below."
+              : snapshot.health.message
+          }
         />
       ) : (
         snapshot.entries.map((entry) => (
@@ -46,6 +57,9 @@ export default async function KnowledgePage({ searchParams }: PageProps<"/knowle
             <p className="text-muted-foreground text-xs">
               {entry.sensitivity} · {entry.freshness} · reviewed {entry.lastReviewed ?? "unknown"} ·
               source edited {entry.sourceEditedAt.slice(0, 10)}
+            </p>
+            <p className="text-muted-foreground text-sm">
+              {entry.sourceHealth.importMessage} · {entry.sourceHealth.reviewMessage}
             </p>
             <details>
               <summary className="cursor-pointer text-sm font-medium">Read saved context</summary>
@@ -64,32 +78,30 @@ export default async function KnowledgePage({ searchParams }: PageProps<"/knowle
           </article>
         ))
       )}
-      {workBoard.entries.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Shared Work Board</h2>
-          <p className="text-muted-foreground text-sm">
-            Notion snapshot · {workBoard.asOf?.slice(0, 10)}. Open the canonical task to check
-            current status or edit.
-          </p>
-          {workBoard.entries
-            .filter(
-              (entry) =>
-                !query ||
-                `${entry.title} ${entry.nextAction}`.toLowerCase().includes(query.toLowerCase()),
-            )
-            .map((entry) => (
-              <article key={entry.id} className="border-border space-y-2 rounded-xl border p-4">
-                <Link href={entry.sourceUrl} className="font-medium underline underline-offset-4">
-                  {entry.title} ↗
-                </Link>
-                <p className="text-muted-foreground text-xs">
-                  {entry.owner} · {entry.status} · source edited {entry.sourceEditedAt.slice(0, 10)}
-                </p>
-                <p className="text-sm">{entry.nextAction}</p>
-              </article>
-            ))}
-        </section>
-      )}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Shared Work Board</h2>
+        <p className="text-muted-foreground text-sm">{workBoard.health.message}</p>
+        {workBoard.health.status === "available" && workBoard.entries.length === 0 && (
+          <p className="text-muted-foreground text-sm">No active tasks in the saved snapshot.</p>
+        )}
+        {workBoard.entries
+          .filter(
+            (entry) =>
+              !query ||
+              `${entry.title} ${entry.nextAction}`.toLowerCase().includes(query.toLowerCase()),
+          )
+          .map((entry) => (
+            <article key={entry.id} className="border-border space-y-2 rounded-xl border p-4">
+              <Link href={entry.sourceUrl} className="font-medium underline underline-offset-4">
+                {entry.title} ↗
+              </Link>
+              <p className="text-muted-foreground text-xs">
+                {entry.owner} · {entry.status} · source edited {entry.sourceEditedAt.slice(0, 10)}
+              </p>
+              <p className="text-sm">{entry.nextAction}</p>
+            </article>
+          ))}
+      </section>
     </div>
   );
 }
