@@ -504,6 +504,11 @@ the model never decides that. See ADRs 038 and 039.
 
 ## Native mobile boundary
 
+`ios/` is the canonical SwiftUI companion source. It contains its Xcode project,
+native verification instructions, and isolated UI tests. The web deployment
+excludes this directory; signed iPhone artifacts and personal configuration stay
+outside Git. See `ios/README.md` for build and installation requirements.
+
 `src/app/api/mobile/[[...path]]/route.ts` is cookie-exempt in the proxy and
 checks its own fail-closed configuration and bearer session on every call.
 `src/server/mobile/` owns bounded HTTP decoding, auth, canonical service

@@ -1,0 +1,596 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04A3E8D27C1CFB5C7439C7FD /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 511DBB533D3B4FE20F18CF8F /* Foundation.framework */; };
+		2D3ABB1F5C4C7CB23FF2B460 /* CaptureSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B4DC1F9F3315B535C695E35 /* CaptureSettings.swift */; };
+		4533631CF708AB7CB5E8FEFA /* TylerOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02536C31AEC5A8F38BC1B344 /* TylerOSApp.swift */; };
+		4A2C3693CB33329A0DA642E2 /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA7078F69C465118F992060 /* API.swift */; };
+		78DA37876C2FD9DCB83AED27 /* APITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69433ADDF7FBE784C99238D7 /* APITests.swift */; };
+		7F730F81714A0E10A870B4B6 /* TodayTasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D3E4246BD067B5BEF2F8D8 /* TodayTasks.swift */; };
+		B2E5A124BE606831056E556C /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A58ECDA096DBE42BD5DE2F3 /* Store.swift */; };
+		BD5167373D45FC79E44CBE45 /* TylerOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E6C76F02EDBF96E4AAC5E5 /* TylerOSUITests.swift */; };
+		DD5B3C6F016C241C25857865 /* SecureTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C5DD4F04B1739FB5C13730 /* SecureTransport.swift */; };
+		DE254F6B9A40B310C1F324CE /* AppIcon60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = EC0533F62F3D234AFE0E8B85 /* AppIcon60x60@2x.png */; };
+		E449E0E040CB9F49A9234634 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 511DBB533D3B4FE20F18CF8F /* Foundation.framework */; };
+		E5B5414FEDE3CAF8034DB0AF /* MilesLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91DD0ECE569444A0C6142321 /* MilesLibrary.swift */; };
+		E69709832D259AE49E61C4D9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 511DBB533D3B4FE20F18CF8F /* Foundation.framework */; };
+		E791D8E50FE2A55BA587FF3D /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2151DA60B87F229D55ABEA73 /* Models.swift */; };
+		FBA0B9FCE7B9B1F372D383FA /* AppIcon60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 133BE336CE24ACF32A67F26A /* AppIcon60x60@3x.png */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		000CB92F4FEC032AAABF31EC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D382748C85569A46A94313E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 72DAA9002A987FC5160D25D5;
+			remoteInfo = TylerOS;
+		};
+		5A25E8C2F781624527C9E8F3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D382748C85569A46A94313E0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 72DAA9002A987FC5160D25D5;
+			remoteInfo = TylerOS;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		02536C31AEC5A8F38BC1B344 /* TylerOSApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TylerOSApp.swift; sourceTree = "<group>"; };
+		06D3E4246BD067B5BEF2F8D8 /* TodayTasks.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayTasks.swift; sourceTree = "<group>"; };
+		133BE336CE24ACF32A67F26A /* AppIcon60x60@3x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; path = "AppIcon60x60@3x.png"; sourceTree = "<group>"; };
+		2151DA60B87F229D55ABEA73 /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		2A58ECDA096DBE42BD5DE2F3 /* Store.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		2DF925757470D2ADB129FB6E /* TylerOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TylerOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3B4DC1F9F3315B535C695E35 /* CaptureSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CaptureSettings.swift; sourceTree = "<group>"; };
+		511DBB533D3B4FE20F18CF8F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		69433ADDF7FBE784C99238D7 /* APITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = APITests.swift; sourceTree = "<group>"; };
+		81C5DD4F04B1739FB5C13730 /* SecureTransport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SecureTransport.swift; sourceTree = "<group>"; };
+		8CF20E00FC5E92AF07408FB4 /* TylerOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TylerOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		91DD0ECE569444A0C6142321 /* MilesLibrary.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MilesLibrary.swift; sourceTree = "<group>"; };
+		9962B24997FA44CFDC2191EF /* TylerOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TylerOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEA7078F69C465118F992060 /* API.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = API.swift; sourceTree = "<group>"; };
+		EC0533F62F3D234AFE0E8B85 /* AppIcon60x60@2x.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; path = "AppIcon60x60@2x.png"; sourceTree = "<group>"; };
+		F1E6C76F02EDBF96E4AAC5E5 /* TylerOSUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TylerOSUITests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		16A4396C89DE8771EDB1BD60 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04A3E8D27C1CFB5C7439C7FD /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AECD2E68F2516DAFB2F37110 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E69709832D259AE49E61C4D9 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D7B3B62BC5BCA27D3953A533 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E449E0E040CB9F49A9234634 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2F5F4C4124519922AC1033FF /* TylerOSTests */ = {
+			isa = PBXGroup;
+			children = (
+				69433ADDF7FBE784C99238D7 /* APITests.swift */,
+			);
+			name = TylerOSTests;
+			path = TylerOSTests;
+			sourceTree = "<group>";
+		};
+		34526108B0C3E37DA296371B /* TylerOS */ = {
+			isa = PBXGroup;
+			children = (
+				CEA7078F69C465118F992060 /* API.swift */,
+				3B4DC1F9F3315B535C695E35 /* CaptureSettings.swift */,
+				91DD0ECE569444A0C6142321 /* MilesLibrary.swift */,
+				2151DA60B87F229D55ABEA73 /* Models.swift */,
+				81C5DD4F04B1739FB5C13730 /* SecureTransport.swift */,
+				2A58ECDA096DBE42BD5DE2F3 /* Store.swift */,
+				06D3E4246BD067B5BEF2F8D8 /* TodayTasks.swift */,
+				02536C31AEC5A8F38BC1B344 /* TylerOSApp.swift */,
+				EC0533F62F3D234AFE0E8B85 /* AppIcon60x60@2x.png */,
+				133BE336CE24ACF32A67F26A /* AppIcon60x60@3x.png */,
+			);
+			name = TylerOS;
+			path = TylerOS;
+			sourceTree = "<group>";
+		};
+		4D96AEA197096649007BBF1E /* TylerOSUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F1E6C76F02EDBF96E4AAC5E5 /* TylerOSUITests.swift */,
+			);
+			name = TylerOSUITests;
+			path = TylerOSUITests;
+			sourceTree = "<group>";
+		};
+		72F2AEEA52E042D1B15BB6EE = {
+			isa = PBXGroup;
+			children = (
+				BCA3CCA89DB2D81E5BDD70B9 /* Products */,
+				A159B2706BD094A1E0676146 /* Frameworks */,
+				34526108B0C3E37DA296371B /* TylerOS */,
+				2F5F4C4124519922AC1033FF /* TylerOSTests */,
+				4D96AEA197096649007BBF1E /* TylerOSUITests */,
+			);
+			sourceTree = "<group>";
+		};
+		A159B2706BD094A1E0676146 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A8BAC4A9A7CF201AB325FF09 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A8BAC4A9A7CF201AB325FF09 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				511DBB533D3B4FE20F18CF8F /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		BCA3CCA89DB2D81E5BDD70B9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2DF925757470D2ADB129FB6E /* TylerOS.app */,
+				9962B24997FA44CFDC2191EF /* TylerOSTests.xctest */,
+				8CF20E00FC5E92AF07408FB4 /* TylerOSUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		13CFE2431697B52F166CF3C5 /* TylerOSUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D6AAB784124D2FB76A66FE67 /* Build configuration list for PBXNativeTarget "TylerOSUITests" */;
+			buildPhases = (
+				F90021A930D35AEBE96A7641 /* Sources */,
+				AECD2E68F2516DAFB2F37110 /* Frameworks */,
+				09FAAD2E286ED0AD6E9478B0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8E487A3EBC11BA8F68159EFA /* PBXTargetDependency */,
+			);
+			name = TylerOSUITests;
+			productName = TylerOSUITests;
+			productReference = 8CF20E00FC5E92AF07408FB4 /* TylerOSUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		38F3237B5C46CB56EE3EA337 /* TylerOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF396F05DA92AD73ABBEDD5B /* Build configuration list for PBXNativeTarget "TylerOSTests" */;
+			buildPhases = (
+				3BF0320973CE31A8B4D06241 /* Sources */,
+				D7B3B62BC5BCA27D3953A533 /* Frameworks */,
+				FB801E0C5D8DD00E8244D236 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6A25A8012B1C45E58CFEF76A /* PBXTargetDependency */,
+			);
+			name = TylerOSTests;
+			productName = TylerOSTests;
+			productReference = 9962B24997FA44CFDC2191EF /* TylerOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		72DAA9002A987FC5160D25D5 /* TylerOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6E75FBA0A41613AF61F61CF6 /* Build configuration list for PBXNativeTarget "TylerOS" */;
+			buildPhases = (
+				F1356C55A16912CA7C1E3BDE /* Sources */,
+				16A4396C89DE8771EDB1BD60 /* Frameworks */,
+				AB61A2A79C7DB3876516701F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TylerOS;
+			productName = TylerOS;
+			productReference = 2DF925757470D2ADB129FB6E /* TylerOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D382748C85569A46A94313E0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = F44E30D416CBF6FD1216FCED /* Build configuration list for PBXProject "TylerOS" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 72F2AEEA52E042D1B15BB6EE;
+			minimizedProjectReferenceProxies = 0;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BCA3CCA89DB2D81E5BDD70B9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				72DAA9002A987FC5160D25D5 /* TylerOS */,
+				38F3237B5C46CB56EE3EA337 /* TylerOSTests */,
+				13CFE2431697B52F166CF3C5 /* TylerOSUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		09FAAD2E286ED0AD6E9478B0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AB61A2A79C7DB3876516701F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE254F6B9A40B310C1F324CE /* AppIcon60x60@2x.png in Resources */,
+				FBA0B9FCE7B9B1F372D383FA /* AppIcon60x60@3x.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FB801E0C5D8DD00E8244D236 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3BF0320973CE31A8B4D06241 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				78DA37876C2FD9DCB83AED27 /* APITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F1356C55A16912CA7C1E3BDE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4A2C3693CB33329A0DA642E2 /* API.swift in Sources */,
+				2D3ABB1F5C4C7CB23FF2B460 /* CaptureSettings.swift in Sources */,
+				E5B5414FEDE3CAF8034DB0AF /* MilesLibrary.swift in Sources */,
+				E791D8E50FE2A55BA587FF3D /* Models.swift in Sources */,
+				DD5B3C6F016C241C25857865 /* SecureTransport.swift in Sources */,
+				B2E5A124BE606831056E556C /* Store.swift in Sources */,
+				7F730F81714A0E10A870B4B6 /* TodayTasks.swift in Sources */,
+				4533631CF708AB7CB5E8FEFA /* TylerOSApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F90021A930D35AEBE96A7641 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BD5167373D45FC79E44CBE45 /* TylerOSUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6A25A8012B1C45E58CFEF76A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = TylerOS;
+			target = 72DAA9002A987FC5160D25D5 /* TylerOS */;
+			targetProxy = 5A25E8C2F781624527C9E8F3 /* PBXContainerItemProxy */;
+		};
+		8E487A3EBC11BA8F68159EFA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = TylerOS;
+			target = 72DAA9002A987FC5160D25D5 /* TylerOS */;
+			targetProxy = 000CB92F4FEC032AAABF31EC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		238592E88EAC4C2012E85DB7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tylermedina.tyleros.mobile.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TylerOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TylerOS";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		570F0636057A63BA935CBDBE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tylermedina.tyleros.mobile.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TylerOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TylerOS";
+			};
+			name = Debug;
+		};
+		A45D853137B69D170382A188 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tylermedina.tyleros.mobile.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = TylerOS;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AF7345E8B493EC275DA43C2E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TylerOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TylerOS;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Dictate a capture using your iPhone microphone.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into a capture using on-device recognition only.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tylermedina.tyleros.mobile;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D50BDBFFA7BA8A2C2E645CDE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		F11215E07AD421AB0702DE64 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TylerOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TylerOS;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Dictate a capture using your iPhone microphone.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert speech into a capture using on-device recognition only.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tylermedina.tyleros.mobile;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FAC4AFD60D4BE9F7998096F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tylermedina.tyleros.mobile.uitests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = TylerOS;
+			};
+			name = Debug;
+		};
+		FFF347D0A39B7DF7B2F489E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6E75FBA0A41613AF61F61CF6 /* Build configuration list for PBXNativeTarget "TylerOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF7345E8B493EC275DA43C2E /* Release */,
+				F11215E07AD421AB0702DE64 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D6AAB784124D2FB76A66FE67 /* Build configuration list for PBXNativeTarget "TylerOSUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A45D853137B69D170382A188 /* Release */,
+				FAC4AFD60D4BE9F7998096F7 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F44E30D416CBF6FD1216FCED /* Build configuration list for PBXProject "TylerOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FFF347D0A39B7DF7B2F489E0 /* Debug */,
+				D50BDBFFA7BA8A2C2E645CDE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF396F05DA92AD73ABBEDD5B /* Build configuration list for PBXNativeTarget "TylerOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				238592E88EAC4C2012E85DB7 /* Release */,
+				570F0636057A63BA935CBDBE /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D382748C85569A46A94313E0 /* Project object */;
+}
