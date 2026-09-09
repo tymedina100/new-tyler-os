@@ -550,3 +550,14 @@ then returns the canonical item and a monotonically advanced version. The editor
 adopts successful normalized values only if typing did not continue during the
 save; failed drafts stay intact. Conflicts require explicit reload/reconciliation,
 never an automatic overwrite. See ADR 042.
+
+## Knowledge source health
+
+`server/knowledge/snapshot-repository` performs bounded file/inline cache IO.
+Independent knowledge and Work Board reads return explicit source health; failures
+never expose source text or filesystem errors and never substitute a stale inline
+copy for a failed configured file. `domain/knowledge/source-health` computes import
+age and review due dates from the entry's recorded cadence and review date, with
+`now` supplied by the service. The web and native knowledge surfaces share these
+messages through the existing authenticated API. An import batch timestamp is not
+a review or a live-sync timestamp. ADR 043 records the limits and failure contract.

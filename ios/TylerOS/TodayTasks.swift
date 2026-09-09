@@ -55,9 +55,9 @@ struct TasksView: View {
             if filtered.isEmpty { EmptyCard(title: "Nothing here yet", detail: "Capture a task or change your search.") }
             Section("App tasks") { ForEach(filtered) { item in NavigationLink(value: item) { ItemRow(item: item) } } }
             if store.workBoardUnavailable { Text("Shared Notion tasks are unavailable. Pull to refresh; app tasks remain available.").font(.caption).foregroundStyle(.secondary) }
-            if let board = store.workBoard, !board.entries.isEmpty {
+            if let board = store.workBoard {
                 Section("Shared tasks · Notion snapshot") {
-                    Text("Read-only snapshot. Open the source to edit; refresh the snapshot through your existing system.").font(.caption).foregroundStyle(.secondary)
+                    Text(board.health?.message ?? "Read-only snapshot. Check the canonical task before acting.").font(.caption).foregroundStyle(.secondary)
                     if let date = board.asOf { Text("As of \(date)").font(.caption2).foregroundStyle(.secondary) }
                     ForEach(board.entries.filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) }) { entry in
                         VStack(alignment: .leading, spacing: 6) {

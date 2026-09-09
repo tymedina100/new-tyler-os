@@ -417,3 +417,10 @@ in-flight drafts remain intact; successful saves advance the editor's base for
 subsequent typing. Explicit discard/reload recovers a conflict. Database, concurrent
 PostgreSQL and browser regression coverage verify both clients share canonical
 state. Notes and other entity types are separate follow-through, not claimed here.
+
+## Implemented · Independent second-brain source health (release pending)
+
+Unavailable imports no longer hide the other source. Knowledge entries carry their
+own import age and review due metadata into web and native, with explicit unknown
+states. Repairing the import restores it on the next read. This establishes honest
+cache/review status, not live synchronization or automatic edits to Notion.

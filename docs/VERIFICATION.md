@@ -1022,3 +1022,26 @@ One manual context probe omitted its required role header (400); corrected probe
 passed. No drains are configured. Authenticated production browser/mobile-session
 verification was not available in this session; local web/native end-to-end tests
 remain the interaction evidence. No updated physical iPhone binary was installed.
+
+### Independent knowledge source health — local integration · 2026-09-09
+
+Full `pnpm check` passed: 1,018 tests in 73 files, real PostgreSQL race harness,
+types, lint, formatting, context checks and production build. New source tests
+cover unknown/future/malformed review dates, cadence boundaries and month ends,
+per-entry import age, byte limits, unreadable files, invalid source URLs, independent
+source failures and recovery. Private input/error details are not returned.
+
+Authenticated Chromium against isolated local PostgreSQL passed the source flow:
+break Knowledge while shared tasks remain visible, repair Knowledge and break the
+Work Board, verify the same status/review metadata via mobile HTTP, repair both,
+and inspect the 390px layout with no horizontal overflow. Canonical notes/Today
+reads succeed during the source failure. Reproduce with `pnpm exec playwright test
+--config playwright.knowledge.config.ts` and the dedicated local
+`tyleros_operations_test` database. Only named synthetic source files are changed.
+
+Native: all 12 unit tests plus the authenticated source-health/recovery UI test
+passed on iOS 18.3.1 Simulator. It reads the due-review detail, corrupts the local
+fixture, verifies source failure labeling and Today navigation, then repairs and
+reloads the source. Both healthy and unavailable screenshots were inspected.
+Result bundle: `native-knowledge.xcresult`, outside Git. This is local verification;
+no production deployment, Notion write or updated physical installation occurred.

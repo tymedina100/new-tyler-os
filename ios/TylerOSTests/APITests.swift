@@ -62,4 +62,14 @@ final class APITests: XCTestCase {
   XCTAssertNotEqual(store.notice, "Approved and saved as a note.")
  }
 
+ func testKnowledgeHealthIsAdditiveAndDistinguishesUnavailableSources() throws {
+  let legacy = #"{"entries":[],"mode":"snapshot","asOf":null}"#
+  XCTAssertNil(try JSONDecoder().decode(Knowledge.self, from: Data(legacy.utf8)).health)
+  let current = #"{"entries":[],"mode":"snapshot","asOf":null,"health":{"status":"unavailable","message":"Source could not be loaded."}}"#
+  let knowledge = try JSONDecoder().decode(Knowledge.self, from: Data(current.utf8))
+  XCTAssertEqual(knowledge.health?.status, "unavailable")
+  XCTAssertEqual(knowledge.health?.message, "Source could not be loaded.")
+  XCTAssertEqual(try JSONDecoder().decode(WorkBoard.self, from: Data(current.utf8)).health?.status, "unavailable")
+ }
+
 }

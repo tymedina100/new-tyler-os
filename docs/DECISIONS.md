@@ -1699,3 +1699,29 @@ This is optimistic concurrency for full item drafts, not offline synchronization
 or protection for every entity type. Existing targeted quick actions retain their
 semantics. No schema migration, new dependency, account connection, external call
 or authority change is required.
+
+---
+
+## 043 · Source health belongs to each cached source
+
+Knowledge and the shared Work Board are independent, recoverable Notion caches.
+A missing configuration, a broken configured import and a valid empty/search result
+must not mean the same thing. Each read now returns explicit `health` alongside the
+existing snapshot contract. File reads use a bounded regular-file handle; malformed,
+oversized or unreadable data becomes an unavailable source with no private error
+content exposed. A configured file never falls back silently to older inline data.
+The other source and canonical app records remain independently readable. Repairing
+the import recovers on the next read, without a restart or write to Notion.
+
+A batch import date does not establish the age of every entry in that batch.
+Knowledge entries retain and show their own `importedAt` age. Recorded review timing
+uses `lastReviewed` and recognized Daily/Weekly/Monthly/Quarterly/Yearly/Annually
+cadences, including calendar month ends. Missing, invalid or future review dates
+and unknown cadences remain unverified. An import never resets the review clock;
+a not-yet-due review does not assert that the source has no newer changes.
+
+Web and native clients render the server's same health messages. Native transport
+failure clears the inaccessible knowledge cache and labels that failure while
+keeping canonical notes/tasks. New fields are optional in native decoding for older
+backends. This does not create live Notion synchronization, background reviews,
+notifications, changed freshness policies or permission to update the originals.

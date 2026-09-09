@@ -21,7 +21,7 @@ No domain is complete just because a specialist role name exists.
 | Food/drink tracking                    | Palate exists; kitchen is stock, not a meal log                                           | Structured consumption and feedback linked to second brain                                              |
 | Preferences / restaurants / ordering   | Durable context in Notion; no verified ordering flow                                      | Confidence and recent-meal evidence; authorized merchant, budget and ordering mechanism                 |
 | Sports / gaming / entertainment / news | Role/context only in this audit                                                           | Current sources and preferences, useful changes only                                                    |
-| Second brain                           | Notes, search, dated Notion imports exist                                                 | Source freshness and sync; native source snapshots are not live Notion                                  |
+| Second brain                           | Notes/search; independent source health and review timing implemented                     | Source-health locally verified; release and live Notion sync remain open                                |
 | Autonomous project development         | Existing workflow/bot code; local implementation and tests work                           | Audit actual worker execution, resumable milestones, measured outcomes                                  |
 | Provider independence                  | Roles distinct from runtimes, explicit profiles                                           | Supported subscription execution adapters; no subscription-to-API assumption                            |
 | Quota / cost                           | Capacity ledger, usage accounting; automatic selection absent                             | Deterministic eligibility, fresh quota evidence, approved cost ceiling                                  |
@@ -87,3 +87,17 @@ not claim offline sync or conflict protection for notes and other entity types.
 - Post-release runtime log view showed zero warnings/errors/fatal entries. One
   verification request omitted its role header and received the expected 400;
   corrected requests passed. No log drains are configured; no paid monitoring added.
+
+## Source-health milestone
+
+Knowledge and shared-task imports now report not-configured, unavailable or
+available independently. Each knowledge entry shows its own import age and review
+due date from recorded cadence; an import batch never resets old reviews. Web and
+native display the same server-calculated metadata. Local tests corrupt and repair
+one source while continuing to read the other and canonical app records. This
+remains a read-only snapshot system; live Notion sync and automated reviews are
+separate missing capabilities. Release is not authorized by the earlier approval.
+
+Verification: 1,018 repository tests and full gate passed; authenticated browser
+source-failure/recovery flow passed; 12 native unit tests and source-recovery UI
+flow passed. Web and native screenshots inspected. No production changes.

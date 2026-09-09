@@ -25,7 +25,7 @@ import {
 export default defineConfig({
   testDir: "./e2e",
   // Dedicated destructive fixture reset is isolated by its own guarded config.
-  testIgnore: "operations.spec.ts",
+  testIgnore: ["operations.spec.ts", "knowledge.spec.ts"],
   globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false, // one database, and the specs write to it
   workers: 1,
