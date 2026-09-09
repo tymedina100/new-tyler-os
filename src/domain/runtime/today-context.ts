@@ -24,6 +24,7 @@ export interface TodayContextFood {
 
 export interface TodayContext {
   operations?: OperationsSummary;
+  consumptionYesterday?: { day: string; timeZone: string; food: number; drink: number };
   today: IsoDate;
   overdue: TodayContextItem[];
   dueToday: TodayContextItem[];
@@ -48,6 +49,16 @@ export function todayHasMaterial(context: TodayContext): boolean {
 export function boundTodayContext(context: TodayContext): TodayContext {
   return {
     ...(context.operations ? { operations: context.operations } : {}),
+    ...(context.consumptionYesterday
+      ? {
+          consumptionYesterday: {
+            day: context.consumptionYesterday.day,
+            timeZone: context.consumptionYesterday.timeZone,
+            food: context.consumptionYesterday.food,
+            drink: context.consumptionYesterday.drink,
+          },
+        }
+      : {}),
     today: context.today,
     overdue: boundItems(context.overdue),
     dueToday: boundItems(context.dueToday),

@@ -46,3 +46,13 @@ export async function changeConsumption(
   if (!row) throw new NotFoundError("Consumption entry", id);
   return row;
 }
+
+/** Previous personal calendar day, including month/year boundaries. */
+export async function getPreviousConsumptionSummary(db: Database, now = new Date()) {
+  const timeZone = consumptionTimeZone();
+  const today = consumptionDay(now, timeZone);
+  const previous = new Date(today + "T12:00:00Z");
+  previous.setUTCDate(previous.getUTCDate() - 1);
+  const day = previous.toISOString().slice(0, 10);
+  return { day, timeZone, ...(await repo.consumptionCounts(db, day)) };
+}

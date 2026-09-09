@@ -1,3 +1,4 @@
+import { getPreviousConsumptionSummary } from "@/server/consumption/consumption-service";
 import { claimJobKindsSchema } from "@/domain/runtime/runtime-schema";
 import { DomainError, NotFoundError } from "@/domain/shared/errors";
 import { assertRoleGranted } from "@/domain/runtime/fleet-rules";
@@ -109,13 +110,14 @@ export async function heartbeatRun(
 }
 
 export async function getTodayContext(db: Database, now = new Date()): Promise<TodayContext> {
-  const [{ today, view }, expiring, operations] = await Promise.all([
+  const [{ today, view }, expiring, operations, consumptionYesterday] = await Promise.all([
     getTodayData(db, now),
     getExpiringSoon(db, now),
     getOperationsSummary(db, now),
+    getPreviousConsumptionSummary(db, now),
   ]);
 
-  return { ...projectTodayContext(today, view, expiring.items), operations };
+  return { ...projectTodayContext(today, view, expiring.items), operations, consumptionYesterday };
 }
 
 export async function markRuntimeSeen(

@@ -107,3 +107,28 @@ it("replays a mobile capture once, rejects changed intent, and authenticates fee
     ).status,
   ).toBe(400);
 });
+
+it("briefing context counts yesterday across a year boundary without exposing descriptions", async () => {
+  const { getTodayContext } = await import("@/server/runtime/runtime-service");
+  const { boundTodayContext } = await import("@/domain/runtime/today-context");
+  await logConsumption(
+    harness.db,
+    { kind: "food", description: "PRIVATE meal description" },
+    new Date("2026-01-01T02:00:00Z"),
+  );
+  await logConsumption(
+    harness.db,
+    { kind: "drink", description: "PRIVATE drink description" },
+    new Date("2026-01-01T08:00:00Z"),
+  );
+  const context = boundTodayContext(
+    await getTodayContext(harness.db, new Date("2026-01-01T15:00:00Z")),
+  );
+  expect(context.consumptionYesterday).toEqual({
+    day: "2025-12-31",
+    timeZone: "America/Phoenix",
+    food: 1,
+    drink: 0,
+  });
+  expect(JSON.stringify(context)).not.toContain("PRIVATE");
+});

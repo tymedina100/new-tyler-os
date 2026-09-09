@@ -115,3 +115,13 @@ only been applied to the isolated local fixture database. No release authorized.
 flow pass. Web and native screenshots inspected. Physical microphone
 verification, historical backdating, canonical Notion preference integration,
 restaurant recommendations and authorized ordering remain incomplete.
+
+### Consumption in morning briefings
+
+Runtime Today context now includes yesterday's non-removed food/drink counts in
+Tyler's configured calendar zone. It contains no consumption descriptions or
+preference prose. The deterministic Python worker renders nonempty counts beside
+its existing briefing material; counts alone do not trigger a scheduled briefing.
+Database coverage checks December/January boundaries and absence of private meal
+text. Worker tests cover valid counts, legacy/invalid input and quiet scheduling.
+This is local integration, not a deployment or restaurant recommendation engine.

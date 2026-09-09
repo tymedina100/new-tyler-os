@@ -26,8 +26,10 @@ describe("operations summary", () => {
       needsTriage: [],
       expiringSoon: [],
       operations: { ...summary, pendingApprovals: 4, savedNotes: 2 },
+      consumptionYesterday: { day: "2026-09-08", timeZone: "America/Phoenix", food: 2, drink: 1 },
     };
     expect(boundTodayContext(context).operations).toEqual(context.operations);
+    expect(boundTodayContext(context).consumptionYesterday).toEqual(context.consumptionYesterday);
     expect(todayHasMaterial(context)).toBe(false);
   });
 });
