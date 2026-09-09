@@ -40,4 +40,26 @@ final class APITests: XCTestCase {
   XCTAssertEqual(store.pendingBriefingRequest, "test-only-retry-id")
   let saved: String? = Vault.read("briefingRequest"); XCTAssertEqual(saved, "test-only-retry-id")
  }
+ func testTodayDecodesLegacyAndCanonicalOperations() throws {
+  let legacy = #"{"today":"2026-09-09","view":{"overdue":[],"dueToday":[],"upcoming":[],"needsTriage":[],"totalSurfaced":0}}"#
+  XCTAssertNil(try JSONDecoder().decode(Today.self, from: Data(legacy.utf8)).operations)
+  let current = legacy.dropLast() + #", "operations":{"since":"2026-09-08T19:00:00Z","asOf":"2026-09-09T19:00:00Z","pendingApprovals":1,"failedJobs":0,"savedNotes":2}}"#
+  let operations = try XCTUnwrap(JSONDecoder().decode(Today.self, from: Data(current.utf8)).operations)
+  XCTAssertEqual(operations.pendingApprovals, 1)
+  XCTAssertTrue(operations.needsAttention)
+  XCTAssertTrue(operations.hasActivity)
+ }
+ func testSavedOperationsDoNotClaimToNeedAttention() {
+  let summary = OperationsSummary(since: "start", asOf: "end", pendingApprovals: 0, failedJobs: 0, savedNotes: 2)
+  XCTAssertTrue(summary.hasActivity); XCTAssertFalse(summary.needsAttention)
+ }
+
+ @MainActor func testBusyApprovalDoesNotReportSuccessOrDismiss() async {
+  let store = Store(); store.busy = true
+  let proposal = Approval(id: "fixture", title: "Synthetic", body: "Fixture", status: "pending", standingAuthorityKey: nil)
+  let saved = await store.decide(proposal, decision: "accept")
+  XCTAssertFalse(saved); XCTAssertNotNil(store.error)
+  XCTAssertNotEqual(store.notice, "Approved and saved as a note.")
+ }
+
 }

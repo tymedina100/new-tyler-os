@@ -73,6 +73,7 @@ export function buildBriefingPrompt(context: TodayContext): string {
       upcoming: bounded.upcoming,
       triage: bounded.needsTriage,
       expiringFood: bounded.expiringSoon,
+      operations: bounded.operations,
     }),
   ].join("\n");
 }

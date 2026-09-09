@@ -7,7 +7,7 @@ struct Item: Decodable, Identifiable, Hashable {
     let dueOn: String?; let updatedAt: String
 }
 struct Items: Decodable { let items: [Item] }
-struct Today: Decodable { let today: String; let view: TodayBuckets }
+struct Today: Decodable { let today: String; let view: TodayBuckets; let operations: OperationsSummary? }
 struct TodayBuckets: Decodable { let overdue: [Item]; let dueToday: [Item]; let upcoming: [Item]; let needsTriage: [Item]; let totalSurfaced: Int }
 struct Note: Decodable, Identifiable { let id: String; let title: String; let body: String; let updatedAt: String }
 struct Notes: Decodable { let notes: [Note] }
@@ -27,3 +27,10 @@ struct SearchHit: Decodable, Identifiable { let id: String; let title: String; l
 
 struct WorkBoard: Decodable { let entries: [WorkBoardEntry]; let mode: String; let asOf: String? }
 struct WorkBoardEntry: Decodable, Identifiable { let id: String; let title: String; let status: String; let nextAction: String?; let sourceUrl: String?; let sourceEditedAt: String?; let priority: String?; let owner: String?; let needsTyler: Bool? }
+
+struct OperationsSummary: Decodable {
+    let since: String; let asOf: String
+    let pendingApprovals: Int; let failedJobs: Int; let savedNotes: Int
+    var needsAttention: Bool { pendingApprovals > 0 || failedJobs > 0 }
+    var hasActivity: Bool { needsAttention || savedNotes > 0 }
+}

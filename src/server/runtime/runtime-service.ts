@@ -27,6 +27,7 @@ import * as fleetRepo from "./fleet-repository";
 import { assertRunOwnedBy, requireJob, requireRun, requireRuntime } from "./runtime-lookups";
 import * as repo from "./runtime-repository";
 import { projectTodayContext } from "./today-context";
+import { getOperationsSummary } from "./operations-service";
 
 export { completeRun, completeValidatedAiRun } from "./complete-run";
 
@@ -108,12 +109,13 @@ export async function heartbeatRun(
 }
 
 export async function getTodayContext(db: Database, now = new Date()): Promise<TodayContext> {
-  const [{ today, view }, expiring] = await Promise.all([
+  const [{ today, view }, expiring, operations] = await Promise.all([
     getTodayData(db, now),
     getExpiringSoon(db, now),
+    getOperationsSummary(db, now),
   ]);
 
-  return projectTodayContext(today, view, expiring.items);
+  return { ...projectTodayContext(today, view, expiring.items), operations };
 }
 
 export async function markRuntimeSeen(

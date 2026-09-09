@@ -45,3 +45,18 @@ No paid model calls are required for the implemented deterministic briefing flow
 On September 9, 2026, an iPhone 16 Pro Simulator running iOS 18.3 passed all eight unit tests and the authenticated capture/edit/relaunch/second-client/Miles approval UI flow against the isolated Postgres backend. The saved-session run skipped the separate login-screen test; that test and real passphrase login passed in the earlier clean-session run. Tests also verify that success notices do not block Save or tab navigation. Screenshots, logs, and signed artifacts are delivered separately; they are not stored in this source repository.
 
 The production URL is configured server-side; native production sign-in awaits Tyler's existing passphrase. The device archive and IPA are development signed, and installation, speech recognition, and notification delivery on the physical iPhone remain unverified while it is unavailable. iOS 26.1 Simulator startup and its asset compiler helper stalled on this host. The app was verified on iOS 18.3; bundled PNG icons use Apple's supported `CFBundleIcons` keys to avoid that asset compiler dependency.
+
+### Morning operations — verified locally, release pending
+
+Today now shows canonical saved briefing notes, pending decisions and failed jobs,
+with a direct route to Miles. Counts include older pending decisions even beyond
+the recent 50 jobs. Existing backends without this additive field still decode.
+During proposal review, job polling pauses. Busy/failed decisions keep the sheet
+open instead of silently appearing complete.
+
+September 9 verification for this change: eleven unit tests and the authenticated
+Simulator capture/edit/relaunch/second-client/worker/approval/Today-operations flow
+passed on a fresh iOS 18.3.1 test device, using isolated local PostgreSQL. The
+connection-screen test also passed on the initial clean-session run. Final
+operations screenshot was inspected. No updated physical installation or
+production deployment is claimed for this milestone.

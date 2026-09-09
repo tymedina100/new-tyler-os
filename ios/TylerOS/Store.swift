@@ -81,12 +81,13 @@ import SwiftUI
             self.notice = "Briefing requested. Your runtime will pick it up."; submitted = true
         }; if submitted { await refresh() }
     }
-    func decide(_ approval: Approval, decision: String) async {
+    @discardableResult func decide(_ approval: Approval, decision: String) async -> Bool {
+        guard !busy else { error = "TylerOS is refreshing. Please try your decision again."; return false }
         var saved = false
         await perform {
             let _: DecisionResult = try await self.api.request("approvals/\(approval.id)", method: "POST", body: ["requestId": UUID().uuidString, "decision": decision])
             self.notice = decision == "accept" ? "Approved and saved as a note." : "Dismissed."; saved = true
-        }; if saved { await refresh() }
+        }; if saved { await refresh() }; return saved
     }
     func perform(_ action: () async throws -> Void) async { guard !busy else { return }; busy = true; error = nil; defer { busy = false }; do { try await action() } catch { self.error = error.localizedDescription } }
 }

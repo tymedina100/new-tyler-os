@@ -948,3 +948,31 @@ TylerOS quota-pool remaining value and is not written into `capacity_pools`.
 
 `/capacity` recent usage must render `estimated_cost_usd=null` as **cost
 unknown**. A measured `0` still renders as `$0.0000`.
+
+### Morning operations — local integration · 2026-09-09
+
+Full `pnpm check` passed, including 1,005 tests with the real Postgres race harness.
+Dedicated operations E2E passed against `tyleros_operations_test`: authenticated
+capture, actual Python claim/proposal, pending decision on Today, review navigation,
+acceptance creating a canonical note, the same mobile aggregate, the next briefing
+including the saved-note count, and a 390px viewport without horizontal overflow.
+In-app browser visually confirmed Today with real fixture counts and navigation.
+No production data or paid API used. This is local verification, not a deployment.
+
+Reproduce on a fresh dedicated local `tyleros_operations_test` database: migrate,
+set `DATABASE_URL`, then run `pnpm exec playwright test --config
+playwright.operations.config.ts`. This dedicated spec resets its guarded local
+fixture tables. The actual worker defaults to `../worker/tyleros_worker.py`; set
+`TYLEROS_WORKER_PATH` when checkouts are laid out differently.
+
+Native follow-through: 11 unit tests and the full authenticated iOS 18.3.1 Simulator
+flow passed with the operations section and direct Miles navigation. The initial
+clean-session connection test passed separately. The flow exposed a background
+refresh race that could silently skip a decision while closing review; polling
+now pauses during review, and only a successful decision dismisses the sheet.
+The busy-decision regression is covered by a unit test. Final native screenshot
+was inspected. Old pending approvals remain reachable beyond 50 newer jobs.
+
+Measured interaction change: pending decisions and saved-note outcomes can now be
+read directly on Today, removing the separate activity-board navigation for that
+check. Actual daily time saved awaits approved release and user operation.

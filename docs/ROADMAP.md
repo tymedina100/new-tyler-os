@@ -400,3 +400,12 @@ Recorded so they do not get proposed again as improvements:
 - A process-local counter presented as rate limiting. It is not a real
   boundary once more than one server instance can run, and shipping one
   anyway is exactly the security theater ADR 030 was asked to avoid
+
+---
+
+## Implemented · Morning operations (release pending)
+
+Today now shows pending decisions and last-24-hour failed jobs and saved briefing
+notes. The Python briefing worker includes the same counts beside tasks and food;
+the mobile Today API and native Today view expose the same summary. Canonical outcomes, no
+simulated specialist work. See ADR 041 and `docs/FEATURE-COVERAGE.md`.

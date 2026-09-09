@@ -10,6 +10,9 @@ import { UPCOMING_WINDOW_DAYS } from "@/domain/today/today-view";
 import { getDb } from "@/server/db/client";
 import { getTodayData } from "@/server/items/item-service";
 import { getExpiringSoon } from "@/server/kitchen/inventory-service";
+import { getOperationsSummary } from "@/server/runtime/operations-service";
+import { operationsNeedAttention } from "@/domain/runtime/operations-summary";
+import { OperationsStrip } from "@/components/runtime/operations-strip";
 
 /**
  * Today answers one question: what actually needs me right now.
@@ -19,15 +22,22 @@ import { getExpiringSoon } from "@/server/kitchen/inventory-service";
  */
 export default async function TodayPage() {
   const db = getDb();
-  const [{ today, view }, expiring] = await Promise.all([getTodayData(db), getExpiringSoon(db)]);
+  const now = new Date();
+  const [{ today, view }, expiring, operations] = await Promise.all([
+    getTodayData(db, now),
+    getExpiringSoon(db, now),
+    getOperationsSummary(db, now),
+  ]);
 
   // Food about to be wasted is the only inventory Today shows, and it does not
   // stop the page being empty of work.
-  const nothingToDo = view.totalSurfaced === 0 && expiring.items.length === 0;
+  const nothingToDo =
+    view.totalSurfaced === 0 && expiring.items.length === 0 && !operationsNeedAttention(operations);
 
   return (
     <>
       <PageHeader title="Today" description={formatLongDate(today)} />
+      <OperationsStrip summary={operations} />
 
       {nothingToDo ? (
         <EmptyState

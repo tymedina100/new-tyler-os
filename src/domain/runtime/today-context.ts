@@ -1,5 +1,6 @@
 import type { KitchenLocation } from "@/domain/kitchen/inventory";
 import type { IsoDate } from "@/domain/shared/date";
+import type { OperationsSummary } from "./operations-summary";
 
 /**
  * What a runtime may read about Today.
@@ -22,6 +23,7 @@ export interface TodayContextFood {
 }
 
 export interface TodayContext {
+  operations?: OperationsSummary;
   today: IsoDate;
   overdue: TodayContextItem[];
   dueToday: TodayContextItem[];
@@ -45,6 +47,7 @@ export function todayHasMaterial(context: TodayContext): boolean {
 
 export function boundTodayContext(context: TodayContext): TodayContext {
   return {
+    ...(context.operations ? { operations: context.operations } : {}),
     today: context.today,
     overdue: boundItems(context.overdue),
     dueToday: boundItems(context.dueToday),
